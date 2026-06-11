@@ -73,6 +73,7 @@
 - 优先小步增量重构，避免大范围重写。
 - 工作区已有大量修改时，只碰本任务需要的文件，不回滚无关改动。
 - 不修改 `.agents/skills/`，除非用户明确要求开发 Codex 本地技能。
+- 默认任务收尾流程：完成修改后运行相关验证，检查 diff，只 stage 本次任务相关文件，commit，并 push 到当前批准的 GitHub 仓库；除非用户明确要求不要提交或不要 push。
 
 ## 验证要求
 - 新运行时能力应尽量覆盖正常、边界、失败路径。
@@ -82,12 +83,32 @@
 - 前端可见改动应在目标地址明确时做本地 UI 验证。
 
 ## Git 安全
-- 未经用户明确要求，不提交、不推送、不 reset、不 rebase、不 stage。
-- 禁止在未获明确批准时运行 `git reset --hard` 或 `git checkout --`。
-- 用户要求 push 时，先运行 `git remote -v`。
-- 只在用户明确要求时推送到本项目当前批准的 GitHub 仓库；当前批准目标为 `lizheng33193/MAPS-LZ`。
-- 当本地仅配置 `origin` 且其指向 `lizheng33193/MAPS-LZ` 时，可按用户要求正常 push / 创建 PR；若远端指向其他仓库，先停下并向用户确认。
-- 不回滚无关的脏工作区改动。
+## Git 与 GitHub 同步规则
+
+- 本项目当前批准的 GitHub 仓库为 `lizheng33193/CHORD`。
+- 默认远程仓库为 `origin`，默认主分支为 `main`。
+- Codex 完成任何代码、测试、文档、配置或项目文件修改后，应把 GitHub 同步视为任务收尾的一部分。
+- 除非用户明确说“不要提交”“不要 push”“只给我 patch”“只本地修改”，否则 Codex 在完成修改和验证后应执行：
+  1. `git status --short`
+  2. `git diff --stat`
+  3. 运行与本次改动相关的定向测试
+  4. `git add` 本次任务相关文件
+  5. `git commit -m "<clear conventional commit message>"`
+  6. `git push origin <current-branch>`
+- push 前必须运行 `git remote -v`，确认 `origin` 指向 `https://github.com/lizheng33193/CHORD.git` 或 `git@github.com:lizheng33193/CHORD.git`。
+- 如果 `origin` 指向的不是 `lizheng33193/CHORD`，必须停下并向用户确认，不得 push。
+- 如果当前分支是 `main`，可以 push 到 `origin main`。
+- 如果当前分支是 feature 分支，应 push 到 `origin <current-branch>`。
+- 如果测试失败，Codex 不应提交和 push，除非用户明确要求记录失败状态。
+- 不得提交无关文件、缓存、运行产物、压缩包、`.env`、密钥、凭据或本地调试文件。
+- 禁止在未获明确批准时运行 `git reset --hard`、`git checkout --`、`git clean -fd`、`git rebase` 或强制 push。
+- 不回滚、不覆盖、不删除用户已有的无关工作区改动。
+- 最终回复必须报告：
+  - changed files
+  - tests run and results
+  - commit hash
+  - pushed branch
+  - skipped tests or known limitations
 
 ## 文档更新
 - 架构、边界、模块状态、已知约束、参考路径变化时，更新 `PLANNING.md`。
