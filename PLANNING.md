@@ -5,6 +5,31 @@
 - 整体架构：单体 FastAPI 后端，五层（API → 编排 → Skill 执行 → 数据访问 → 外部服务）
 - 入口文件：`app/main.py`
 
+## 2026-06-11 M0 Identity & Permission Foundation
+
+- 已落地 `M0: Identity & Permission Foundation`，相关设计与执行文档：
+  - `docs/specs/m0-identity-permission-foundation-design.md`
+  - `docs/plans/m0-identity-permission-foundation-plan.md`
+- 后端新增 `app/auth/` 与全局 `UserContext / RequestContext / audit` 基础层：
+  - SQLAlchemy Auth DB、JWT、password hash、seed、`/api/auth/*`
+  - 角色/权限/项目 scope 建模
+  - `AUTH_ENABLED` feature flag + demo user fallback
+- 关键 API 已接入权限依赖与用户上下文传递：
+  - `/api/analyze*`
+  - `/api/trace/*`
+  - `/api/orchestrator/*`
+  - `/api/data-acquisition/*`
+- Orchestrator 会话与 trace 已开始记录 actor/request 身份信息：
+  - session `active_entities` 持久化 `user_context_snapshot` 与 `request_context`
+  - execution trace `internal_metadata` 记录 `session_id / request_id / actor`
+- 前端已落地轻量认证壳层：
+  - `AuthGate + LoginPage + RegisterPage + authStore + httpClient`
+  - Bearer token、401 自动退出、项目/国家头自动注入
+  - Memory/Session UI 已绑定真实登录身份，不再默认手填 demo identity
+- 当前边界保持 P0-lite：
+  - 已具备本地账号、角色权限、项目/国家 scope、关键 API 鉴权与 actor 审计基础
+  - 暂未进入 OAuth/SSO、复杂组织架构、可视化 RBAC 后台、LangGraph 正式迁移
+
 ## 2026-06-05 Data Agent Local MySQL Sandbox
 
 - `data_acquisition_agent` 新增本地 Docker MySQL 8 沙盒支持，用于验证 `generate -> execute -> write by_uid -> profile read` 的真实工程闭环。

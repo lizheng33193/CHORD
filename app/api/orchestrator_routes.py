@@ -16,10 +16,13 @@ import json
 import threading
 from typing import Any, AsyncGenerator, Optional
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from app.auth.dependencies import build_request_context, require_permission
+from app.core.config import settings
+from app.core.user_context import UserContext
 from app.services.orchestrator_agent.ack_bus import abort_ack, resolve_ack
 from app.services.orchestrator_agent.resolve_bus import abort_resolution, resolve_pending_resolution
 from app.services.orchestrator_agent.agent_loop import run_agent_loop
@@ -70,12 +73,17 @@ def _pop_pending_prompt(session_id: str) -> Optional[dict[str, Any]]:
 
 
 @router.post("/chat")
-async def chat_endpoint(req: OrchestratorChatRequest, request: Request) -> StreamingResponse:
-    identity = _identity_from_request(request)
+async def chat_endpoint(
+    req: OrchestratorChatRequest,
+    request: Request,
+    ctx: UserContext = Depends(require_permission("profile:run")),
+) -> StreamingResponse:
+    identity = _identity_from_request(request, ctx=ctx)
     if req.session_id:
         sess = get_session(req.session_id)
         if sess is None:
             raise HTTPException(404, f"Session {req.session_id} not found")
+        _require_session_access(sess, ctx)
         if sess.active_run_id and sess.active_run_status in {
             "queued", "running", "awaiting_user_ack", "awaiting_resolution", "cancel_requested", "cancelling",
         }:
@@ -85,9 +93,16 @@ async def chat_endpoint(req: OrchestratorChatRequest, request: Request) -> Strea
                 raise HTTPException(409, "A pending prompt already exists for this session")
     else:
         sess = create_session(**identity)
+    request_ctx = build_request_context(request, user=ctx, session_id=sess.session_id)
 
     async def event_stream() -> AsyncGenerator[bytes, None]:
-        async for evt in run_agent_loop(session=sess, prompt=req.prompt, **identity):
+        async for evt in run_agent_loop(
+            session=sess,
+            prompt=req.prompt,
+            user_context=ctx,
+            request_context=request_ctx,
+            **identity,
+        ):
             yield f"data: {json.dumps(evt, ensure_ascii=False)}\n\n".encode("utf-8")
         yield b'data: {"type": "done"}\n\n'
 
@@ -104,9 +119,15 @@ class _CreateSessionBody(BaseModel):
 
 
 @router.post("/sessions")
-async def create_session_endpoint(body: _CreateSessionBody, request: Request) -> dict:
-    identity = _identity_from_request(request)
+async def create_session_endpoint(
+    body: _CreateSessionBody,
+    request: Request,
+    ctx: UserContext = Depends(require_permission("profile:run")),
+) -> dict:
+    identity = _identity_from_request(request, ctx=ctx)
     sess = create_session(**identity)
+    sess.active_entities["request_context"] = build_request_context(request, user=ctx, session_id=sess.session_id).to_dict()
+    sess.active_entities["user_context_snapshot"] = ctx.to_dict()
     if body.workspace_snapshot:
         sess.active_entities["workspace_snapshot"] = body.workspace_snapshot
         save_session(sess)
@@ -126,9 +147,11 @@ async def list_sessions_endpoint(
     project_id: Optional[str] = None,
     country: Optional[str] = None,
     limit: int = 20,
+    ctx: UserContext = Depends(require_permission("profile:view")),
 ) -> dict:
     identity = _identity_from_request(
         request,
+        ctx=ctx,
         user_id=user_id,
         project_id=project_id,
         country=country,
@@ -154,10 +177,16 @@ class _SendMessageBody(BaseModel):
 
 
 @router.post("/sessions/{session_id}/messages")
-async def send_message_endpoint(session_id: str, body: _SendMessageBody, request: Request) -> dict:
+async def send_message_endpoint(
+    session_id: str,
+    body: _SendMessageBody,
+    request: Request,
+    ctx: UserContext = Depends(require_permission("profile:run")),
+) -> dict:
     sess = get_session(session_id)
     if sess is None:
         raise HTTPException(404, f"Session {session_id} not found")
+    _require_session_access(sess, ctx)
     if sess.active_run_id and sess.active_run_status in {
         "queued", "running", "awaiting_user_ack", "awaiting_resolution", "cancel_requested", "cancelling",
     }:
@@ -165,7 +194,7 @@ async def send_message_endpoint(session_id: str, body: _SendMessageBody, request
     with _PENDING_PROMPTS_LOCK:
         if session_id in _PENDING_PROMPTS:
             raise HTTPException(409, "A pending prompt already exists for this session")
-    _apply_request_identity(sess, request)
+    _apply_request_identity(sess, request, ctx)
     if body.workspace_snapshot:
         sess.active_entities["workspace_snapshot"] = body.workspace_snapshot
         save_session(sess)
@@ -174,12 +203,18 @@ async def send_message_endpoint(session_id: str, body: _SendMessageBody, request
 
 
 @router.get("/sessions/{session_id}/stream")
-async def stream_endpoint(session_id: str, request: Request) -> StreamingResponse:
+async def stream_endpoint(
+    session_id: str,
+    request: Request,
+    ctx: UserContext = Depends(require_permission("profile:run")),
+) -> StreamingResponse:
     sess = get_session(session_id)
     if sess is None:
         raise HTTPException(404, f"Session {session_id} not found")
-    identity = _apply_request_identity(sess, request)
+    _require_session_access(sess, ctx)
+    identity = _apply_request_identity(sess, request, ctx)
     pending = _pop_pending_prompt(session_id)
+    request_ctx = build_request_context(request, user=ctx, session_id=session_id)
 
     async def event_stream() -> AsyncGenerator[bytes, None]:
         if not pending:
@@ -189,6 +224,8 @@ async def stream_endpoint(session_id: str, request: Request) -> StreamingRespons
             session=sess,
             prompt=str(pending.get("prompt") or ""),
             client_turn_id=pending.get("client_turn_id"),
+            user_context=ctx,
+            request_context=request_ctx,
             **identity,
         ):
             yield f"data: {json.dumps(evt, ensure_ascii=False)}\n\n".encode("utf-8")
@@ -210,7 +247,16 @@ class _AckBody(BaseModel):
 
 
 @router.post("/sessions/{session_id}/ack")
-async def ack_endpoint(session_id: str, body: _AckBody) -> dict:
+async def ack_endpoint(
+    session_id: str,
+    body: _AckBody,
+    ctx: UserContext = Depends(require_permission("profile:run")),
+) -> dict:
+    sess = get_session(session_id)
+    if sess is None and settings.auth_enabled:
+        raise HTTPException(404, f"Session {session_id} not found")
+    if sess is not None:
+        _require_session_access(sess, ctx)
     if body.confirm is not None:
         confirm = body.confirm
     elif body.decision is not None:
@@ -231,7 +277,16 @@ class _ResolveBody(BaseModel):
 
 
 @router.post("/sessions/{session_id}/resolve")
-async def resolve_endpoint(session_id: str, body: _ResolveBody) -> dict:
+async def resolve_endpoint(
+    session_id: str,
+    body: _ResolveBody,
+    ctx: UserContext = Depends(require_permission("profile:run")),
+) -> dict:
+    sess = get_session(session_id)
+    if sess is None and settings.auth_enabled:
+        raise HTTPException(404, f"Session {session_id} not found")
+    if sess is not None:
+        _require_session_access(sess, ctx)
     if body.answers is None and not body.selected_option:
         raise HTTPException(422, "resolve body must contain either 'answers' or 'selected_option'")
     if not body.resolution_id:
@@ -251,10 +306,15 @@ async def resolve_endpoint(session_id: str, body: _ResolveBody) -> dict:
 
 
 @router.post("/sessions/{session_id}/runs/{run_id}/cancel")
-async def cancel_run_endpoint(session_id: str, run_id: str) -> dict:
+async def cancel_run_endpoint(
+    session_id: str,
+    run_id: str,
+    ctx: UserContext = Depends(require_permission("profile:run")),
+) -> dict:
     sess = get_session(session_id)
     if sess is None:
         raise HTTPException(404, f"Session {session_id} not found")
+    _require_session_access(sess, ctx)
 
     if sess.active_run_id == run_id and sess.active_run_status in {
         "queued", "running", "awaiting_user_ack", "awaiting_resolution", "cancel_requested", "cancelling",
@@ -295,10 +355,14 @@ async def cancel_run_endpoint(session_id: str, run_id: str) -> dict:
 
 
 @router.get("/sessions/{session_id}")
-async def get_session_endpoint(session_id: str) -> dict:
+async def get_session_endpoint(
+    session_id: str,
+    ctx: UserContext = Depends(require_permission("profile:view")),
+) -> dict:
     sess = get_session(session_id)
     if sess is None:
         raise HTTPException(404, f"Session {session_id} not found")
+    _require_session_access(sess, ctx)
     return sess.model_dump(mode="json", exclude=_PUBLIC_SESSION_EXCLUDE)
 
 
@@ -339,7 +403,9 @@ class _MemoryUpdateBody(BaseModel):
 
 
 @router.get("/memory/status")
-async def memory_status_endpoint() -> dict:
+async def memory_status_endpoint(
+    _ctx: UserContext = Depends(require_permission("memory:manage")),
+) -> dict:
     return {"success": True, **SQLiteMemoryStore().status()}
 
 
@@ -352,8 +418,9 @@ async def memory_list_endpoint(
     status: Optional[str] = "active",
     category: Optional[str] = None,
     limit: int = 100,
+    ctx: UserContext = Depends(require_permission("memory:read")),
 ) -> dict:
-    identity = _identity_from_request(request, user_id=user_id, project_id=project_id, country=country)
+    identity = _identity_from_request(request, ctx=ctx, user_id=user_id, project_id=project_id, country=country)
     normalized_status = None if str(status or "").lower() == "all" else (status or "active")
     results = SQLiteMemoryStore().list_records(
         user_id=identity["user_id"],
@@ -373,9 +440,14 @@ async def memory_list_endpoint(
 
 
 @router.post("/memory/query")
-async def memory_query_endpoint(body: _MemoryQueryBody, request: Request) -> dict:
+async def memory_query_endpoint(
+    body: _MemoryQueryBody,
+    request: Request,
+    ctx: UserContext = Depends(require_permission("memory:read")),
+) -> dict:
     identity = _identity_from_request(
         request,
+        ctx=ctx,
         user_id=body.user_id,
         project_id=body.project_id,
         country=body.country,
@@ -401,9 +473,14 @@ async def memory_query_endpoint(body: _MemoryQueryBody, request: Request) -> dic
 
 
 @router.post("/memory")
-async def memory_create_endpoint(body: _MemoryCreateBody, request: Request) -> dict:
+async def memory_create_endpoint(
+    body: _MemoryCreateBody,
+    request: Request,
+    ctx: UserContext = Depends(require_permission("memory:write")),
+) -> dict:
     identity = _identity_from_request(
         request,
+        ctx=ctx,
         user_id=body.user_id,
         project_id=body.project_id,
         country=body.country,
@@ -442,9 +519,15 @@ async def memory_create_endpoint(body: _MemoryCreateBody, request: Request) -> d
 
 
 @router.patch("/memory/{memory_id}")
-async def memory_update_endpoint(memory_id: str, body: _MemoryUpdateBody, request: Request) -> dict:
+async def memory_update_endpoint(
+    memory_id: str,
+    body: _MemoryUpdateBody,
+    request: Request,
+    ctx: UserContext = Depends(require_permission("memory:manage")),
+) -> dict:
     identity = _identity_from_request(
         request,
+        ctx=ctx,
         user_id=body.user_id,
         project_id=body.project_id,
         country=body.country,
@@ -500,8 +583,17 @@ async def memory_archive_endpoint(
     user_id: Optional[str] = None,
     project_id: Optional[str] = None,
     country: Optional[str] = None,
+    ctx: UserContext = Depends(require_permission("memory:manage")),
 ) -> dict:
-    return _set_memory_status(memory_id, "archived", request, user_id, project_id, country)
+    return _set_memory_status(
+        memory_id,
+        "archived",
+        request,
+        ctx,
+        user_id=user_id,
+        project_id=project_id,
+        country=country,
+    )
 
 
 @router.post("/memory/{memory_id}/restore")
@@ -511,8 +603,17 @@ async def memory_restore_endpoint(
     user_id: Optional[str] = None,
     project_id: Optional[str] = None,
     country: Optional[str] = None,
+    ctx: UserContext = Depends(require_permission("memory:manage")),
 ) -> dict:
-    return _set_memory_status(memory_id, "active", request, user_id, project_id, country)
+    return _set_memory_status(
+        memory_id,
+        "active",
+        request,
+        ctx,
+        user_id=user_id,
+        project_id=project_id,
+        country=country,
+    )
 
 
 @router.delete("/memory/{memory_id}")
@@ -522,17 +623,40 @@ async def memory_delete_endpoint(
     user_id: Optional[str] = None,
     project_id: Optional[str] = None,
     country: Optional[str] = None,
+    ctx: UserContext = Depends(require_permission("memory:manage")),
 ) -> dict:
-    return _set_memory_status(memory_id, "deleted", request, user_id, project_id, country)
+    return _set_memory_status(
+        memory_id,
+        "deleted",
+        request,
+        ctx,
+        user_id=user_id,
+        project_id=project_id,
+        country=country,
+    )
 
 
 def _identity_from_request(
     request: Request,
     *,
+    ctx: UserContext | None = None,
     user_id: str | None = None,
     project_id: str | None = None,
     country: str | None = None,
 ) -> dict[str, str]:
+    if settings.auth_enabled and ctx is not None:
+        identity = {
+            "user_id": ctx.user_id,
+            "project_id": str(ctx.project_id or DEFAULT_PROJECT_ID),
+            "country": (ctx.country or DEFAULT_COUNTRY).lower(),
+        }
+        if ctx.is_superuser:
+            return {
+                "user_id": user_id or identity["user_id"],
+                "project_id": project_id or identity["project_id"],
+                "country": (country or identity["country"]).lower(),
+            }
+        return identity
     return {
         "user_id": user_id or request.headers.get("X-User-ID") or DEFAULT_USER_ID,
         "project_id": project_id or request.headers.get("X-Project-ID") or DEFAULT_PROJECT_ID,
@@ -540,13 +664,23 @@ def _identity_from_request(
     }
 
 
-def _apply_request_identity(sess, request: Request) -> dict[str, str]:
-    identity = _identity_from_request(request)
+def _apply_request_identity(sess, request: Request, ctx: UserContext | None = None) -> dict[str, str]:
+    identity = _identity_from_request(request, ctx=ctx)
     sess.user_id = identity["user_id"]
     sess.project_id = identity["project_id"]
     sess.country = identity["country"]
+    if ctx is not None:
+        sess.active_entities["user_context_snapshot"] = ctx.to_dict()
+        sess.active_entities["request_context"] = build_request_context(request, user=ctx, session_id=sess.session_id).to_dict()
     save_session(sess)
     return identity
+
+
+def _require_session_access(sess, ctx: UserContext) -> None:
+    if ctx.is_superuser:
+        return
+    if str(sess.user_id) != str(ctx.user_id):
+        raise HTTPException(status_code=403, detail="session is not visible to the current user")
 
 
 def _get_memory_or_404(
@@ -569,12 +703,15 @@ def _set_memory_status(
     memory_id: str,
     status: str,
     request: Request,
+    ctx: UserContext | None,
+    *,
     user_id: str | None,
     project_id: str | None,
     country: str | None,
 ) -> dict:
     identity = _identity_from_request(
         request,
+        ctx=ctx,
         user_id=user_id,
         project_id=project_id,
         country=country,

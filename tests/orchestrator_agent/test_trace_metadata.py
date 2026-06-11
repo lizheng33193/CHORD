@@ -254,9 +254,8 @@ def test_general_chat_defensive_fallback_records_internal_metadata(monkeypatch) 
     asyncio.run(collect())
     trace = session.execution_traces[-1]
 
-    assert trace.internal_metadata == {
-        "flow_name": "GeneralChatFlow",
-        "flow_mode": "defensive_fallback",
-        "fallback_reason": "unsupported_general_chat_complex_path",
-        "terminal_reason": "unsupported_general_chat_complex_path",
-    }
+    assert trace.internal_metadata["flow_name"] == "GeneralChatFlow"
+    assert trace.internal_metadata["flow_mode"] == "defensive_fallback"
+    assert trace.internal_metadata["fallback_reason"] == "unsupported_general_chat_complex_path"
+    assert trace.internal_metadata["terminal_reason"] == "unsupported_general_chat_complex_path"
+    assert trace.internal_metadata["session_id"] == session.session_id

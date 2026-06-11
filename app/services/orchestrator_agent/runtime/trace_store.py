@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
+from app.services.orchestrator_agent.runtime.trace_metadata import update_internal_trace_metadata
 from app.services.orchestrator_agent.schemas import (
     DataAvailability,
     ExecutionPlan,
@@ -32,11 +33,14 @@ def create_execution_trace(
     turn_id = turn_id or session.active_turn_id
     run_id = run_id or session.active_run_id
     now = datetime.now(timezone.utc)
+    request_context = session.active_entities.get("request_context")
+    user_snapshot = session.active_entities.get("user_context_snapshot")
     trace = ExecutionTraceRecord(
         turn_id=turn_id,
         run_id=run_id,
         execution_id=execution_id,
         trace_id=execution_id,
+        request_id=(request_context or {}).get("request_id") if isinstance(request_context, dict) else None,
         prompt=prompt,
         request_summary=normalized_request.request_summary,
         intent=normalized_request.intent,
@@ -45,6 +49,14 @@ def create_execution_trace(
         steps=steps,
         created_at=now,
         updated_at=now,
+    )
+    update_internal_trace_metadata(
+        trace,
+        {
+            "request_id": trace.request_id,
+            "session_id": session.session_id,
+            "actor": user_snapshot if isinstance(user_snapshot, dict) else None,
+        },
     )
     session.execution_traces.append(trace)
     run = find_run(session, run_id)

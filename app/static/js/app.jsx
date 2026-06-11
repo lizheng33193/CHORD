@@ -3,9 +3,12 @@
 // File mode: fake loading animation → /api/analyze-file one-shot → dashboard.
 
 const { useState, useRef, useEffect, useCallback } = React;
-const { HomeView, LoadingView, DashboardView } = window.AppComponents;
+const { AuthGate, HomeView, LoadingView, DashboardView } = window.AppComponents;
 const { normalizeAnalysisResult, buildEmptyAgentOutput, normalizeApplicationTime } = window.AppUtils.normalize;
 const { analyzeByFile, analyzeModule, fetchUiConfig, fetchTrace } = window.AppServices.api;
+const authStore = window.AppState.authStore;
+// AuthGate restores the persisted access_token before rendering AppShell.
+// The auth shell keeps login / logout state outside the profiling workspace.
 
 const UID_PATTERN = /^\d{18}$/;
 
@@ -55,6 +58,18 @@ function getInitialChatFocusFromUrl() {
 function getInitialSessionIdFromUrl() {
   const params = new URLSearchParams(window.location.search);
   return params.get('session') || '';
+}
+
+function getInitialCountry() {
+  const params = new URLSearchParams(window.location.search);
+  const v = params.get('country');
+  if (v === 'th') return 'th';
+  if (v === 'mx') return 'mx';
+  const authState = authStore && authStore.getState ? authStore.getState() : null;
+  if (authState && authState.preferredCountry) {
+    return String(authState.preferredCountry).toLowerCase();
+  }
+  return (INITIAL_WORKSPACE_STATE && INITIAL_WORKSPACE_STATE.country) || 'mx';
 }
 
 function createInitialModuleStates(status) {
@@ -291,7 +306,7 @@ function restoreWorkspaceFromSession(sessionPayload) {
 
 const INITIAL_WORKSPACE_STATE = restoreWorkspaceSnapshot(_readWorkspaceSnapshotFromSessionStorage()) || null;
 
-function App() {
+function AppShell({ currentUser, onLogout, setPreferredCountry, setPreferredProjectId }) {
   const [view, setView] = useState(getInitialViewFromUrl);
   const [uid, setUid] = useState('');
   const [uidError, setUidError] = useState('');
@@ -311,20 +326,26 @@ function App() {
   // 2026-05-04 方案 A：NL Chat 跑过的 trace 结果种子，注入 DashboardView 的 traceCacheByUid，
   // 避免用户跳到 trace tab 时再发一次 /api/trace 请求（trace 同样会跑 LLM）。
   const [traceSeedByUid, setTraceSeedByUid] = useState(() => (INITIAL_WORKSPACE_STATE && INITIAL_WORKSPACE_STATE.traceSeedByUid) || {});
+  const userPermissions = Array.isArray(currentUser && currentUser.permissions) ? currentUser.permissions : [];
 
-  const [country, setCountry] = useState(() => {
-    const params = new URLSearchParams(window.location.search);
-    const v = params.get('country');
-    if (v === 'th') return 'th';
-    if (v === 'mx') return 'mx';
-    return (INITIAL_WORKSPACE_STATE && INITIAL_WORKSPACE_STATE.country) || 'mx';
-  });
+  const [country, setCountry] = useState(getInitialCountry);
 
   useEffect(() => {
     const url = new URL(window.location.href);
     url.searchParams.set('country', country);
     window.history.replaceState({}, '', url.toString());
   }, [country]);
+
+  useEffect(() => {
+    if (setPreferredCountry) {
+      setPreferredCountry(country);
+    }
+  }, [country, setPreferredCountry]);
+
+  useEffect(() => {
+    if (!currentUser || !setPreferredProjectId || !currentUser.default_project_id) return;
+    setPreferredProjectId(currentUser.default_project_id);
+  }, [currentUser, setPreferredProjectId]);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !window.sessionStorage) return;
@@ -692,6 +713,8 @@ function App() {
         onStartFile={() => handleAnalyze({ mode: 'file' })}
         onStartChat={() => { setActiveTab('comprehensive'); setChatFocusRequested(true); setView('dashboard'); }}
         errorMessage={errorMessage}
+        currentUser={currentUser}
+        onLogout={onLogout}
         country={country}
         onCountryChange={handleCountryChange}
       />
@@ -717,6 +740,9 @@ function App() {
       onChatTraceReady={ingestTraceFromChat}
       traceSeedByUid={traceSeedByUid}
       moduleStatesByUid={moduleStatesByUid}
+      currentUser={currentUser}
+      permissions={userPermissions}
+      onLogout={onLogout}
       country={country}
       onCountryChange={handleCountryChange}
       chatFocusRequested={chatFocusRequested}
@@ -733,6 +759,21 @@ function App() {
       })}
       onRestoreWorkspaceSession={handleRestoreWorkspaceSession}
     />
+  );
+}
+
+function App() {
+  return (
+    <AuthGate>
+      {({ currentUser, onLogout, setPreferredCountry, setPreferredProjectId }) => (
+        <AppShell
+          currentUser={currentUser}
+          onLogout={onLogout}
+          setPreferredCountry={setPreferredCountry}
+          setPreferredProjectId={setPreferredProjectId}
+        />
+      )}
+    </AuthGate>
   );
 }
 

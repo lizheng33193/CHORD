@@ -25,9 +25,12 @@ import queue
 import threading
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 
+from app.auth.dependencies import require_permission
+from app.auth.permissions import require_country_access
+from app.core.user_context import UserContext
 from app.schemas.request import AnalyzeRequest
 from app.services.batch_service import BatchAnalysisService
 from app.services.orchestrator import shared_orchestrator
@@ -80,12 +83,16 @@ def _run_analysis_in_thread(
 
 
 @router.post("/analyze-stream", summary="Stream analysis progress as Server-Sent Events")
-async def analyze_stream(request: AnalyzeRequest) -> StreamingResponse:
+async def analyze_stream(
+    request: AnalyzeRequest,
+    ctx: UserContext = Depends(require_permission("profile:run")),
+) -> StreamingResponse:
     """Return text/event-stream of skill-level progress events.
 
     Input validation failures raise 400 via the global RequestValidationError
     handler in app/main.py — they never enter the stream.
     """
+    require_country_access(ctx, request.country, project_id=ctx.project_id)
     uids = request.get_uid_list()
     application_time = request.application_time
     country_code = request.country

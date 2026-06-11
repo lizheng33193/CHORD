@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from app.api.analyze import router as analyze_router
 from app.api.analyze_module import router as analyze_module_router
 from app.api.analyze_stream import router as analyze_stream_router
+from app.auth.router import router as auth_router
 from app.api.trace import router as trace_router
 from app.core.config import settings
 from app.core.data_acquisition_capability import get_data_acquisition_capability
@@ -34,6 +35,15 @@ async def _validate_llm_routes_on_startup() -> None:
     """Plan #02 Task 1.2 — validate llm.routes + warn on placeholder endpoints."""
     from app.core.config import validate_llm_routes
     validate_llm_routes()
+    if settings.auth_enabled:
+        from app.auth.database import create_auth_schema
+        from app.auth.database import AuthSessionLocal
+        from app.auth.seed import seed_auth_data
+
+        create_auth_schema()
+        if settings.auth_seed_on_startup:
+            with AuthSessionLocal() as db:
+                seed_auth_data(db)
 
 
 @app.exception_handler(RequestValidationError)
@@ -74,6 +84,7 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 app.include_router(analyze_router, prefix="/api", tags=["analyze"])
 app.include_router(analyze_module_router, prefix="/api", tags=["analyze"])
 app.include_router(analyze_stream_router, prefix="/api", tags=["analyze"])
+app.include_router(auth_router)
 app.include_router(trace_router)
 
 # Orchestrator Agent SSE chat (Plan #03)

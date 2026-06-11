@@ -8,6 +8,8 @@ from typing import Any, Callable, Literal
 from pydantic import BaseModel, Field
 
 from app.core.model_client import ModelClient
+from app.core.request_context import RequestContext
+from app.core.user_context import UserContext
 from app.services.orchestrator_agent.schemas import NormalizedRequest
 
 
@@ -66,3 +68,5 @@ class FlowContext:
     memory: MemoryFacade | None
     deps: LoopDependencies
     system_prompt: str | None = None
+    user_context: UserContext | None = None
+    request_context: RequestContext | None = None

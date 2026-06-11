@@ -23,7 +23,13 @@ LOAD_ORDER = [
     "js/utils/chartLookup.js",
     "js/utils/displayMappers.js",
     "js/utils/advice.js",
+    "js/state/authStore.js",
+    "js/services/httpClient.js",
+    "js/services/authApi.js",
     "js/services/api.js",
+    "js/components/LoginPage.jsx",
+    "js/components/RegisterPage.jsx",
+    "js/components/AuthGate.jsx",
     "js/components/common/InfoRow.jsx",
     "js/components/common/ProgressRow.jsx",
     "js/components/common/CreditProgressRow.jsx",
@@ -75,12 +81,49 @@ _HTML_TEMPLATE = """<!DOCTYPE html>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>多 Agent 用户画像分析平台</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&family=Source+Sans+3:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18.2.0/umd/react.development.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.development.js"></script>
     <script>window.react = window.React;</script>
     <script src="https://unpkg.com/lucide-react@0.292.0/dist/umd/lucide-react.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+      :root {
+        --maps-bg: #f4f7f9;
+        --maps-text: #0f172a;
+        --maps-heading: "Lexend", sans-serif;
+        --maps-body: "Source Sans 3", sans-serif;
+      }
+
+      html, body, #root {
+        height: 100%;
+      }
+
+      body {
+        margin: 0;
+        background: var(--maps-bg);
+        color: var(--maps-text);
+        font-family: var(--maps-body);
+      }
+
+      h1, h2, h3, h4, h5, h6 {
+        font-family: var(--maps-heading);
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.01ms !important;
+          scroll-behavior: auto !important;
+        }
+      }
+    </style>
 </head>
 <body class="h-screen overflow-hidden bg-[#F4F7F9] font-sans text-slate-800">
     <div id="root" class="h-full"></div>
@@ -109,7 +152,7 @@ def _read_concat() -> str:
 def build_frontend_html() -> str:
     """Build the full HTML page with all JSX/JS inlined. Called on every
     request in dev (--reload) to pick up JSX edits without server restart."""
-    return _HTML_TEMPLATE.format(bundle=_read_concat())
+    return _HTML_TEMPLATE.replace("{bundle}", _read_concat())
 
 
 # Pre-built for production (single read at import time).

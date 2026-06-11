@@ -35,6 +35,23 @@
 - [x] E1 单用户埋点深度解析 → docs/plans/trace-analyzer-plan.md（2026-05-01）
 
 ## 当前进行中的功能
+- [x] M0：Identity & Permission Foundation → 已完成第一阶段闭环（2026-06-11）
+  - design / plan：
+    - `docs/specs/m0-identity-permission-foundation-design.md`
+    - `docs/plans/m0-identity-permission-foundation-plan.md`
+  - 后端：
+    - `app/auth/`（SQLAlchemy auth DB、seed、JWT、password、`/api/auth/*`）
+    - `app/core/user_context.py` / `request_context.py` / `audit.py`
+    - `AUTH_ENABLED` + demo user fallback
+    - 关键 API 权限保护：`/api/analyze*`、`/api/trace/*`、`/api/orchestrator/*`、`/api/data-acquisition/*`
+  - Agent Harness 接入：
+    - Orchestrator session 持久化 `user_context_snapshot` / `request_context`
+    - execution trace `internal_metadata` 增加 actor / session / request 信息
+    - Data Acquisition execute 强制记录当前审批人
+  - 前端：
+    - `AuthGate`、登录/注册页、`authStore`、`httpClient`
+    - Bearer token、401 自动退出、国家/项目 header 自动透传
+    - Dashboard / Chat / Memory Inspector 已绑定真实登录身份与权限可见性
 - [x] Data Agent 本地 MySQL 沙盒（目标 1）→ 已落地 `DA_LOCAL_DEV` 路由修复、4 表 local_dev 知识库、Docker MySQL 资产、chunked CSV 导入脚本与 by_uid 闭环验证入口（2026-06-05）
 - [x] Data Agent 本地 MySQL “开机即测”联调脚本 → 已新增 `.env.local-mysql.example`、`scripts/local_mysql/local_stack.py`、`dev_up/dev_smoke/dev_down.sh` 与 quickstart 文档，支持一键 `up / smoke / down`（2026-06-05）
 - [x] ModelClient 重构 → [docs/plans/01-model-client-refactor-plan.md](docs/plans/01-model-client-refactor-plan.md)（[complete] a949830 2026-05-02）

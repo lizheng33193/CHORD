@@ -246,6 +246,8 @@ function ChatPanel({
   onSessionChange,
   workspaceSnapshot = null,
   onRestoreWorkspaceSession,
+  currentUser = null,
+  currentCountry = 'mx',
 }) {
   const [state, dispatch] = useReducer(chatReducer, chatInitialState);
   const [input, setInput] = useState('');
@@ -259,6 +261,16 @@ function ChatPanel({
   const [profileExpectedModulesByUid, setProfileExpectedModulesByUid] = useState({});
   const [selectedJumpUid, setSelectedJumpUid] = useState(null);
   const [now, setNow] = useState(Date.now());
+  const permissionSet = React.useMemo(
+    () => new Set((currentUser && Array.isArray(currentUser.permissions)) ? currentUser.permissions : []),
+    [currentUser]
+  );
+  const canOpenMemory = !currentUser
+    || currentUser.is_superuser
+    || permissionSet.has('profile:view')
+    || permissionSet.has('memory:read')
+    || permissionSet.has('memory:write')
+    || permissionSet.has('memory:manage');
   const esRef = useRef(null);
   const dispatchedToolsRef = useRef(new Set());
   const dispatchedProfileResultsRef = useRef(new Set());
@@ -724,6 +736,8 @@ function ChatPanel({
           onClose={() => setMemoryOpen(false)}
           onOpenSession={onOpenSession}
           onRestoreSession={onRestoreSession}
+          currentUser={currentUser}
+          preferredCountry={currentCountry}
         />
       </div>
     );
@@ -750,15 +764,17 @@ function ChatPanel({
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              id="chat-history-btn"
-              type="button"
-              onClick={onOpenMemory}
-              className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-200"
-            >
-              {Clock3 ? <Clock3 className="h-3.5 w-3.5" /> : null}
-              历史记忆
-            </button>
+            {canOpenMemory ? (
+              <button
+                id="chat-history-btn"
+                type="button"
+                onClick={onOpenMemory}
+                className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-200"
+              >
+                {Clock3 ? <Clock3 className="h-3.5 w-3.5" /> : null}
+                历史记忆
+              </button>
+            ) : null}
             {layoutMode === 'dock' && onToggleCollapse ? (
               <button
                 id="collapse-chat-btn"
@@ -1033,6 +1049,8 @@ function ChatPanel({
         onClose={() => setMemoryOpen(false)}
         onOpenSession={onOpenSession}
         onRestoreSession={onRestoreSession}
+        currentUser={currentUser}
+        preferredCountry={currentCountry}
       />
     </div>
   );

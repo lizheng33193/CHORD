@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote_plus
 
 import yaml
 from dotenv import load_dotenv
@@ -56,6 +57,30 @@ class Settings(BaseModel):
     da_query_timeout_seconds: int = int(os.getenv("DA_QUERY_TIMEOUT_SECONDS", "60"))
     da_connection_profile: str = os.getenv("DA_CONNECTION_PROFILE", "default")
     uid_transition_duration_ms: int = int(os.getenv("UID_TRANSITION_DURATION_MS", "20000"))
+    auth_enabled: bool = os.getenv("AUTH_ENABLED", "0").strip().lower() in {
+        "1", "true", "yes", "on",
+    }
+    auth_database_url: str | None = os.getenv("AUTH_DATABASE_URL")
+    auth_jwt_secret: str = os.getenv("AUTH_JWT_SECRET", "change-me-in-env")
+    auth_jwt_expire_minutes: int = int(os.getenv("AUTH_JWT_EXPIRE_MINUTES", "1440"))
+    auth_seed_on_startup: bool = os.getenv("AUTH_SEED_ON_STARTUP", "1").strip().lower() in {
+        "1", "true", "yes", "on",
+    }
+    auth_default_register_role: str = os.getenv("AUTH_DEFAULT_REGISTER_ROLE", "analyst").strip().lower() or "analyst"
+    default_admin_username: str = os.getenv("DEFAULT_ADMIN_USERNAME", "admin").strip() or "admin"
+    default_admin_email: str = os.getenv("DEFAULT_ADMIN_EMAIL", "admin@example.com").strip() or "admin@example.com"
+    default_admin_password: str = os.getenv("DEFAULT_ADMIN_PASSWORD", "admin123456").strip() or "admin123456"
+    auth_demo_user_id: str = os.getenv("AUTH_DEMO_USER_ID", "local-default-user").strip() or "local-default-user"
+    auth_demo_username: str = os.getenv("AUTH_DEMO_USERNAME", "demo-user").strip() or "demo-user"
+    auth_demo_display_name: str = os.getenv("AUTH_DEMO_DISPLAY_NAME", "Demo User").strip() or "Demo User"
+    auth_demo_project_id: str = os.getenv("AUTH_DEMO_PROJECT_ID", "agent-user-profile-fork").strip() or "agent-user-profile-fork"
+    auth_demo_project_code: str = os.getenv("AUTH_DEMO_PROJECT_CODE", "maps_lz").strip() or "maps_lz"
+    auth_demo_country: str = os.getenv("AUTH_DEMO_COUNTRY", "mx").strip().lower() or "mx"
+    mysql_host: str = os.getenv("MYSQL_HOST", "127.0.0.1").strip() or "127.0.0.1"
+    mysql_port: int = int(os.getenv("MYSQL_PORT", "3306"))
+    mysql_user: str = os.getenv("MYSQL_USER", "maps_lz").strip() or "maps_lz"
+    mysql_password: str = os.getenv("MYSQL_PASSWORD", "maps_lz").strip()
+    mysql_database: str = os.getenv("MYSQL_DATABASE", "maps_lz").strip() or "maps_lz"
 
     @property
     def project_root(self) -> Path:
@@ -86,6 +111,17 @@ class Settings(BaseModel):
             return None
         resolved = self.resolve_path(self.google_application_credentials)
         return str(resolved)
+
+    @property
+    def resolved_auth_database_url(self) -> str:
+        if self.auth_database_url:
+            return self.auth_database_url
+        user = quote_plus(self.mysql_user)
+        password = quote_plus(self.mysql_password)
+        return (
+            f"mysql+pymysql://{user}:{password}@{self.mysql_host}:{self.mysql_port}/"
+            f"{self.mysql_database}?charset=utf8mb4"
+        )
 
 
 settings = Settings()

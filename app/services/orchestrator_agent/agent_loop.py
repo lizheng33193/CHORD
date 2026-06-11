@@ -17,6 +17,8 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, AsyncGenerator
 
+from app.core.request_context import RequestContext
+from app.core.user_context import UserContext
 from app.core.data_acquisition_capability import (
     data_acquisition_unavailable_message,
     get_data_acquisition_capability,
@@ -1626,6 +1628,8 @@ async def run_agent_loop(
     user_id: str | None = None,
     project_id: str | None = None,
     country: str | None = None,
+    user_context: UserContext | None = None,
+    request_context: RequestContext | None = None,
 ) -> AsyncGenerator[dict, None]:
     yield {"type": "session_started", "session_id": session.session_id}
 
@@ -1653,13 +1657,18 @@ async def run_agent_loop(
         run_id=run_id,
     )
 
-    detected_country = (country or _detect_country(prompt) or session.country)
+    context_country = user_context.country if user_context is not None else None
+    detected_country = (country or context_country or _detect_country(prompt) or session.country)
     apply_identity(
         session,
-        user_id=user_id,
-        project_id=project_id,
+        user_id=(user_context.user_id if user_context is not None else user_id),
+        project_id=(user_context.project_id if user_context is not None else project_id),
         country=detected_country,
     )
+    if user_context is not None:
+        session.active_entities["user_context_snapshot"] = user_context.to_dict()
+    if request_context is not None:
+        session.active_entities["request_context"] = request_context.to_dict()
     turn.user_message.run_id = run_id
     save_session(session)
 
@@ -1701,6 +1710,8 @@ async def run_agent_loop(
         memory=_build_memory_facade(session, detected_country),
         deps=deps,
         system_prompt=system_prompt,
+        user_context=user_context,
+        request_context=request_context,
     )
 
     normalized_request = deps.normalize_request(prompt, session, detected_country)

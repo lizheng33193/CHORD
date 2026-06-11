@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
 
+from app.auth.dependencies import require_permission
+from app.core.user_context import UserContext
 from .schemas import (GenerateRequest, GenerateResponse, ErrorType, ErrorResponse,
                       ExecuteRequest, ExecuteResponse)
 from .orchestrator import DataAcquisitionOrchestrator, OrchestratorError
@@ -51,7 +53,10 @@ def _get_orchestrator():
 
 
 @router.post("/generate", response_model=GenerateResponse)
-def generate(request: GenerateRequest):
+def generate(
+    request: GenerateRequest,
+    _ctx: UserContext = Depends(require_permission("data:query:generate")),
+):
     try:
         return _get_orchestrator().generate(request)
     except OrchestratorError as e:
@@ -68,10 +73,14 @@ def list_manifests() -> dict:
 
 
 @router.post("/execute", response_model=ExecuteResponse)
-def execute(request: ExecuteRequest):
+def execute(
+    request: ExecuteRequest,
+    ctx: UserContext = Depends(require_permission("data:query:execute")),
+):
     """V2 受控执行：守门 → 连库 → COUNT 预检 → 执行 → 切片 → 落 per-uid。"""
     import uuid
     rid = str(uuid.uuid4())
+    request = request.model_copy(update={"approved_by": ctx.username or request.approved_by})
     try:
         payload = _run_execute_pipeline(request, request_id=rid)
         return ExecuteResponse(**payload)

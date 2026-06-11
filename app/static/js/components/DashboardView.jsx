@@ -377,6 +377,9 @@ function DashboardView({
   onChatTraceReady,
   traceSeedByUid,
   moduleStatesByUid,
+  currentUser = null,
+  permissions = [],
+  onLogout = null,
   country = 'mx',
   onCountryChange,
   chatFocusRequested = false,
@@ -405,6 +408,8 @@ function DashboardView({
       ? (window.innerWidth < CHAT_AUTO_COLLAPSE_BREAKPOINT ? Boolean(chatFocusRequested) : true)
       : Boolean(chatFocusRequested)
   );
+  const permissionSet = React.useMemo(() => new Set(Array.isArray(permissions) ? permissions : []), [permissions]);
+  const canAccessTrace = !currentUser || currentUser.is_superuser || permissionSet.has('trace:run') || permissionSet.has('trace:view');
   const dashboardTabs = [
     { id: 'comprehensive', title: '综合画像', sub: 'COMPREHENSIVE', icon: Network, iconColor: '#f97316', bgStart: '#f5bf48', bgEnd: '#b04ed3', shadow: 'rgba(212, 106, 25, 0.28)' },
     { id: 'app', title: 'App画像', sub: 'APP USAGE', icon: Smartphone, iconColor: '#3b82f6', bgStart: '#5db7f0', bgEnd: '#2c59d6', shadow: 'rgba(37, 99, 235, 0.28)' },
@@ -413,7 +418,7 @@ function DashboardView({
     { id: 'product', title: '产品策略', sub: 'PRODUCT ADVICE', icon: Package, iconColor: '#14b8a6', bgStart: '#8bd8a6', bgEnd: '#68bebd', shadow: 'rgba(20, 184, 166, 0.22)' },
     { id: 'ops', title: '运营策略', sub: 'OPERATIONS', icon: Headphones, iconColor: '#8b5cf6', bgStart: '#b28ef4', bgEnd: '#8d72ea', shadow: 'rgba(139, 92, 246, 0.22)' },
     { id: 'trace', title: '深度行为解析', sub: 'TRACE ANALYSIS', icon: Search, iconColor: '#a855f7', bgStart: '#d59dff', bgEnd: '#a855f7', shadow: 'rgba(168, 85, 247, 0.22)' },
-  ];
+  ].filter((tab) => (tab.id === 'trace' ? canAccessTrace : true));
   const hasVisibleTab = dashboardTabs.some((tab) => tab.id === activeTab);
   const visibleActiveTab = hasVisibleTab ? activeTab : 'comprehensive';
   const activeTabMeta = dashboardTabs.find((tab) => tab.id === visibleActiveTab) || dashboardTabs[0];
@@ -567,6 +572,9 @@ function DashboardView({
   const ActiveDetailIcon = activeTabMeta.icon || Activity;
   const hasMultipleResults = analysisResults.length > 1;
   const showSecondaryStack = Boolean(selectedResult.standardized_labels) || hasMultipleResults;
+  const userDisplayName = currentUser && (currentUser.display_name || currentUser.username) ? (currentUser.display_name || currentUser.username) : '当前用户';
+  const userRoleLabel = currentUser && Array.isArray(currentUser.roles) && currentUser.roles.length ? currentUser.roles[0] : 'analyst';
+  const projectLabel = currentUser && currentUser.project_code ? String(currentUser.project_code).toUpperCase() : 'MAPS-LZ';
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-[#F4F7F9] font-sans text-slate-800">
@@ -599,6 +607,28 @@ function DashboardView({
           <span className="text-slate-500">当前模式: <span className="font-medium text-slate-700">api-live</span></span>
           <div className="h-4 w-px bg-slate-200"></div>
           <span className="text-slate-500">返回结果数: <span className="font-medium text-blue-600">{analysisResults.length}</span></span>
+          {currentUser ? (
+            <>
+              <div className="h-4 w-px bg-slate-200"></div>
+              <div className="hidden items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 md:flex">
+                <div>
+                  <div className="text-sm font-semibold text-slate-800">{userDisplayName}</div>
+                  <div className="text-[11px] uppercase tracking-[0.18em] text-slate-400">
+                    {projectLabel} · {userRoleLabel} · {(country || 'mx').toUpperCase()}
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : null}
+          {onLogout ? (
+            <button
+              type="button"
+              onClick={onLogout}
+              className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
+            >
+              退出登录
+            </button>
+          ) : null}
         </div>
       </header>
 
@@ -803,6 +833,8 @@ function DashboardView({
             onSessionChange={onChatSessionChange}
             workspaceSnapshot={chatWorkspaceSnapshot}
             onRestoreWorkspaceSession={onRestoreWorkspaceSession}
+            currentUser={currentUser}
+            currentCountry={country}
             onJumpToTab={(tabId, targetUid) => {
               setActiveTab(tabId);
               if (targetUid) {

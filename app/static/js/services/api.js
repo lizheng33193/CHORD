@@ -1,25 +1,18 @@
 // Extracted from app/ui/live_frontend.py during UI separation Step-1.
 // All fetch calls live here so future SSE / polling switches are local to this file.
+// Authorization, project_id, and country headers are injected by httpClient.
+
+const httpClient = window.AppServices.httpClient;
 
 async function analyzeByUid(trimmedUid, normalizedApplicationTime, country) {
-  const response = await fetch('/api/analyze', {
+  return await httpClient.json('/api/analyze', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
     body: JSON.stringify({
       uid: trimmedUid,
       application_time: normalizedApplicationTime,
       country: country || 'mx'
     })
-  });
-
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(payload.detail || '分析请求失败，请稍后重试。');
-  }
-
-  return payload;
+  }, '分析请求失败，请稍后重试。');
 }
 
 async function analyzeByFile(file, country) {
@@ -27,17 +20,10 @@ async function analyzeByFile(file, country) {
   formData.append('file', file);
   formData.append('country', country || 'mx');
 
-  const response = await fetch('/api/analyze-file', {
+  return await httpClient.json('/api/analyze-file', {
     method: 'POST',
     body: formData
-  });
-
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(payload.detail || '文件分析请求失败，请检查文件内容。');
-  }
-
-  return payload;
+  }, '文件分析请求失败，请检查文件内容。');
 }
 
 // SSE-aware streaming variant of analyzeByUid.
@@ -52,7 +38,7 @@ async function analyzeByUidStream(trimmedUid, normalizedApplicationTime, onEvent
     : null;
   if (!body) throw new Error('UID 格式错误');
 
-  const response = await fetch('/api/analyze-stream', {
+  const response = await httpClient.request('/api/analyze-stream', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -96,14 +82,14 @@ async function analyzeByUidStream(trimmedUid, normalizedApplicationTime, onEvent
 }
 
 async function fetchTrace(uid) {
-  const res = await fetch(`/api/trace/${encodeURIComponent(uid)}`);
+  const res = await httpClient.request(`/api/trace/${encodeURIComponent(uid)}`);
   if (res.status === 404) return { uid, status: 'data_missing' };
   if (!res.ok) throw new Error(`trace_http_${res.status}`);
   return await res.json();
 }
 
 async function fetchUiConfig() {
-  const res = await fetch('/api/ui-config');
+  const res = await httpClient.request('/api/ui-config');
   return res.ok ? await res.json() : {};
 }
 
@@ -116,78 +102,59 @@ async function analyzeModule(targetUid, moduleName, normalizedApplicationTime, c
   if (normalizedApplicationTime) {
     params.set('application_time', normalizedApplicationTime);
   }
-  const res = await fetch(`/api/analyze-module?${params.toString()}`);
-  const payload = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(payload.detail || '模块分析请求失败，请稍后重试。');
-  }
-  return payload;
+  return await httpClient.json(
+    `/api/analyze-module?${params.toString()}`,
+    {},
+    '模块分析请求失败，请稍后重试。'
+  );
 }
 
 async function createOrchestratorSession(initialMessage, workspaceSnapshot, clientTurnId) {
-  const res = await fetch('/api/orchestrator/sessions', {
+  return await httpClient.json('/api/orchestrator/sessions', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ initial_message: initialMessage, workspace_snapshot: workspaceSnapshot, client_turn_id: clientTurnId || null })
-  });
-  if (!res.ok) throw new Error(`createOrchestratorSession ${res.status}`);
-  return res.json();
+  }, '创建对话会话失败。');
 }
 
 async function sendOrchestratorMessage(sessionId, content, workspaceSnapshot, clientTurnId) {
-  const res = await fetch(`/api/orchestrator/sessions/${encodeURIComponent(sessionId)}/messages`, {
+  return await httpClient.json(`/api/orchestrator/sessions/${encodeURIComponent(sessionId)}/messages`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ content, workspace_snapshot: workspaceSnapshot, client_turn_id: clientTurnId || null })
-  });
-  if (!res.ok) throw new Error(`sendOrchestratorMessage ${res.status}`);
-  return res.json();
+  }, '发送消息失败。');
 }
 
 function openOrchestratorStream(sessionId, handlers) {
-  const es = new EventSource(`/api/orchestrator/sessions/${encodeURIComponent(sessionId)}/stream`);
-  // 2026-05-05 修复：es.onerror 在服务器正常 close（done 事件后）也会触发，
-  // 过去会在业务跳出 onError，前端错误提示。用 closedNormally flag 区分主动 close 与真错。
-  let closedNormally = false;
-  const close = es.close.bind(es);
-  es.close = () => { closedNormally = true; close(); };
-  es.onmessage = (event) => {
-    try {
-      const evt = JSON.parse(event.data);
-      handlers.onEvent && handlers.onEvent(evt);
-      if (evt.type === 'done') {
-        es.close();
+  let stream = null;
+  stream = httpClient.openEventStream(
+    `/api/orchestrator/sessions/${encodeURIComponent(sessionId)}/stream`,
+    {
+      onEvent: (evt) => {
+        handlers.onEvent && handlers.onEvent(evt);
+        if (evt && evt.type === 'done' && stream) {
+          stream.close();
+        }
+      },
+      onError: (err) => {
+        handlers.onError && handlers.onError(err);
+      },
+      onClose: () => {
         handlers.onClose && handlers.onClose();
-      }
-    } catch (err) {
-      handlers.onError && handlers.onError(err);
+      },
     }
-  };
-  es.onerror = (err) => {
-    if (closedNormally) return;
-    // EventSource 在连接中断后会自动重试（readyState=CONNECTING，值为 0），
-    // 这种是临时抖动，不该报错；只在 readyState=CLOSED (2) 才是真的断了。
-    if (es.readyState !== 2) return;
-    handlers.onError && handlers.onError(err);
-    handlers.onClose && handlers.onClose();
-  };
-  return es;
+  );
+  return stream;
 }
 
 async function ackOrchestratorTool(sessionId, toolCallId, decision) {
-  const res = await fetch(`/api/orchestrator/sessions/${encodeURIComponent(sessionId)}/ack`, {
+  return await httpClient.json(`/api/orchestrator/sessions/${encodeURIComponent(sessionId)}/ack`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ tool_call_id: toolCallId, decision })
-  });
-  if (!res.ok) throw new Error(`ackOrchestratorTool ${res.status}`);
-  return res.json();
+  }, '工具审批失败。');
 }
 
 async function cancelOrchestratorRun(sessionId, runId) {
-  const res = await fetch(`/api/orchestrator/sessions/${encodeURIComponent(sessionId)}/runs/${encodeURIComponent(runId)}/cancel`, {
+  const res = await httpClient.request(`/api/orchestrator/sessions/${encodeURIComponent(sessionId)}/runs/${encodeURIComponent(runId)}/cancel`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
   });
   const payload = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(payload.detail || `cancelOrchestratorRun ${res.status}`);
@@ -195,9 +162,8 @@ async function cancelOrchestratorRun(sessionId, runId) {
 }
 
 async function resolveOrchestratorStep(sessionId, payload) {
-  const res = await fetch(`/api/orchestrator/sessions/${encodeURIComponent(sessionId)}/resolve`, {
+  const res = await httpClient.request(`/api/orchestrator/sessions/${encodeURIComponent(sessionId)}/resolve`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload || {})
   });
   const body = await res.json().catch(() => ({}));
@@ -206,29 +172,27 @@ async function resolveOrchestratorStep(sessionId, payload) {
 }
 
 async function fetchOrchestratorSession(sessionId) {
-  const res = await fetch(`/api/orchestrator/sessions/${encodeURIComponent(sessionId)}`);
-  if (!res.ok) throw new Error(`fetchOrchestratorSession ${res.status}`);
-  return res.json();
+  return await httpClient.json(
+    `/api/orchestrator/sessions/${encodeURIComponent(sessionId)}`,
+    {},
+    '获取对话会话失败。'
+  );
 }
 
 async function fetchOrchestratorSessions(params) {
-  const res = await fetch(`/api/orchestrator/sessions${memoryQueryString(params || { limit: 20 })}`);
+  const res = await httpClient.request(`/api/orchestrator/sessions${memoryQueryString(params || { limit: 20 })}`);
   const payload = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(payload.detail || `fetchOrchestratorSessions ${res.status}`);
   return payload;
 }
 
 async function fetchMemoryStatus() {
-  const res = await fetch('/api/orchestrator/memory/status');
-  const payload = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(payload.detail || `fetchMemoryStatus ${res.status}`);
-  return payload;
+  return await httpClient.json('/api/orchestrator/memory/status', {}, '获取记忆状态失败。');
 }
 
 async function queryMemory(params) {
-  const res = await fetch('/api/orchestrator/memory/query', {
+  const res = await httpClient.request('/api/orchestrator/memory/query', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params || {})
   });
   const payload = await res.json().catch(() => ({}));
@@ -246,16 +210,15 @@ function memoryQueryString(params) {
 }
 
 async function listMemories(params) {
-  const res = await fetch(`/api/orchestrator/memory/list${memoryQueryString(params)}`);
+  const res = await httpClient.request(`/api/orchestrator/memory/list${memoryQueryString(params)}`);
   const payload = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(payload.detail || `listMemories ${res.status}`);
   return payload;
 }
 
 async function createMemory(payload) {
-  const res = await fetch('/api/orchestrator/memory', {
+  const res = await httpClient.request('/api/orchestrator/memory', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload || {})
   });
   const body = await res.json().catch(() => ({}));
@@ -264,9 +227,8 @@ async function createMemory(payload) {
 }
 
 async function updateMemory(memoryId, payload) {
-  const res = await fetch(`/api/orchestrator/memory/${encodeURIComponent(memoryId)}`, {
+  const res = await httpClient.request(`/api/orchestrator/memory/${encodeURIComponent(memoryId)}`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload || {})
   });
   const body = await res.json().catch(() => ({}));
@@ -275,7 +237,7 @@ async function updateMemory(memoryId, payload) {
 }
 
 async function archiveMemory(memoryId, params) {
-  const res = await fetch(`/api/orchestrator/memory/${encodeURIComponent(memoryId)}/archive${memoryQueryString(params)}`, {
+  const res = await httpClient.request(`/api/orchestrator/memory/${encodeURIComponent(memoryId)}/archive${memoryQueryString(params)}`, {
     method: 'POST'
   });
   const body = await res.json().catch(() => ({}));
@@ -284,7 +246,7 @@ async function archiveMemory(memoryId, params) {
 }
 
 async function restoreMemory(memoryId, params) {
-  const res = await fetch(`/api/orchestrator/memory/${encodeURIComponent(memoryId)}/restore${memoryQueryString(params)}`, {
+  const res = await httpClient.request(`/api/orchestrator/memory/${encodeURIComponent(memoryId)}/restore${memoryQueryString(params)}`, {
     method: 'POST'
   });
   const body = await res.json().catch(() => ({}));
@@ -293,7 +255,7 @@ async function restoreMemory(memoryId, params) {
 }
 
 async function deleteMemory(memoryId, params) {
-  const res = await fetch(`/api/orchestrator/memory/${encodeURIComponent(memoryId)}${memoryQueryString(params)}`, {
+  const res = await httpClient.request(`/api/orchestrator/memory/${encodeURIComponent(memoryId)}${memoryQueryString(params)}`, {
     method: 'DELETE'
   });
   const body = await res.json().catch(() => ({}));
@@ -301,10 +263,15 @@ async function deleteMemory(memoryId, params) {
   return body;
 }
 
+async function fetchCurrentAuthUser() {
+  return await httpClient.json('/api/auth/me', {}, '获取当前用户失败。');
+}
+
 window.AppServices = window.AppServices || {};
 window.AppServices.api = {
   analyzeByUid, analyzeByFile, analyzeByUidStream, fetchTrace, fetchUiConfig, analyzeModule,
   createOrchestratorSession, sendOrchestratorMessage, openOrchestratorStream,
   ackOrchestratorTool, cancelOrchestratorRun, resolveOrchestratorStep, fetchOrchestratorSession, fetchOrchestratorSessions, fetchMemoryStatus, queryMemory,
-  listMemories, createMemory, updateMemory, archiveMemory, restoreMemory, deleteMemory
+  listMemories, createMemory, updateMemory, archiveMemory, restoreMemory, deleteMemory,
+  fetchCurrentAuthUser
 };

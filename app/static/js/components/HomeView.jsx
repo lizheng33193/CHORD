@@ -16,9 +16,17 @@ function HomeView({
   onStartFile,
   onStartChat,
   errorMessage,
+  currentUser = null,
+  onLogout = null,
   country = 'mx',
   onCountryChange
 }) {
+  const displayName = currentUser && (currentUser.display_name || currentUser.username);
+  const projectCode = currentUser && currentUser.project_code ? String(currentUser.project_code).toUpperCase() : 'MAPS-LZ';
+  const roleLabel = currentUser && Array.isArray(currentUser.roles) && currentUser.roles.length
+    ? currentUser.roles[0]
+    : 'analyst';
+
   return (
     <div className="min-h-screen bg-[#f8fafc] flex flex-col items-center justify-center relative overflow-hidden">
       <div
@@ -30,6 +38,32 @@ function HomeView({
       />
       <div className="absolute inset-x-0 top-0 h-72 bg-gradient-to-b from-blue-100/70 to-transparent" />
       <div className="z-10 flex flex-col items-center w-full max-w-3xl px-6">
+        {currentUser ? (
+          <div className="mb-6 flex w-full flex-wrap items-center justify-between gap-3 rounded-[1.5rem] border border-white/70 bg-white/88 px-5 py-4 shadow-[0_16px_40px_rgba(15,23,42,0.08)] backdrop-blur">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+                <span>{projectCode}</span>
+                <span className="h-1 w-1 rounded-full bg-slate-300"></span>
+                <span>{roleLabel}</span>
+              </div>
+              <div className="mt-2 text-lg font-semibold text-slate-900">
+                {displayName || '当前已登录用户'}
+              </div>
+              <div className="mt-1 text-sm text-slate-500">
+                当前国家 scope：{(country || 'mx').toUpperCase()}，所有后续分析、记忆和 Trace 都会沿用这个身份上下文。
+              </div>
+            </div>
+            {onLogout ? (
+              <button
+                type="button"
+                onClick={onLogout}
+                className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
+              >
+                退出登录
+              </button>
+            ) : null}
+          </div>
+        ) : null}
         <div className="inline-flex items-center gap-2 rounded-full bg-white/80 backdrop-blur px-4 py-2 shadow-sm border border-slate-200 mb-6">
           <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
           <span className="text-sm text-slate-600">UID 与文件上传均已接通真实后端</span>

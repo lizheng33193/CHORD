@@ -217,6 +217,7 @@ class ExecutionTraceRecord(BaseModel):
     run_id: str | None = None
     execution_id: str
     trace_id: str | None = None
+    request_id: str | None = None
     prompt: str
     request_summary: str
     intent: KnownIntent

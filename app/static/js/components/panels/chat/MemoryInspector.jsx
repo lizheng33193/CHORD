@@ -29,7 +29,14 @@ const { createPortal } = ReactDOM;
 const CATEGORY_OPTIONS = ['preference', 'feedback', 'project', 'reference', 'task', 'insight'];
 const STATUS_OPTIONS = ['active', 'archived', 'deleted', 'all'];
 
-function MemoryInspector({ open, onClose, onOpenSession, onRestoreSession }) {
+function MemoryInspector({
+  open,
+  onClose,
+  onOpenSession,
+  onRestoreSession,
+  currentUser = null,
+  preferredCountry = 'mx',
+}) {
   const [status, setStatus] = useState(null);
   const [sessions, setSessions] = useState([]);
   const [sessionQuery, setSessionQuery] = useState('');
@@ -41,14 +48,37 @@ function MemoryInspector({ open, onClose, onOpenSession, onRestoreSession }) {
   const [category, setCategory] = useState('');
   const [statusFilter, setStatusFilter] = useState('active');
   const [topK, setTopK] = useState(8);
-  const [userId, setUserId] = useState('local-default-user');
-  const [projectId, setProjectId] = useState('agent-user-profile-fork');
-  const [country, setCountry] = useState('mx');
+  const [userId, setUserId] = useState(() => currentUser && currentUser.id ? String(currentUser.id) : 'local-default-user');
+  const [projectId, setProjectId] = useState(() => currentUser && currentUser.default_project_id ? String(currentUser.default_project_id) : 'agent-user-profile-fork');
+  const [country, setCountry] = useState(() => String(preferredCountry || 'mx').toLowerCase());
   const [draft, setDraft] = useState(_emptyDraft());
   const [editingId, setEditingId] = useState('');
   const [editDraft, setEditDraft] = useState(_emptyDraft());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const permissionSet = useMemo(
+    () => new Set((currentUser && Array.isArray(currentUser.permissions)) ? currentUser.permissions : []),
+    [currentUser]
+  );
+  const canViewSessions = !currentUser
+    || currentUser.is_superuser
+    || permissionSet.has('profile:view')
+    || permissionSet.has('profile:run');
+  const canReadLongTerm = !currentUser
+    || currentUser.is_superuser
+    || permissionSet.has('memory:read')
+    || permissionSet.has('memory:manage');
+  const canWriteLongTerm = !currentUser
+    || currentUser.is_superuser
+    || permissionSet.has('memory:write')
+    || permissionSet.has('memory:manage');
+  const canManageLongTerm = !currentUser
+    || currentUser.is_superuser
+    || permissionSet.has('memory:manage');
+  const currentRoleLabel = currentUser && Array.isArray(currentUser.roles) && currentUser.roles.length
+    ? currentUser.roles[0]
+    : '';
+  const currentProjectCode = currentUser && currentUser.project_code ? currentUser.project_code : 'maps_lz';
 
   const identity = useMemo(() => ({
     user_id: userId.trim() || undefined,
@@ -56,12 +86,32 @@ function MemoryInspector({ open, onClose, onOpenSession, onRestoreSession }) {
     country: country.trim() || undefined,
   }), [country, projectId, userId]);
 
+  useEffect(() => {
+    if (!currentUser) return;
+    setUserId(currentUser.id ? String(currentUser.id) : '');
+    setProjectId(currentUser.default_project_id ? String(currentUser.default_project_id) : '');
+  }, [currentUser]);
+
+  useEffect(() => {
+    const normalized = String(preferredCountry || 'mx').toLowerCase();
+    setCountry(normalized);
+    setSessionCountryFilter(normalized);
+  }, [preferredCountry]);
+
   const loadStatus = useCallback(async () => {
+    if (!canManageLongTerm) {
+      setStatus(null);
+      return;
+    }
     const body = await fetchMemoryStatus();
     setStatus(body);
-  }, []);
+  }, [canManageLongTerm]);
 
   const loadSessions = useCallback(async () => {
+    if (!canViewSessions) {
+      setSessions([]);
+      return;
+    }
     const payload = await fetchOrchestratorSessions({
       user_id: identity.user_id,
       project_id: identity.project_id,
@@ -69,9 +119,13 @@ function MemoryInspector({ open, onClose, onOpenSession, onRestoreSession }) {
       limit: Number(sessionLimit) || 20,
     });
     setSessions(Array.isArray(payload.sessions) ? payload.sessions : []);
-  }, [identity, sessionCountryFilter, sessionLimit]);
+  }, [canViewSessions, identity, sessionCountryFilter, sessionLimit]);
 
   const loadList = useCallback(async (overrides = {}) => {
+    if (!canReadLongTerm) {
+      setResults([]);
+      return;
+    }
     const nextQuery = Object.prototype.hasOwnProperty.call(overrides, 'query') ? overrides.query : query;
     const nextCategory = Object.prototype.hasOwnProperty.call(overrides, 'category') ? overrides.category : category;
     const nextStatus = Object.prototype.hasOwnProperty.call(overrides, 'status') ? overrides.status : statusFilter;
@@ -98,16 +152,30 @@ function MemoryInspector({ open, onClose, onOpenSession, onRestoreSession }) {
     } finally {
       setLoading(false);
     }
-  }, [category, identity, loadStatus, query, statusFilter, topK]);
+  }, [canReadLongTerm, category, identity, loadStatus, query, statusFilter, topK]);
 
   useEffect(() => {
     if (!open) return;
-    loadStatus().catch((err) => setError(String((err && err.message) || err)));
-    loadSessions().catch((err) => setError(String((err && err.message) || err)));
-    loadList();
-  }, [open]);
+    setError('');
+    if (canManageLongTerm) {
+      loadStatus().catch((err) => setError(String((err && err.message) || err)));
+    } else {
+      setStatus(null);
+    }
+    if (canViewSessions) {
+      loadSessions().catch((err) => setError(String((err && err.message) || err)));
+    } else {
+      setSessions([]);
+    }
+    if (canReadLongTerm) {
+      loadList().catch((err) => setError(String((err && err.message) || err)));
+    } else {
+      setResults([]);
+    }
+  }, [canManageLongTerm, canReadLongTerm, canViewSessions, loadList, loadSessions, loadStatus, open]);
 
   const create = useCallback(async () => {
+    if (!canWriteLongTerm) return;
     if (!draft.content.trim()) return;
     setLoading(true);
     setError('');
@@ -127,7 +195,7 @@ function MemoryInspector({ open, onClose, onOpenSession, onRestoreSession }) {
     } finally {
       setLoading(false);
     }
-  }, [draft, identity, loadList]);
+  }, [canWriteLongTerm, draft, identity, loadList]);
 
   const startEdit = (item) => {
     setEditingId(item.memory_id);
@@ -141,6 +209,7 @@ function MemoryInspector({ open, onClose, onOpenSession, onRestoreSession }) {
   };
 
   const saveEdit = useCallback(async (memoryId) => {
+    if (!canManageLongTerm) return;
     setLoading(true);
     setError('');
     try {
@@ -159,9 +228,10 @@ function MemoryInspector({ open, onClose, onOpenSession, onRestoreSession }) {
     } finally {
       setLoading(false);
     }
-  }, [editDraft, identity, loadList]);
+  }, [canManageLongTerm, editDraft, identity, loadList]);
 
   const setRowStatus = useCallback(async (item, action) => {
+    if (!canManageLongTerm) return;
     setLoading(true);
     setError('');
     try {
@@ -174,7 +244,7 @@ function MemoryInspector({ open, onClose, onOpenSession, onRestoreSession }) {
     } finally {
       setLoading(false);
     }
-  }, [identity, loadList]);
+  }, [canManageLongTerm, identity, loadList]);
 
   const byCategory = status && status.by_category ? Object.entries(status.by_category) : [];
   const byStatus = status && status.by_status ? Object.entries(status.by_status) : [];
@@ -238,13 +308,18 @@ function MemoryInspector({ open, onClose, onOpenSession, onRestoreSession }) {
                 <h3 className="text-sm font-semibold text-slate-800">短期会话历史</h3>
                 <Badge>{filteredSessions.length}/{sessions.length}</Badge>
               </div>
-              <button type="button" onClick={() => loadSessions()} disabled={loading} className="text-sm font-semibold text-slate-600 hover:text-slate-900">
+              <button type="button" onClick={() => loadSessions()} disabled={loading || !canViewSessions} className="text-sm font-semibold text-slate-600 hover:text-slate-900 disabled:opacity-50">
                 刷新
               </button>
             </div>
             <p className="mt-1 text-sm leading-6 text-slate-500">
               短期会话历史来自 outputs/orchestrator_sessions，只用于恢复聊天上下文，不参与长期记忆召回。
             </p>
+            {!canViewSessions ? (
+              <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                当前角色没有查看历史会话的权限。
+              </div>
+            ) : null}
             <div className="mt-3 grid gap-2 md:grid-cols-[1fr_0.36fr_0.32fr_0.28fr]">
               <label className="block">
                 <span className="mb-1 block text-xs font-semibold text-slate-500">搜索会话</span>
@@ -353,18 +428,26 @@ function MemoryInspector({ open, onClose, onOpenSession, onRestoreSession }) {
             </label>
           </div>
 
-          <div className="mt-3 grid gap-3 md:grid-cols-3">
-            <input value={userId} onChange={(e) => setUserId(e.target.value)} className="h-9 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-blue-400" aria-label="user id" />
-            <input value={projectId} onChange={(e) => setProjectId(e.target.value)} className="h-9 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-blue-400" aria-label="project id" />
-            <input value={country} onChange={(e) => setCountry(e.target.value)} className="h-9 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-blue-400" aria-label="country" />
-          </div>
+          {currentUser ? (
+            <div className="mt-3 grid gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 md:grid-cols-3">
+              <IdentityCard label="当前用户" value={`${currentUser.display_name || currentUser.username} (#${userId})`} meta={currentRoleLabel || 'member'} />
+              <IdentityCard label="项目空间" value={`${String(currentProjectCode).toUpperCase()} (#${projectId || '-'})`} meta="project scope" />
+              <IdentityCard label="国家上下文" value={(country || 'mx').toUpperCase()} meta="request scope" />
+            </div>
+          ) : (
+            <div className="mt-3 grid gap-3 md:grid-cols-3">
+              <input value={userId} onChange={(e) => setUserId(e.target.value)} className="h-9 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-blue-400" aria-label="user id" />
+              <input value={projectId} onChange={(e) => setProjectId(e.target.value)} className="h-9 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-blue-400" aria-label="project id" />
+              <input value={country} onChange={(e) => setCountry(e.target.value)} className="h-9 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-blue-400" aria-label="country" />
+            </div>
+          )}
 
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <button type="button" onClick={() => loadList()} disabled={loading} className="inline-flex h-9 items-center gap-2 rounded-lg bg-slate-900 px-3 text-sm font-semibold text-white disabled:opacity-60">
+            <button type="button" onClick={() => loadList()} disabled={loading || !canReadLongTerm} className="inline-flex h-9 items-center gap-2 rounded-lg bg-slate-900 px-3 text-sm font-semibold text-white disabled:opacity-60">
               {loading && RefreshCw ? <RefreshCw className="h-4 w-4 animate-spin" /> : Search ? <Search className="h-4 w-4" /> : null}
               查询
             </button>
-            <button type="button" onClick={() => { setQuery(''); loadList({ query: '' }); }} className="inline-flex h-9 items-center gap-2 rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-700">
+            <button type="button" onClick={() => { setQuery(''); loadList({ query: '' }); }} disabled={!canReadLongTerm} className="inline-flex h-9 items-center gap-2 rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-700 disabled:opacity-50">
               {SlidersHorizontal ? <SlidersHorizontal className="h-4 w-4" /> : null}
               列表
             </button>
@@ -372,23 +455,30 @@ function MemoryInspector({ open, onClose, onOpenSession, onRestoreSession }) {
             {byStatus.map(([key, value]) => <Badge key={key}>{_statusLabel(key)}: {value}</Badge>)}
           </div>
 
+          {!canReadLongTerm ? (
+            <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800">
+              当前角色没有长期记忆读取权限；短期会话历史仍可继续用于恢复对话。
+            </div>
+          ) : null}
+
           <div className="mt-4 rounded-lg border border-slate-200 p-3">
             <div className="grid gap-3 md:grid-cols-[1fr_0.32fr]">
               <textarea
                 value={draft.content}
                 onChange={(e) => setDraft({ ...draft, content: e.target.value })}
-                className="min-h-[74px] rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-400"
+                className="min-h-[74px] rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-400 disabled:bg-slate-50"
                 placeholder="新增记忆内容"
+                disabled={!canWriteLongTerm}
               />
               <div className="grid gap-2">
-                <SelectField value={draft.category} onChange={(v) => setDraft({ ...draft, category: v })} options={CATEGORY_OPTIONS} />
-                <input value={draft.tags} onChange={(e) => setDraft({ ...draft, tags: e.target.value })} className="h-9 rounded-lg border border-slate-200 px-3 text-xs outline-none focus:border-blue-400" placeholder="tags" />
+                <SelectField value={draft.category} onChange={(v) => setDraft({ ...draft, category: v })} options={CATEGORY_OPTIONS} disabled={!canWriteLongTerm} />
+                <input value={draft.tags} onChange={(e) => setDraft({ ...draft, tags: e.target.value })} className="h-9 rounded-lg border border-slate-200 px-3 text-xs outline-none focus:border-blue-400 disabled:bg-slate-50" placeholder="tags" disabled={!canWriteLongTerm} />
               </div>
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <NumberField label="importance" value={draft.importance} onChange={(v) => setDraft({ ...draft, importance: v })} />
-              <NumberField label="confidence" value={draft.confidence} onChange={(v) => setDraft({ ...draft, confidence: v })} />
-              <button type="button" onClick={create} disabled={loading || !draft.content.trim()} className="inline-flex h-9 items-center gap-2 rounded-lg bg-blue-600 px-3 text-sm font-semibold text-white disabled:opacity-60">
+              <NumberField label="importance" value={draft.importance} onChange={(v) => setDraft({ ...draft, importance: v })} disabled={!canWriteLongTerm} />
+              <NumberField label="confidence" value={draft.confidence} onChange={(v) => setDraft({ ...draft, confidence: v })} disabled={!canWriteLongTerm} />
+              <button type="button" onClick={create} disabled={loading || !draft.content.trim() || !canWriteLongTerm} className="inline-flex h-9 items-center gap-2 rounded-lg bg-blue-600 px-3 text-sm font-semibold text-white disabled:opacity-60">
                 {Plus ? <Plus className="h-4 w-4" /> : null}
                 新增
               </button>
@@ -414,14 +504,14 @@ function MemoryInspector({ open, onClose, onOpenSession, onRestoreSession }) {
                     <span className="text-slate-400">{item.created_at}</span>
                   </div>
                   <div className="flex items-center gap-1">
-                    <IconButton title="编辑" onClick={() => startEdit(item)} icon={Edit3} />
-                    {item.status === 'active' ? <IconButton title="归档" onClick={() => setRowStatus(item, 'archive')} icon={Archive} /> : null}
-                    {item.status !== 'active' && item.status !== 'deleted' ? <IconButton title="恢复" onClick={() => setRowStatus(item, 'restore')} icon={RotateCcw} /> : null}
-                    {item.status !== 'deleted' ? <IconButton title="移入已删除" onClick={() => setRowStatus(item, 'delete')} icon={Trash2} /> : null}
+                    {canManageLongTerm ? <IconButton title="编辑" onClick={() => startEdit(item)} icon={Edit3} /> : null}
+                    {canManageLongTerm && item.status === 'active' ? <IconButton title="归档" onClick={() => setRowStatus(item, 'archive')} icon={Archive} /> : null}
+                    {canManageLongTerm && item.status !== 'active' && item.status !== 'deleted' ? <IconButton title="恢复" onClick={() => setRowStatus(item, 'restore')} icon={RotateCcw} /> : null}
+                    {canManageLongTerm && item.status !== 'deleted' ? <IconButton title="移入已删除" onClick={() => setRowStatus(item, 'delete')} icon={Trash2} /> : null}
                   </div>
                 </div>
                 {editingId === item.memory_id ? (
-                  <EditForm draft={editDraft} setDraft={setEditDraft} onSave={() => saveEdit(item.memory_id)} onCancel={() => setEditingId('')} loading={loading} />
+                  <EditForm draft={editDraft} setDraft={setEditDraft} onSave={() => saveEdit(item.memory_id)} onCancel={() => setEditingId('')} loading={loading} disabled={!canManageLongTerm} />
                 ) : (
                   <>
                     <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-slate-800">{item.content}</p>
@@ -439,37 +529,47 @@ function MemoryInspector({ open, onClose, onOpenSession, onRestoreSession }) {
   );
 }
 
-function SelectField({ label, value, onChange, options, emptyLabel }) {
+function IdentityCard({ label, value, meta }) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">{label}</div>
+      <div className="mt-1 text-sm font-semibold text-slate-800">{value}</div>
+      <div className="mt-1 text-xs text-slate-500">{meta}</div>
+    </div>
+  );
+}
+
+function SelectField({ label, value, onChange, options, emptyLabel, disabled = false }) {
   return (
     <label className="block">
       {label ? <span className="mb-1 block text-sm font-semibold text-slate-500">{label}</span> : null}
-      <select value={value} onChange={(e) => onChange(e.target.value)} className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-blue-400">
+      <select value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled} className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-blue-400 disabled:bg-slate-50">
         {options.map((option) => <option key={option || 'empty'} value={option}>{option || emptyLabel || option}</option>)}
       </select>
     </label>
   );
 }
 
-function NumberField({ label, value, onChange }) {
+function NumberField({ label, value, onChange, disabled = false }) {
   return (
     <label className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500">
       {label}
-      <input type="number" min="0" max="1" step="0.05" value={value} onChange={(e) => onChange(e.target.value)} className="h-9 w-20 rounded-lg border border-slate-200 px-2 text-sm outline-none focus:border-blue-400" />
+      <input type="number" min="0" max="1" step="0.05" value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled} className="h-9 w-20 rounded-lg border border-slate-200 px-2 text-sm outline-none focus:border-blue-400 disabled:bg-slate-50" />
     </label>
   );
 }
 
-function EditForm({ draft, setDraft, onSave, onCancel, loading }) {
+function EditForm({ draft, setDraft, onSave, onCancel, loading, disabled = false }) {
   return (
     <div className="mt-3 rounded-lg bg-slate-50 p-3">
-      <textarea value={draft.content} onChange={(e) => setDraft({ ...draft, content: e.target.value })} className="min-h-[86px] w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-400" />
+      <textarea value={draft.content} onChange={(e) => setDraft({ ...draft, content: e.target.value })} disabled={disabled} className="min-h-[86px] w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-400 disabled:bg-slate-100" />
       <div className="mt-2 grid gap-2 md:grid-cols-[0.7fr_1fr_0.4fr_0.4fr_auto]">
-        <SelectField value={draft.category} onChange={(v) => setDraft({ ...draft, category: v })} options={CATEGORY_OPTIONS} />
-        <input value={draft.tags} onChange={(e) => setDraft({ ...draft, tags: e.target.value })} className="h-10 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-blue-400" placeholder="tags" />
-        <NumberField label="importance" value={draft.importance} onChange={(v) => setDraft({ ...draft, importance: v })} />
-        <NumberField label="confidence" value={draft.confidence} onChange={(v) => setDraft({ ...draft, confidence: v })} />
+        <SelectField value={draft.category} onChange={(v) => setDraft({ ...draft, category: v })} options={CATEGORY_OPTIONS} disabled={disabled} />
+        <input value={draft.tags} onChange={(e) => setDraft({ ...draft, tags: e.target.value })} disabled={disabled} className="h-10 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-blue-400 disabled:bg-slate-100" placeholder="tags" />
+        <NumberField label="importance" value={draft.importance} onChange={(v) => setDraft({ ...draft, importance: v })} disabled={disabled} />
+        <NumberField label="confidence" value={draft.confidence} onChange={(v) => setDraft({ ...draft, confidence: v })} disabled={disabled} />
         <div className="flex items-center gap-1">
-          <IconButton title="保存" onClick={onSave} icon={Save} disabled={loading} />
+          <IconButton title="保存" onClick={onSave} icon={Save} disabled={loading || disabled} />
           <IconButton title="取消" onClick={onCancel} icon={X} />
         </div>
       </div>
