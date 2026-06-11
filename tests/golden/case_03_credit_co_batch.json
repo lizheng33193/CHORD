@@ -1,0 +1,14 @@
+{
+  "case_id": "case_03_credit_co_batch",
+  "prompt": "./data/id_files/co/sample.txt 里的哪些用户征信表现不佳？给出原因。",
+  "country": "co",
+  "seed_uids": ["CO_USR_001", "CO_USR_002"],
+  "expected_tools": ["parse_uid_file", "run_profile"],
+  "expected_final_topics": [
+    "逐个 UID 征信评分",
+    "负面信号（逾期 / 多头借贷）",
+    "详细证据引用具体字段名"
+  ],
+  "expected_min_confidence": 0.55,
+  "expected_ack_required": false
+}

@@ -1,0 +1,6 @@
+# Project-level Codex configuration for this repository.
+# .codex/ is responsible for project-level Codex configuration only.
+# Repo-local Codex skills should live under .agents/skills/ and follow the official auto-discovery structure.
+
+model = "gpt-5.4"
+approval_policy = "on-request"

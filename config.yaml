@@ -1,0 +1,52 @@
+app:
+  name: User Profile Multi-Agent API
+  version: 0.2.0
+
+runtime:
+  data_source: local
+  model_mode: gemini
+  model_name: gemini-2.5-flash
+  prompt_dir: app/prompts
+  data_dir: data
+  output_dir: outputs
+
+llm:
+  providers:
+    gemini:
+      mode: vertex
+      model: gemini-2.5-flash
+      project: amberstar-gemini
+      location: global
+    gemini_flash:
+      # 2026-05-05: 为 trace_analyzer 锁定 gemini-2.5-flash，不受 .env::MODEL_NAME override
+      # 避免 gemini-3.1-pro-preview 在 trace prompt 上 infinite repetition bug
+      mode: vertex
+      model: gemini-2.5-flash
+      project: amberstar-gemini
+      location: global
+    claude_maestro:
+      endpoint: "[Spike Pending]"
+      auth_method: "bearer_token"
+      auth_env: "MAESTRO_TOKEN"
+      model: claude-opus-4.7
+      tier: 10x
+      timeout_sec: 30
+    mock:
+      enabled_in: ["test", "local"]
+  routes:
+    # Plan #03 Phase 0 Maestro Spike pending → degrade all routes to gemini MVP.
+    # When Maestro endpoint is ready, flip individual rows back to claude_maestro.
+    app_profile.explainer: gemini
+    behavior_profile.explainer: gemini
+    behavior_profile.timeline: gemini
+    credit_profile.explainer: gemini
+    comprehensive.explainer: gemini
+    product_advice.explainer: gemini
+    ops_advice.explainer: gemini
+    trace_analyzer.explainer: gemini_flash   # 2026-05-05 锁 gemini-2.5-flash，避免 pro-preview infinite repetition
+    orchestrator_agent.decide: gemini
+    # ---- Tier 0 shared prerequisites for plans 07/08/09/10 (added 2026-05-05) ----
+    memory.summarizer: gemini       # Plan 10: ensure_context_fits L3/L4 + memory_flush
+    sql_judge.l2: gemini            # Plan 08: L2 LLM SQL review
+    eval.judge: gemini              # Plan 09: Rubric LLM-as-Judge
+  default_provider: gemini

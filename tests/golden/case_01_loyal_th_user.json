@@ -1,0 +1,15 @@
+{
+  "case_id": "case_01_loyal_th_user",
+  "prompt": "看下 UID TH000123 最近 7 天的行为轨迹，是忠诚用户吗？",
+  "country": "th",
+  "seed_uids": ["TH000123"],
+  "expected_tools": ["run_trace"],
+  "expected_final_topics": [
+    "近 7 天活跃天数",
+    "下单频次",
+    "上次访问距今多久",
+    "忠诚度结论"
+  ],
+  "expected_min_confidence": 0.6,
+  "expected_ack_required": false
+}

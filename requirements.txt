@@ -1,0 +1,16 @@
+fastapi>=0.115.0,<1.0
+uvicorn[standard]>=0.32.0,<1.0
+pydantic>=2.9.0,<3.0
+pandas>=2.2.0,<3.0
+python-dotenv>=1.0.0,<2.0
+jinja2>=3.1.0,<4.0
+python-multipart>=0.0.12
+google-genai>=1.0.0,<2.0
+pyyaml>=6.0,<7.0
+pymysql>=1.1.0,<2.0
+tenacity>=8.0,<10.0
+# Plan 07 (KB router) — BM25 + Chinese tokenizer
+rank-bm25==0.2.2
+jieba>=0.42.1
+# Plan 08 (SQLJudge) + Plan 09 (Eval) — SQL AST analysis
+sqlglot>=18.0.0

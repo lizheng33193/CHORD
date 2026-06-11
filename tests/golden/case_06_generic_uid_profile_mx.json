@@ -1,0 +1,28 @@
+{
+  "case_id": "case_06_generic_uid_profile_mx",
+  "prompt": "帮我分析一下824812551379353600这个用户",
+  "country": "mx",
+  "seed_uids": ["824812551379353600"],
+  "expected_tools": ["run_profile"],
+  "tool_arguments": {
+    "run_profile": {
+      "uids": ["824812551379353600"],
+      "app_time": null,
+      "modules": ["app", "behavior", "credit", "comprehensive", "product", "ops"]
+    }
+  },
+  "expected_tool_arguments": {
+    "run_profile": {
+      "uids": ["824812551379353600"],
+      "app_time": null,
+      "modules": ["app", "behavior", "credit", "comprehensive", "product", "ops"]
+    }
+  },
+  "expected_final_topics": [
+    "用户请求理解",
+    "取数与画像执行情况",
+    "关键发现"
+  ],
+  "expected_min_confidence": 0.6,
+  "expected_ack_required": false
+}

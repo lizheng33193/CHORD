@@ -1,0 +1,20 @@
+services:
+  mysql_local_dev:
+    image: mysql:8.0
+    container_name: maps_mysql_local_dev
+    restart: unless-stopped
+    ports:
+      - "3307:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_change_me}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-user_profile}
+      MYSQL_USER: ${MYSQL_USER:-maps_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-maps_password}
+    command:
+      - --max_allowed_packet=256M
+      - --local-infile=1
+      - --default-authentication-plugin=mysql_native_password
+    volumes:
+      - ${MYSQL_SANDBOX_ROOT:-/Users/zhengli/Desktop/docker-data}/mysql-data:/var/lib/mysql
+      - ${MYSQL_SANDBOX_ROOT:-/Users/zhengli/Desktop/docker-data}/mysql-import:/import:ro
+      - ./init:/docker-entrypoint-initdb.d:ro

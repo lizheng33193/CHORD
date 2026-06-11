@@ -1,0 +1,156 @@
+"""Application configuration module."""
+
+from __future__ import annotations
+
+import os
+from pathlib import Path
+from typing import Any
+
+import yaml
+from dotenv import load_dotenv
+from pydantic import BaseModel
+
+
+load_dotenv(Path(__file__).resolve().parents[2] / ".env")
+
+
+class Settings(BaseModel):
+    """Centralize project settings with simple env-based overrides."""
+
+    app_name: str = os.getenv("APP_NAME", "User Profile Multi-Agent API")
+    app_version: str = os.getenv("APP_VERSION", "0.2.0")
+    model_mode: str = os.getenv("MODEL_MODE", "gemini").lower()
+    model_name: str = os.getenv("MODEL_NAME", "gemini-2.5-flash")
+    model_timeout_seconds: int = int(os.getenv("MODEL_TIMEOUT_SECONDS", "90"))
+    model_max_output_tokens: int = int(os.getenv("MODEL_MAX_OUTPUT_TOKENS", "8192"))
+    gemini_api_key: str | None = os.getenv("GEMINI_API_KEY")
+    gemini_model: str | None = os.getenv("GEMINI_MODEL")
+    vertex_project_id: str | None = os.getenv("VERTEX_PROJECT_ID")
+    vertex_location: str = os.getenv("VERTEX_LOCATION", "global")
+    google_application_credentials: str | None = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+    app_profile_prompt_max_apps: int = int(os.getenv("APP_PROFILE_PROMPT_MAX_APPS", "80"))
+    app_profile_prompt_max_detail_apps: int = int(
+        os.getenv("APP_PROFILE_PROMPT_MAX_DETAIL_APPS", "6")
+    )
+    app_profile_short_report: bool = os.getenv("APP_PROFILE_SHORT_REPORT", "0").strip() in {
+        "1",
+        "true",
+        "True",
+        "yes",
+        "YES",
+    }
+    default_country_code: str = os.getenv("DEFAULT_COUNTRY_CODE", "mx").lower()
+    data_source: str = os.getenv("DATA_SOURCE", "local").lower()
+    prompt_dir: str = os.getenv("PROMPT_DIR", "app/prompts")
+    data_dir: str = os.getenv("DATA_DIR", "data")
+    app_source_dir: str = os.getenv("APP_SOURCE_DIR", "data/app/source")
+    app_by_uid_dir: str = os.getenv("APP_BY_UID_DIR", "data/app/by_uid")
+    behavior_source_dir: str = os.getenv("BEHAVIOR_SOURCE_DIR", "data/behavior/source")
+    behavior_by_uid_dir: str = os.getenv("BEHAVIOR_BY_UID_DIR", "data/behavior/by_uid")
+    credit_source_dir: str = os.getenv("CREDIT_SOURCE_DIR", "data/credit/source")
+    credit_by_uid_dir: str = os.getenv("CREDIT_BY_UID_DIR", "data/credit/by_uid")
+    output_dir: str = os.getenv("OUTPUT_DIR", "outputs")
+    log_level: str = os.getenv("LOG_LEVEL", "INFO")
+    # data_acquisition_agent V2 — 非敏感配置（凭据 DA_DB_* 不入 Settings，见 v2 §6.1）
+    da_max_result_rows: int = int(os.getenv("DA_MAX_RESULT_ROWS", "100000"))
+    da_query_timeout_seconds: int = int(os.getenv("DA_QUERY_TIMEOUT_SECONDS", "60"))
+    da_connection_profile: str = os.getenv("DA_CONNECTION_PROFILE", "default")
+    uid_transition_duration_ms: int = int(os.getenv("UID_TRANSITION_DURATION_MS", "20000"))
+
+    @property
+    def project_root(self) -> Path:
+        """Return repository root path based on this file location."""
+        return Path(__file__).resolve().parents[2]
+
+    def resolve_path(self, path_value: str) -> Path:
+        """Resolve a relative path against project root."""
+        path = Path(path_value)
+        if path.is_absolute():
+            return path
+        return self.project_root / path
+
+    @property
+    def resolved_gemini_api_key(self) -> str | None:
+        """Resolve Gemini API key from env-backed settings."""
+        return str(self.gemini_api_key).strip() if self.gemini_api_key else None
+
+    @property
+    def resolved_model_name(self) -> str:
+        """Allow GEMINI_MODEL to override MODEL_NAME for compatibility."""
+        return str((self.gemini_model or self.model_name) or "").strip()
+
+    @property
+    def resolved_google_application_credentials(self) -> str | None:
+        """Resolve GOOGLE_APPLICATION_CREDENTIALS to an absolute path if provided."""
+        if not self.google_application_credentials:
+            return None
+        resolved = self.resolve_path(self.google_application_credentials)
+        return str(resolved)
+
+
+settings = Settings()
+
+
+# ---------------------------------------------------------------
+# llm.providers / llm.routes loading (Plan #02 Task 1.2)
+# ---------------------------------------------------------------
+
+_LLM_CONFIG_CACHE: dict[str, Any] | None = None
+
+
+def get_llm_config() -> dict[str, Any]:
+    global _LLM_CONFIG_CACHE
+    if _LLM_CONFIG_CACHE is None:
+        path = settings.project_root / "config.yaml"
+        if path.exists():
+            with open(path, "r", encoding="utf-8") as f:
+                data = yaml.safe_load(f) or {}
+            _LLM_CONFIG_CACHE = data.get("llm", {})
+        else:
+            _LLM_CONFIG_CACHE = {}
+    return _LLM_CONFIG_CACHE
+
+
+def llm_provider_for(route_key: str) -> str:
+    cfg = get_llm_config()
+    routes = cfg.get("routes", {})
+    return routes.get(route_key, cfg.get("default_provider", "gemini"))
+
+
+def validate_llm_routes() -> None:
+    """Startup-time check: every route's provider must exist; placeholder
+    endpoints emit warnings without aborting startup."""
+    from app.core.logger import get_logger  # lazy import: avoid logger->config circular
+    logger = get_logger(__name__)
+
+    cfg = get_llm_config()
+    providers = set(cfg.get("providers", {}).keys())
+    known_skill_prefixes = {
+        "app_profile", "behavior_profile", "credit_profile",
+        "comprehensive", "product_advice", "ops_advice",
+        "trace_analyzer", "data_acquisition", "orchestrator",
+    }
+    for route_key, provider_name in cfg.get("routes", {}).items():
+        if "." not in route_key:
+            raise ValueError(f"Invalid route_key shape: {route_key}")
+        prefix = route_key.split(".", 1)[0]
+        if prefix not in known_skill_prefixes:
+            logger.warning(f"Unknown skill prefix: {prefix}")
+        if provider_name not in providers:
+            raise ValueError(
+                f"route {route_key} -> {provider_name} not in providers"
+            )
+
+    # R8 P0-A bug 修复：区分"未声明 endpoint 字段"和"声明了但是 placeholder"
+    # 未声明 → 该 provider 不依赖 endpoint（如 gemini 走 SDK / mock 不走网络）→ 跳过
+    # 声明了但是 placeholder → 真的还没准备好 → warning
+    PLACEHOLDER_ENDPOINTS = {"", "[Spike Pending]", "TBD", "TODO"}
+    for name, p_cfg in cfg.get("providers", {}).items():
+        ep = p_cfg.get("endpoint")
+        if ep is None:
+            continue  # 该 provider 不依赖 endpoint，跳过
+        if ep.strip() in PLACEHOLDER_ENDPOINTS:
+            logger.warning(
+                "provider %s has placeholder endpoint=%r; will raise ProviderUnavailable on first call "
+                "(Plan #03 Maestro Spike pending)", name, ep
+            )

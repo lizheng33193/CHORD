@@ -1,0 +1,539 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Agent User Profile · 系统架构图 v1</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; }
+  .layer-card { transition: all .25s ease; }
+  .layer-card:hover { transform: translateY(-4px); box-shadow: 0 20px 40px -10px rgba(0,0,0,.18); }
+  .num-badge { width: 32px; height: 32px; border-radius: 9999px; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; }
+  .arrow { color: #94a3b8; font-size: 1.5rem; }
+  /* mermaid 图自适应 */
+  .mermaid { display: flex; justify-content: center; }
+  .mermaid svg { max-width: 100% !important; height: auto !important; }
+</style>
+</head>
+<body class="bg-gradient-to-br from-slate-50 via-white to-slate-100 min-h-screen text-slate-800">
+
+<!-- ====================== 顶部 Hero ====================== -->
+<section class="bg-gradient-to-r from-fuchsia-600 via-indigo-600 to-blue-600 text-white">
+  <div class="max-w-7xl mx-auto px-6 py-12">
+    <div class="flex items-center gap-4 mb-4">
+      <div class="w-14 h-14 rounded-2xl bg-white/15 backdrop-blur flex items-center justify-center text-3xl">🤖</div>
+      <div>
+        <h1 class="text-3xl md:text-4xl font-black tracking-tight">Agent User Profile · 系统架构图 v1</h1>
+        <p class="text-white/85 text-sm md:text-base mt-1">墨西哥 / 泰国 现金贷 · 多智能体用户画像综合分析平台</p>
+      </div>
+    </div>
+    <p class="max-w-4xl text-sm md:text-base text-white/90 leading-7 mt-3">
+      以 UID 为主键，通过 <strong>6 步管线 × 7 个画像 Skill</strong>，
+      把 APP 安装 / 行为埋点 / 征信三类原始数据，经
+      <strong>规则引擎做决策</strong> + <strong>Vertex AI LLM 做翻译</strong> + <strong>RAG 从风控指南召回背书</strong>，
+      输出单 UID 全方位画像 + Cohort 批量经营报表 + NL Chat 自然语言对话三种交付。
+    </p>
+    <div class="mt-5 flex flex-wrap gap-2 text-xs">
+      <span class="px-3 py-1.5 rounded-full bg-white/20 backdrop-blur font-semibold">22 plans</span>
+      <span class="px-3 py-1.5 rounded-full bg-white/20 backdrop-blur font-semibold">750+ tests</span>
+      <span class="px-3 py-1.5 rounded-full bg-white/20 backdrop-blur font-semibold">1100 真实 UID</span>
+      <span class="px-3 py-1.5 rounded-full bg-amber-300/90 text-amber-950 font-bold">⚡ stats 模式 41ms / 1137x speedup</span>
+      <span class="px-3 py-1.5 rounded-full bg-emerald-300/90 text-emerald-950 font-bold">0 LLM 0 RAG enforced</span>
+      <span class="px-3 py-1.5 rounded-full bg-white/20 backdrop-blur font-mono text-xs">commit 979908f</span>
+    </div>
+  </div>
+</section>
+
+<!-- ====================== 一句话压缩版 ====================== -->
+<section class="max-w-7xl mx-auto px-6 -mt-6">
+  <div class="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 md:p-7">
+    <h2 class="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2">
+      <span class="w-1 h-5 bg-fuchsia-600 rounded"></span>
+      一段话总结（面试压缩版）
+    </h2>
+    <p class="text-[15px] leading-8 text-slate-700">
+      <strong>Agent User Profile</strong> 是一套面向墨西哥/泰国现金贷的多智能体用户画像系统：
+      6 步管线（DataAccess → FeatureBuilder → DecisionEngine → Explainer → Reflection → Assembler）
+      × 7 个画像 Skill（App / Behavior / Credit / Comprehensive / Product / Ops / Risk Decision），
+      <strong class="text-fuchsia-700">三权分立</strong>——
+      <em>规则引擎</em> 决策可审计可回放，
+      <em>Vertex AI gemini-2.5-flash</em> 把规则结论翻译成中文叙事，
+      <em>knowledge_agent RAG</em> 从 630 chunk 中文风控指南召回行业背书；
+      支持 <strong>单 UID 个案分析</strong>（10 Tab Dashboard + KYC 尽调档案 .md 下载）和
+      <strong>Cohort 批量经营报表</strong>（双模式：⚡stats 纯规则 41ms/UID 服务 4 部门聚合 / 🤖full LLM 完整解读 110s/UID 服务客服个案），
+      通过 <strong>NL Chat Orchestrator Agent 5 工具循环</strong>（含 NL→SQL ACK 安全门）让业务人员用自然语言对话触发任意分析路径，
+      底层验证 <strong>"LLM 不进批处理热路径"</strong> 的生产架构思想。
+    </p>
+  </div>
+</section>
+
+<!-- ====================== 9 层架构图（Mermaid）====================== -->
+<section class="max-w-7xl mx-auto px-6 mt-10">
+  <h2 class="text-2xl font-bold mb-5 flex items-center gap-2">
+    <span class="w-1.5 h-7 bg-indigo-600 rounded"></span>
+    9 层架构图（自上而下：输入 → 输出）
+  </h2>
+  <div class="bg-white rounded-2xl shadow-lg border border-slate-200 p-6 overflow-x-auto">
+    <div class="mermaid">
+flowchart TB
+    subgraph L1["1 输入层 INPUT"]
+        UID["浏览器输入<br/>UID + 国家"]
+        NL["NL Chat<br/>自然语言"]
+        UPLOAD["UID 文件<br/>上传 .txt/.csv"]
+    end
+
+    subgraph L2["2 前端 React"]
+        DASH["DashboardView<br/>10 Tab 渲染"]
+        COH["CohortPanel<br/>双模式选择 + SSE"]
+        CHAT["ChatPanel<br/>SSE 流式回复"]
+    end
+
+    subgraph L3["3 FastAPI 路由 :8000"]
+        AM["/api/analyze-module"]
+        TR["/api/trace/uid"]
+        DR["/api/detailed-report<br/>KYC .md"]
+        CS["/api/cohort-analyze"]
+        SSE_R["/api/cohort-stream SSE"]
+        CD["/api/cohort-download<br/>?format=xlsx,pdf"]
+        OR["/api/orchestrator NL Chat"]
+    end
+
+    subgraph L4["4 业务编排"]
+        SO["shared_orchestrator<br/>+ SkillRegistry"]
+        AL["agent_loop<br/>ReAct 15 轮 + ACK 门"]
+        CF["cohort/analyzer<br/>full 路径"]
+        CST["cohort/stats_runner<br/>0 LLM 0 RAG<br/>NullModelClient 哨兵"]
+        CAG["stats_aggregator<br/>4 视角聚合"]
+        TPL["template_summary<br/>deterministic"]
+    end
+
+    subgraph L5["5 6 步管线 x 7 Skill"]
+        direction LR
+        DA["DataAccess"] --> FB["FeatureBuilder"] --> DE["DecisionEngine<br/>纯规则 0 LLM"] --> EX["Explainer<br/>Vertex AI"] --> REF["Reflection<br/>fallback"] --> AS["Assembler"]
+    end
+
+    SKILLS["7 Skill<br/>App / Behavior / Credit  stage 0<br/>Comprehensive  stage 1<br/>Product / Ops  stage 2<br/>Risk Decision  stage 3"]
+
+    subgraph L6["6 三权分立智能层"]
+        RULES["规则引擎<br/>决策权 可审计"]
+        LLM["Vertex AI<br/>gemini-2.5-flash<br/>表达权 中文叙事"]
+        RAG["knowledge_agent RAG<br/>知识权 行业背书<br/>FAISS+BM25+RRF"]
+    end
+
+    subgraph L7["7 数据采集 data_acquisition_agent"]
+        NSQL["NL → SQL<br/>5 阶段编排"]
+        SJ["SQL Judge<br/>L1 规则 + L2 LLM<br/>+ ACK 安全门"]
+        EXEC["pymysql 执行<br/>+ schema 校验"]
+    end
+
+    subgraph L8["8 存储"]
+        FS["data/by_uid/<br/>app/behavior/credit"]
+        SQL_DB["MySQL 8.0<br/>mx + th 6 表<br/>1100 真实 UID"]
+        KB["KB 索引<br/>630 chunks<br/>风控指南 PDF"]
+    end
+
+    subgraph L9["9 输出"]
+        T10["10 Tab Dashboard"]
+        KYC["KYC 尽调档案 .md<br/>3000-3500 字"]
+        XLSX["Excel 3 sheet<br/>+ Charts"]
+        PDF_O["PDF 8 章节<br/>+ 摘要页"]
+        SJSON["Stats 4 视角 JSON<br/>风控/运营/产品/合规"]
+        CR["NL Chat 流式回复<br/>+ Trace 紫卡"]
+    end
+
+    UID --> DASH
+    NL --> CHAT
+    UPLOAD --> COH
+
+    DASH --> AM
+    DASH --> TR
+    DASH --> DR
+    COH --> CS
+    COH -.SSE.-> SSE_R
+    COH --> CD
+    CHAT <-.SSE.-> OR
+
+    AM --> SO
+    TR --> SO
+    DR --> SO
+    OR --> AL
+    CS -- "mode=stats" --> CST
+    CS -- "mode=full" --> CF
+
+    SO --> SKILLS
+    SKILLS --> L5
+    CF --> SO
+    CST --> CAG --> TPL
+    AL -- "5 工具循环" --> SO
+    AL -- "query_data" --> NSQL
+
+    DE --> RULES
+    EX --> LLM
+    EX -- "risk_decision only" --> RAG
+
+    NSQL --> SJ --> EXEC --> SQL_DB
+    DA --> FS
+    RAG --> KB
+
+    L5 --> T10
+    DR --> KYC
+    CF --> XLSX
+    CF --> PDF_O
+    CST --> XLSX
+    CST --> PDF_O
+    CAG --> SJSON
+    AL --> CR
+
+    classDef inCls fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0c4a6e
+    classDef frontCls fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f
+    classDef apiCls fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d
+    classDef orchCls fill:#fce7f3,stroke:#db2777,stroke-width:2px,color:#831843
+    classDef pipeCls fill:#e0e7ff,stroke:#4f46e5,stroke-width:2px,color:#312e81
+    classDef intelCls fill:#fde68a,stroke:#ca8a04,stroke-width:3px,color:#713f12
+    classDef daCls fill:#cffafe,stroke:#0891b2,stroke-width:2px,color:#164e63
+    classDef storeCls fill:#f3e8ff,stroke:#9333ea,stroke-width:2px,color:#581c87
+    classDef outCls fill:#fee2e2,stroke:#dc2626,stroke-width:2px,color:#7f1d1d
+    classDef hl fill:#fbbf24,stroke:#92400e,stroke-width:3px,color:#78350f
+
+    class UID,NL,UPLOAD inCls
+    class DASH,COH,CHAT frontCls
+    class AM,TR,DR,CS,SSE_R,CD,OR apiCls
+    class SO,AL,CF,CAG,TPL orchCls
+    class CST hl
+    class DA,FB,DE,EX,REF,AS,SKILLS pipeCls
+    class RULES,LLM,RAG intelCls
+    class NSQL,SJ,EXEC daCls
+    class FS,SQL_DB,KB storeCls
+    class T10,KYC,XLSX,PDF_O,SJSON,CR outCls
+    </div>
+  </div>
+</section>
+
+<!-- ====================== 5 条主链路（数据流转）====================== -->
+<section class="max-w-7xl mx-auto px-6 mt-12">
+  <h2 class="text-2xl font-bold mb-5 flex items-center gap-2">
+    <span class="w-1.5 h-7 bg-emerald-600 rounded"></span>
+    5 条主链路（数据流转过程）
+  </h2>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+    <!-- 链路 A -->
+    <div class="layer-card bg-white rounded-2xl shadow-md border-l-4 border-blue-500 p-5">
+      <div class="flex items-center gap-3 mb-3">
+        <span class="num-badge bg-blue-100 text-blue-700">A</span>
+        <h3 class="text-lg font-bold text-slate-800">单 UID Dashboard</h3>
+        <span class="ml-auto text-xs px-2 py-0.5 rounded bg-blue-50 text-blue-700">~110s/UID 含全 LLM</span>
+      </div>
+      <p class="text-sm text-slate-600 leading-7">
+        <strong>受众</strong>：客服 / 审批员<br/>
+        <code class="text-xs text-blue-700">浏览器 UID</code> →
+        <code class="text-xs text-blue-700">DashboardView</code> →
+        10 个 <code class="text-xs text-blue-700">/analyze-module</code> 并发预加载 →
+        <code class="text-xs text-blue-700">SkillRegistry</code> 调度 7 skill →
+        每个 skill 走 6 步管线（规则 + LLM + RAG）→
+        10 Tab + KYC 档案 .md
+      </p>
+    </div>
+
+    <!-- 链路 B -->
+    <div class="layer-card bg-white rounded-2xl shadow-md border-l-4 border-amber-500 p-5">
+      <div class="flex items-center gap-3 mb-3">
+        <span class="num-badge bg-amber-100 text-amber-700">B</span>
+        <h3 class="text-lg font-bold text-slate-800">Cohort 双模式批量</h3>
+        <span class="ml-auto text-xs px-2 py-0.5 rounded bg-amber-50 text-amber-700 font-bold">⚡ stats 41ms / 🤖 full 110s</span>
+      </div>
+      <p class="text-sm text-slate-600 leading-7">
+        <strong>受众</strong>：风控 / 运营 / 产品 / 合规<br/>
+        <code class="text-xs text-amber-700">/cohort-analyze {mode}</code> →
+        ThreadPool 5 并发 →
+        <strong>stats</strong>: 5 skill 跳 explainer + NullModelClient 哨兵守门 + 4 视角聚合 + 模板摘要；
+        <strong>full</strong>: 7 skill 全 LLM + executive summary →
+        Excel/PDF 导出
+      </p>
+    </div>
+
+    <!-- 链路 C -->
+    <div class="layer-card bg-white rounded-2xl shadow-md border-l-4 border-fuchsia-500 p-5">
+      <div class="flex items-center gap-3 mb-3">
+        <span class="num-badge bg-fuchsia-100 text-fuchsia-700">C</span>
+        <h3 class="text-lg font-bold text-slate-800">NL Chat 5 工具循环</h3>
+        <span class="ml-auto text-xs px-2 py-0.5 rounded bg-fuchsia-50 text-fuchsia-700">SSE 流式</span>
+      </div>
+      <p class="text-sm text-slate-600 leading-7">
+        <strong>受众</strong>：业务 PM 自然语言<br/>
+        <code class="text-xs text-fuchsia-700">/orchestrator/sessions</code> →
+        <code class="text-xs text-fuchsia-700">agent_loop ReAct 15 轮</code> →
+        5 工具循环：<br/>
+        <span class="font-mono text-[11px]">parse_uid_file / run_profile / run_trace / run_cohort / query_data</span><br/>
+        query_data 走 NL→SQL → ACK 双确认 → pymysql 执行
+      </p>
+    </div>
+
+    <!-- 链路 D -->
+    <div class="layer-card bg-white rounded-2xl shadow-md border-l-4 border-purple-500 p-5">
+      <div class="flex items-center gap-3 mb-3">
+        <span class="num-badge bg-purple-100 text-purple-700">D</span>
+        <h3 class="text-lg font-bold text-slate-800">RAG 风控决策证据</h3>
+        <span class="ml-auto text-xs px-2 py-0.5 rounded bg-purple-50 text-purple-700">FAISS + BM25 + RRF</span>
+      </div>
+      <p class="text-sm text-slate-600 leading-7">
+        <strong>触发</strong>：risk_decision != approve<br/>
+        LLM 改写 query →
+        <code class="text-xs text-purple-700">FAISS 768 维 + BM25 jieba 中文 + RRF k=60 融合</code> →
+        OCR 噪音过滤 → score 阈值过滤 →
+        <strong>Lost in Middle 倒序</strong> → 注入 LLM Prompt → RAG evidence badge "📚 引证 N 条"
+      </p>
+    </div>
+
+    <!-- 链路 E -->
+    <div class="layer-card bg-white rounded-2xl shadow-md border-l-4 border-rose-500 p-5 lg:col-span-2">
+      <div class="flex items-center gap-3 mb-3">
+        <span class="num-badge bg-rose-100 text-rose-700">E</span>
+        <h3 class="text-lg font-bold text-slate-800">深度报告导出（KYC 尽调档案）</h3>
+        <span class="ml-auto text-xs px-2 py-0.5 rounded bg-rose-50 text-rose-700">3000-3500 字 markdown</span>
+      </div>
+      <p class="text-sm text-slate-600 leading-7">
+        <strong>受众</strong>：合规存档 / 客户尽调档案<br/>
+        Comprehensive Tab 玫红卡 / Trace Tab 紫色卡 → 下载按钮 →
+        <code class="text-xs text-rose-700">/api/{trace,comprehensive}/{uid}/detailed-report</code> →
+        Vertex AI generate_structured（max_output_tokens=24576）→
+        6 章节模板（用户档案卡 + 数字基础设施 + 全生命周期 + 还款诊断 + 复贷博弈 + 战略总结）→
+        失败 fallback 到 deterministic 简版
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ====================== 三权分立 ====================== -->
+<section class="max-w-7xl mx-auto px-6 mt-12">
+  <h2 class="text-2xl font-bold mb-5 flex items-center gap-2">
+    <span class="w-1.5 h-7 bg-amber-500 rounded"></span>
+    三权分立（架构核心 · 面试金句）
+  </h2>
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+    <div class="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-6 text-white shadow-lg">
+      <div class="text-4xl mb-2">📐</div>
+      <h3 class="text-xl font-bold mb-2">规则引擎 · 决策权</h3>
+      <p class="text-sm leading-7 opacity-95">
+        if-else 阈值表 + country_pack 隔离<br/>
+        <strong>可审计 / 可回放 / 监管要求</strong><br/>
+        5 个 decision_engine.py · 0 LLM 调用
+      </p>
+    </div>
+    <div class="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-6 text-white shadow-lg">
+      <div class="text-4xl mb-2">🤖</div>
+      <h3 class="text-xl font-bold mb-2">Vertex AI · 表达权</h3>
+      <p class="text-sm leading-7 opacity-95">
+        gemini-2.5-flash · structured JSON<br/>
+        <strong>把规则代码翻译成中文叙事</strong><br/>
+        让运营 / 客服 / 高管能直接读懂
+      </p>
+    </div>
+    <div class="bg-gradient-to-br from-purple-500 to-fuchsia-600 rounded-2xl p-6 text-white shadow-lg">
+      <div class="text-4xl mb-2">📚</div>
+      <h3 class="text-xl font-bold mb-2">RAG · 知识权</h3>
+      <p class="text-sm leading-7 opacity-95">
+        FAISS 768 维 + BM25 + RRF + Contextual<br/>
+        <strong>从 630 chunks 召回行业最佳实践</strong><br/>
+        给决策一份可追溯的证据背书
+      </p>
+    </div>
+  </div>
+  <div class="mt-5 bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-xl">
+    <p class="text-sm text-amber-900 leading-7">
+      <strong>面试金句</strong>："决策权在规则求合规，表达权在 LLM 求可读，知识权在 RAG 求背书。
+      如果 LLM 把决策权也拿走了，金融业务就违反合规——第二天就被监管叫去喝茶。"
+    </p>
+  </div>
+</section>
+
+<!-- ====================== Cohort 双模式对比表 ====================== -->
+<section class="max-w-7xl mx-auto px-6 mt-12">
+  <h2 class="text-2xl font-bold mb-5 flex items-center gap-2">
+    <span class="w-1.5 h-7 bg-amber-500 rounded"></span>
+    ⚡ Cohort 双模式对比（cohort-mode-stats-v1）
+  </h2>
+  <div class="bg-white rounded-2xl shadow-lg overflow-hidden border border-slate-200">
+    <table class="w-full text-sm">
+      <thead class="bg-slate-100">
+        <tr>
+          <th class="px-4 py-3 text-left font-bold text-slate-700">维度</th>
+          <th class="px-4 py-3 text-left font-bold text-fuchsia-700">🤖 full 模式</th>
+          <th class="px-4 py-3 text-left font-bold text-amber-700">⚡ stats 模式（演示版生产化）</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        <tr><td class="px-4 py-3 font-semibold">受众</td><td class="px-4 py-3">客服详查个案</td><td class="px-4 py-3">风控总监 / 运营 / 产品 / 合规</td></tr>
+        <tr class="bg-slate-50"><td class="px-4 py-3 font-semibold">每 UID 耗时</td><td class="px-4 py-3 text-fuchsia-700 font-mono">~110000ms</td><td class="px-4 py-3 text-amber-700 font-bold font-mono">41ms（2687x ↓）</td></tr>
+        <tr><td class="px-4 py-3 font-semibold">10 UID 总耗时</td><td class="px-4 py-3 text-fuchsia-700 font-mono">~18 min（估算串行）</td><td class="px-4 py-3 text-amber-700 font-bold font-mono">968ms（1137x ↓）</td></tr>
+        <tr class="bg-slate-50"><td class="px-4 py-3 font-semibold">LLM 调用</td><td class="px-4 py-3">每 UID ~8 次</td><td class="px-4 py-3 text-emerald-700 font-bold">0（NullModelClient 哨兵物理强制）</td></tr>
+        <tr><td class="px-4 py-3 font-semibold">RAG 调用</td><td class="px-4 py-3">manual_review / reject 触发</td><td class="px-4 py-3 text-emerald-700 font-bold">0</td></tr>
+        <tr class="bg-slate-50"><td class="px-4 py-3 font-semibold">输出结构</td><td class="px-4 py-3">Excel + PDF + LLM 摘要（300-500 字）</td><td class="px-4 py-3">Excel + PDF + 4 视角 JSON + deterministic 模板摘要</td></tr>
+        <tr><td class="px-4 py-3 font-semibold">业务价值</td><td class="px-4 py-3">单点深度叙事</td><td class="px-4 py-3 font-semibold text-amber-800">4 部门聚合：风控大盘 / 运营圈选 / 产品趋势 / 合规审计</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="mt-5 bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-xl">
+    <p class="text-sm text-amber-900 leading-7">
+      <strong>面试金句</strong>："stats 模式不是简化版 demo，而是面向四部门的<strong>规则引擎聚合报表路径</strong>。
+      在演示版上验证了'<strong>LLM 不进批处理热路径</strong>'的生产架构思想——
+      生产化第一步就是把外部智能链路从批处理剥离。"
+    </p>
+  </div>
+</section>
+
+<!-- ====================== 4 部门视角 ====================== -->
+<section class="max-w-7xl mx-auto px-6 mt-12">
+  <h2 class="text-2xl font-bold mb-5 flex items-center gap-2">
+    <span class="w-1.5 h-7 bg-rose-500 rounded"></span>
+    业务驱动 Schema · 服务 4 部门
+  </h2>
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="bg-white rounded-2xl shadow-md p-5 border-t-4 border-red-500">
+      <div class="text-3xl mb-2">🔴</div>
+      <h3 class="text-base font-bold text-slate-800">风控部 · 大盘水位</h3>
+      <p class="text-xs text-slate-600 leading-6 mt-2">
+        approve / manual_review / reject 占比 + multi_loan_high / debt_high 占比 +
+        <strong class="text-red-700">risk_control_pressure_score</strong>（4 维加权）
+      </p>
+    </div>
+    <div class="bg-white rounded-2xl shadow-md p-5 border-t-4 border-amber-500">
+      <div class="text-3xl mb-2">🟡</div>
+      <h3 class="text-base font-bold text-slate-800">运营部 · 可执行名单</h3>
+      <p class="text-xs text-slate-600 leading-6 mt-2">
+        4 个子集（retention_priority / vip_seed / wakeup / high_value_alert），
+        sample_uids 截断 top 100，super 名单导 Excel
+      </p>
+    </div>
+    <div class="bg-white rounded-2xl shadow-md p-5 border-t-4 border-emerald-500">
+      <div class="text-3xl mb-2">🟢</div>
+      <h3 class="text-base font-bold text-slate-800">产品部 · 趋势分布</h3>
+      <p class="text-xs text-slate-600 leading-6 mt-2">
+        6 维 distribution（segment / decision / risk / debt / engagement / value）
+        + avg/median churn_score + top_risk_factors
+      </p>
+    </div>
+    <div class="bg-white rounded-2xl shadow-md p-5 border-t-4 border-purple-500">
+      <div class="text-3xl mb-2">🟣</div>
+      <h3 class="text-base font-bold text-slate-800">合规部 · 审计切片</h3>
+      <p class="text-xs text-slate-600 leading-6 mt-2">
+        by_country breakdown + rejection_top5 + audit_trail（含
+        <code class="text-xs">deterministic_rules_only:true</code>）
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ====================== 技术栈 ====================== -->
+<section class="max-w-7xl mx-auto px-6 mt-12">
+  <h2 class="text-2xl font-bold mb-5 flex items-center gap-2">
+    <span class="w-1.5 h-7 bg-slate-700 rounded"></span>
+    技术栈
+  </h2>
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+      <h4 class="font-bold text-slate-800 mb-2">🎨 前端</h4>
+      <ul class="text-sm text-slate-600 space-y-1">
+        <li>React 18 + Babel in-browser</li>
+        <li>Tailwind CSS CDN + Lucide React</li>
+        <li>SSE EventSource + 轮询 fallback</li>
+      </ul>
+    </div>
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+      <h4 class="font-bold text-slate-800 mb-2">🐍 后端</h4>
+      <ul class="text-sm text-slate-600 space-y-1">
+        <li>Python 3.12 + FastAPI 0.136</li>
+        <li>Uvicorn 0.44 + Pydantic 2</li>
+        <li>Pandas + PyMySQL</li>
+      </ul>
+    </div>
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+      <h4 class="font-bold text-slate-800 mb-2">🤖 LLM</h4>
+      <ul class="text-sm text-slate-600 space-y-1">
+        <li>Google GenAI SDK</li>
+        <li>Vertex AI gemini-2.5-flash</li>
+        <li>structured output + ModelClient 单例</li>
+      </ul>
+    </div>
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+      <h4 class="font-bold text-slate-800 mb-2">📚 RAG</h4>
+      <ul class="text-sm text-slate-600 space-y-1">
+        <li>FAISS-CPU 1.8 (768 维)</li>
+        <li>rank-bm25 + jieba 中文</li>
+        <li>RRF k=60 + Contextual Retrieval</li>
+      </ul>
+    </div>
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+      <h4 class="font-bold text-slate-800 mb-2">💾 数据采集</h4>
+      <ul class="text-sm text-slate-600 space-y-1">
+        <li>NL → SQL 5 阶段编排</li>
+        <li>L1 规则 + L2 LLM Judge</li>
+        <li>ACK 安全门 + atomic 写入</li>
+      </ul>
+    </div>
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+      <h4 class="font-bold text-slate-800 mb-2">🛡️ 安全 / 合规</h4>
+      <ul class="text-sm text-slate-600 space-y-1">
+        <li>SQL 关键词拦截</li>
+        <li>RAG OCR 噪音过滤</li>
+        <li>NullModelClient 哨兵 0 LLM 物理强制</li>
+      </ul>
+    </div>
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+      <h4 class="font-bold text-slate-800 mb-2">📦 工程化</h4>
+      <ul class="text-sm text-slate-600 space-y-1">
+        <li>6 步管线 contracts.py</li>
+        <li>country_packs/ 国家化</li>
+        <li>TTL Cache + ThreadPoolExecutor</li>
+      </ul>
+    </div>
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+      <h4 class="font-bold text-slate-800 mb-2">🧪 测试</h4>
+      <ul class="text-sm text-slate-600 space-y-1">
+        <li>pytest 9.0 · 750+ tests</li>
+        <li>183 da-agent + 58 RAG tests</li>
+        <li>Mock LLM 调用次数断言</li>
+      </ul>
+    </div>
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+      <h4 class="font-bold text-slate-800 mb-2">📤 输出格式</h4>
+      <ul class="text-sm text-slate-600 space-y-1">
+        <li>openpyxl 3.1（Excel + Charts）</li>
+        <li>reportlab 4.5（PDF 8 章节）</li>
+        <li>Markdown 导出 KYC 档案</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ====================== Footer ====================== -->
+<section class="max-w-7xl mx-auto px-6 mt-12 mb-10">
+  <div class="bg-slate-900 text-slate-200 rounded-2xl p-6">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <div>
+        <div class="text-xs text-slate-400 uppercase tracking-wider mb-1">最新版本</div>
+        <div class="font-mono text-lg">commit 979908f · github/main</div>
+      </div>
+      <div>
+        <div class="text-xs text-slate-400 uppercase tracking-wider mb-1">规模</div>
+        <div class="text-sm">22 plans + V1 收尾扩展 · 750+ tests · 0 new failed</div>
+      </div>
+      <div>
+        <div class="text-xs text-slate-400 uppercase tracking-wider mb-1">数据</div>
+        <div class="text-sm">本地 mx 1000 + th 100 真实 UID 跑通端到端</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'default',
+    flowchart: { curve: 'basis', useMaxWidth: true, htmlLabels: true },
+    securityLevel: 'loose',
+  });
+</script>
+</body>
+</html>

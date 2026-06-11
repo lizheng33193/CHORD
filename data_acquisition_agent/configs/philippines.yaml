@@ -1,0 +1,9 @@
+country: philippines
+display_name: 菲律宾
+business_logic_md: data_acquisition_agent/demo0/各国数据知识库汇总/菲律宾/多国业务逻辑.md
+all_examples_md: data_acquisition_agent/demo0/各国数据知识库汇总/菲律宾/all_examples .md
+schema_md: data_acquisition_agent/demo0/各国数据知识库汇总/菲律宾/scheme.md
+few_md: data_acquisition_agent/demo0/各国数据知识库汇总/菲律宾/few-shot.md
+system_prompt_md: data_acquisition_agent/demo0/system_prompt.md
+sql_dialect: starrocks
+analyst_private_prefix: dm_model.yyp_tmp_

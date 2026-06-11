@@ -1,0 +1,9 @@
+country: mexico
+display_name: 墨西哥
+business_logic_md: data_acquisition_agent/demo0/各国数据知识库汇总/墨西哥/多国业务逻辑.md
+all_examples_md: data_acquisition_agent/demo0/各国数据知识库汇总/墨西哥/all_examples .md
+schema_md: data_acquisition_agent/demo0/各国数据知识库汇总/墨西哥/scheme.md
+few_md: data_acquisition_agent/demo0/各国数据知识库汇总/墨西哥/few.md
+system_prompt_md: data_acquisition_agent/demo0/system_prompt.md
+sql_dialect: starrocks
+analyst_private_prefix: dm_model.yyp_tmp_

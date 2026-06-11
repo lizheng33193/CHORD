@@ -1,0 +1,14 @@
+{
+  "case_id": "case_02_churn_mx_batch",
+  "prompt": "请批量分析 ./data/id_files/mx/sample.txt 里的用户，看哪些已经流失。",
+  "country": "mx",
+  "seed_uids": ["MX0001", "MX0002", "MX0003"],
+  "expected_tools": ["parse_uid_file", "run_profile"],
+  "expected_final_topics": [
+    "流失判定标准（30 天无下单）",
+    "流失用户名单",
+    "可能原因分类"
+  ],
+  "expected_min_confidence": 0.6,
+  "expected_ack_required": false
+}

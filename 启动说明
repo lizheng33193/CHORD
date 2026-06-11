@@ -1,0 +1,19 @@
+python -m scripts.local_mysql.local_stack up --no-reload --no-smoke
+
+这条命令会做这些事：
+
+启动 Docker MySQL
+检查本地墨西哥 4 张表
+按 .env.local-mysql 启动后端服务
+服务地址就是：
+首页：http://127.0.0.1:8000/
+文档：http://127.0.0.1:8000/docs
+
+
+停止系统用：
+
+python -m scripts.local_mysql.local_stack down
+如果你只是想确认服务是否在线：
+
+curl http://127.0.0.1:8000/health
+看到 {"status":"ok"} 就说明服务正常。

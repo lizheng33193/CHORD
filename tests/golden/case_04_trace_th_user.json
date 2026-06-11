@@ -1,0 +1,14 @@
+{
+  "case_id": "case_04_trace_th_user",
+  "prompt": "请分析 UID TH000456 近 30 天的轨迹，看是否有异常跳变。",
+  "country": "th",
+  "seed_uids": ["TH000456"],
+  "expected_tools": ["run_trace"],
+  "expected_final_topics": [
+    "30 天轨迹主线",
+    "异常跳变检测结果",
+    "跳变上下文（后续是否恢复、是否重复发生）"
+  ],
+  "expected_min_confidence": 0.6,
+  "expected_ack_required": false
+}

@@ -1,0 +1,9 @@
+country: mexico
+display_name: 墨西哥（本地开发 MySQL 4 表）
+business_logic_md: data_acquisition_agent/configs/local_dev/business_logic.md
+all_examples_md: data_acquisition_agent/configs/local_dev/all_examples.md
+schema_md: data_acquisition_agent/configs/local_dev/scheme.md
+few_md: data_acquisition_agent/configs/local_dev/few.md
+system_prompt_md: data_acquisition_agent/demo0/system_prompt.md
+sql_dialect: mysql
+analyst_private_prefix: user_profile.tmp_

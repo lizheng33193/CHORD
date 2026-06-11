@@ -1,0 +1,15 @@
+{
+  "case_id": "case_05_query_data_mx",
+  "prompt": "帮我拉一批墨西哥上周流失且下单过的用户，然后逐个跑 App 画像。",
+  "country": "mx",
+  "seed_uids": [],
+  "expected_tools": ["query_data", "run_profile"],
+  "expected_ack_required": true,
+  "expected_final_topics": [
+    "SQL 逻辑详解（上周流失定义 + 下单过滤条件）",
+    "拉出的 UID 数量 + 示例",
+    "这批用户 App 画像聚合结论",
+    "下一步建议"
+  ],
+  "expected_min_confidence": 0.55
+}

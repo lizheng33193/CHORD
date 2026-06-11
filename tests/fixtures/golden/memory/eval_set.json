@@ -1,0 +1,107 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "case_id": "memory_preference_write",
+      "kind": "policy_recall",
+      "content": "请记住：我偏好中文输出，并且回答要简洁",
+      "category": "preference",
+      "expected_accept": true,
+      "query": "输出偏好",
+      "expected_substring": "中文输出"
+    },
+    {
+      "case_id": "memory_feedback_write",
+      "kind": "policy_recall",
+      "content": "纠正：以后不要在回答里使用表情符号",
+      "category": "feedback",
+      "expected_accept": true,
+      "query": "纠正 表情",
+      "expected_substring": "不要在回答里使用表情"
+    },
+    {
+      "case_id": "memory_project_fact_write",
+      "kind": "policy_recall",
+      "content": "项目事实：当前项目使用 SQLite 长期记忆，不接向量库",
+      "category": "project",
+      "expected_accept": true,
+      "query": "当前项目 记忆",
+      "expected_substring": "SQLite 长期记忆"
+    },
+    {
+      "case_id": "memory_reference_write",
+      "kind": "policy_recall",
+      "content": "参考入口：https://example.com/memory-contract.md",
+      "category": "reference",
+      "expected_accept": true,
+      "query": "memory contract 入口",
+      "expected_substring": "https://example.com/memory-contract.md"
+    },
+    {
+      "case_id": "memory_task_write",
+      "kind": "policy_recall",
+      "content": "请查询 UID 824812551379353600 的用户画像并检查 trace 异常",
+      "category": "task",
+      "expected_accept": true,
+      "query": "UID 用户画像 trace",
+      "expected_substring": "824812551379353600"
+    },
+    {
+      "case_id": "memory_greeting_reject",
+      "kind": "policy",
+      "content": "你好",
+      "category": "preference",
+      "expected_accept": false
+    },
+    {
+      "case_id": "memory_model_identity_reject",
+      "kind": "policy",
+      "content": "你是什么模型？",
+      "category": "task",
+      "expected_accept": false
+    },
+    {
+      "case_id": "memory_assistant_intro_reject",
+      "kind": "policy",
+      "content": "您好！我是一个用于墨西哥/东南亚用户画像分析平台的编排代理。",
+      "category": "insight",
+      "source": "orchestrator_final",
+      "expected_accept": false
+    },
+    {
+      "case_id": "memory_standalone_secret_reject",
+      "kind": "policy",
+      "content": "password='super-secret'",
+      "category": "reference",
+      "expected_accept": false,
+      "secret": "super-secret"
+    },
+    {
+      "case_id": "memory_redaction_accept",
+      "kind": "policy_recall",
+      "content": "请记住：我偏好中文输出，token='abc123' 不应该明文保存",
+      "category": "preference",
+      "expected_accept": true,
+      "expect_redacted": true,
+      "secret": "abc123",
+      "query": "中文输出 token",
+      "expected_substring": "<TOKEN>"
+    },
+    {
+      "case_id": "memory_identity_isolation",
+      "kind": "isolation",
+      "content": "请记住：我偏好中文输出",
+      "category": "preference",
+      "query": "中文输出"
+    },
+    {
+      "case_id": "memory_management_lifecycle",
+      "kind": "management",
+      "content": "请记住：我偏好中文输出",
+      "updated_content": "请记住：我偏好英文输出",
+      "category": "preference",
+      "old_query": "中文",
+      "new_query": "英文输出"
+    }
+  ]
+}

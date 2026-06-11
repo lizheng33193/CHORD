@@ -1,0 +1,41 @@
+__pycache__/
+*.pyc
+.venv/
+.env
+outputs/
+outputs/pycache/
+app/__pycache__/
+*.csv
+key.json
+
+# Secrets
+.env
+.env.*
+!.env.example
+!.env.local-mysql.example
+key.json
+*.pem
+*.key
+
+# Data files
+data/**/*.json
+data/**/*.csv
+data/**/*.txt
+!data/**/.gitkeep
+*.DS_Store
+
+# Raw bilingual datasets (mex/thai), never tracked
+New data/
+new data/
+
+# State files
+data/**/.split_state.json
+data/**/.join_state.json
+
+# IDE
+.vscode/
+
+# Scratch (PowerShell 脚本 + log 临时文件，Plan #03 实施期使用)
+scratch/
+# Plan 0X baseline / diff snapshots (per-plan local artifacts)
+.reports/

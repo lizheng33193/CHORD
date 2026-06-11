@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>多 Agent 用户画像分析平台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18.2.0/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/lucide-react@0.292.0/dist/umd/lucide-react.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body class="bg-slate-50">
+    <div id="root"></div>
+    <!-- utils 层（叶子，无依赖） -->
+    <script type="text/babel" src="/static/js/utils/normalize.js"></script>
+    <script type="text/babel" src="/static/js/utils/chartLookup.js"></script>
+    <script type="text/babel" src="/static/js/utils/displayMappers.js"></script>
+    <script type="text/babel" src="/static/js/utils/advice.js"></script>
+    <!-- services 层 -->
+    <script type="text/babel" src="/static/js/services/api.js"></script>
+    <!-- common 子组件 -->
+    <script type="text/babel" src="/static/js/components/common/InfoRow.jsx"></script>
+    <script type="text/babel" src="/static/js/components/common/ProgressRow.jsx"></script>
+    <script type="text/babel" src="/static/js/components/common/CreditProgressRow.jsx"></script>
+    <script type="text/babel" src="/static/js/components/common/LegendDot.jsx"></script>
+    <script type="text/babel" src="/static/js/components/common/MarkdownBlock.jsx"></script>
+    <script type="text/babel" src="/static/js/components/common/MetricHelpTip.jsx"></script>
+    <script type="text/babel" src="/static/js/components/common/InstallBucketModal.jsx"></script>
+    <script type="text/babel" src="/static/js/components/common/CategoryAppsModal.jsx"></script>
+    <script type="text/babel" src="/static/js/components/common/TimelineItem.jsx"></script>
+    <!-- charts 子组件 -->
+    <script type="text/babel" src="/static/js/components/charts/DonutChart.jsx"></script>
+    <script type="text/babel" src="/static/js/components/charts/CreditGauge.jsx"></script>
+    <script type="text/babel" src="/static/js/components/charts/CreditRiskStructure.jsx"></script>
+    <!-- panels（依赖 common + charts + utils） -->
+    <script type="text/babel" src="/static/js/components/panels/AppPanel.jsx"></script>
+    <script type="text/babel" src="/static/js/components/panels/BehaviorPanel.jsx"></script>
+    <script type="text/babel" src="/static/js/components/panels/CreditPanel.jsx"></script>
+    <script type="text/babel" src="/static/js/components/panels/RichCreditPanel.jsx"></script>
+    <script type="text/babel" src="/static/js/components/panels/ComprehensivePanel.jsx"></script>
+    <!-- 顶层视图 -->
+    <script type="text/babel" src="/static/js/components/HomeView.jsx"></script>
+    <script type="text/babel" src="/static/js/components/LoadingView.jsx"></script>
+    <script type="text/babel" src="/static/js/components/DashboardView.jsx"></script>
+    <!-- 入口 -->
+    <script type="text/babel" src="/static/js/app.jsx"></script>
+</body>
+</html>

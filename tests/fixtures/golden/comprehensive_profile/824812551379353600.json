@@ -1,0 +1,126 @@
+{
+  "charts": [
+    {
+      "chart_type": "radar",
+      "indicators": [
+        "app",
+        "behavior",
+        "credit"
+      ],
+      "meta": {
+        "conflict_count": 1,
+        "segment": "S4"
+      },
+      "series": [
+        {
+          "data": [
+            2,
+            4,
+            3
+          ],
+          "name": "profile_strength"
+        }
+      ],
+      "title": "Comprehensive Profile Overview"
+    },
+    {
+      "chart_type": "bar",
+      "meta": {
+        "risk_level": "medium",
+        "segment": "S4",
+        "value_signal_level": "high"
+      },
+      "series": [
+        {
+          "data": [
+            85,
+            55,
+            1
+          ],
+          "name": "value_and_risk"
+        }
+      ],
+      "title": "Segment Risk And Value",
+      "x_axis": [
+        "value_signal",
+        "risk_buffer",
+        "conflict_count"
+      ]
+    }
+  ],
+  "report_markdown": "## Comprehensive Profile Report\n\n- UID: `824812551379353600`\n- Status: `ok`\n- LLM Status: `LLM 推理完成`\n- Summary: 该用户整体表现为中等风险与高潜在价值（S4流失风险客群）。App端显示其安装了主流银行与钱包应用且电商活跃，具备较好的金融成熟度；信用端表现为极薄征信（信用分约300）且存在满额透支账户，但近期无新增多头借贷。行为端呈现低频高强度、价格敏感及高流失风险特征，其活跃的比价行为与高UX摩擦反映了较强的寻资需求，需重点关注留存与定价策略以防止流失。\n- Tags: behavior-92, borrowing-urgency-medium, churn-high, confidence-high, credit-d, credit-footprint-thin, cross-signal-conflict, debt-pressure-medium, engagement-deep, financial-maturity-thin-file, high-utilization-account-present, low-login-consistency, overall-risk-medium, price-sensitive-behavior, product-sensitivity-high, risk-medium, score-value-300, segment-s4, stability-high, trend-medium, value-high, value-medium, very-short-credit-history, 价格敏感, 低分客群, 低多头风险, 低频高强度, 借贷竞争偏好, 借贷风险中等, 安装活跃度高, 强授信意愿, 极薄征信, 满额透支, 电商活跃, 近期寻资, 银行化用户, 高UX摩擦, 高流失风险, 高消费能力\n",
+  "structured_result": {
+    "metrics": {
+      "confidence_level": "high",
+      "conflict_count": 1,
+      "conflict_explanations": [
+        "Active and price-sensitive behavior plus risky app installs may reflect comparison shopping, not immediate default pressure."
+      ],
+      "dimension_scores": {
+        "app": 2,
+        "behavior": 4,
+        "credit": 3
+      },
+      "risk_level": "medium",
+      "segment": "S4",
+      "value_signal_level": "high"
+    },
+    "model_trace": {
+      "fallback_reason": "",
+      "mode": "vertex",
+      "model_name": "gemini-3.1-pro-preview",
+      "used_llm": true
+    },
+    "persona": "具备一定金融成熟度但征信记录极薄的价格敏感型用户。虽然信用历史极短且存在高额透支，但其设备端展现出良好的银行化特征与高消费能力。当前行为呈现高流失风险与比价倾向，属于需要通过精准定价和留存策略挽回的高价值潜力客群。",
+    "status": "ok",
+    "summary": "该用户整体表现为中等风险与高潜在价值（S4流失风险客群）。App端显示其安装了主流银行与钱包应用且电商活跃，具备较好的金融成熟度；信用端表现为极薄征信（信用分约300）且存在满额透支账户，但近期无新增多头借贷。行为端呈现低频高强度、价格敏感及高流失风险特征，其活跃的比价行为与高UX摩擦反映了较强的寻资需求，需重点关注留存与定价策略以防止流失。",
+    "tags": [
+      "behavior-92",
+      "borrowing-urgency-medium",
+      "churn-high",
+      "confidence-high",
+      "credit-d",
+      "credit-footprint-thin",
+      "cross-signal-conflict",
+      "debt-pressure-medium",
+      "engagement-deep",
+      "financial-maturity-thin-file",
+      "high-utilization-account-present",
+      "low-login-consistency",
+      "overall-risk-medium",
+      "price-sensitive-behavior",
+      "product-sensitivity-high",
+      "risk-medium",
+      "score-value-300",
+      "segment-s4",
+      "stability-high",
+      "trend-medium",
+      "value-high",
+      "value-medium",
+      "very-short-credit-history",
+      "价格敏感",
+      "低分客群",
+      "低多头风险",
+      "低频高强度",
+      "借贷竞争偏好",
+      "借贷风险中等",
+      "安装活跃度高",
+      "强授信意愿",
+      "极薄征信",
+      "满额透支",
+      "电商活跃",
+      "近期寻资",
+      "银行化用户",
+      "高UX摩擦",
+      "高流失风险",
+      "高消费能力"
+    ],
+    "uid": "824812551379353600",
+    "upstream_summaries": {
+      "app_profile": "该用户设备活跃度较高，安装了多款主流银行与电子钱包应用，具备较好的金融成熟度。近期未发现新增借贷类App，多头借贷风险低。消费偏好集中在出行与电商领域，整体资质良好。",
+      "behavior_profile": "",
+      "credit_profile": ""
+    }
+  },
+  "summary": "该用户整体表现为中等风险与高潜在价值（S4流失风险客群）。App端显示其安装了主流银行与钱包应用且电商活跃，具备较好的金融成熟度；信用端表现为极薄征信（信用分约300）且存在满额透支账户，但近期无新增多头借贷。行为端呈现低频高强度、价格敏感及高流失风险特征，其活跃的比价行为与高UX摩擦反映了较强的寻资需求，需重点关注留存与定价策略以防止流失。"
+}
