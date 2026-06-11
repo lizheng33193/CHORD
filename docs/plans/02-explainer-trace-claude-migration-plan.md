@@ -143,7 +143,7 @@ L93: def _classify_model_error(self, exc: Exception) -> str:
 ### Task 0.1 — 验证 Plan #01 已 `[complete]`
 
 ```powershell
-cd C:\Users\v-yimingliu\agent-userprofile\MAPS-LZ
+cd C:\Users\v-yimingliu\agent-userprofile\CHORD
 git log --oneline | Select-String "complete.*model-client-refactor"
 ```
 

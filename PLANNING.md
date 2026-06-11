@@ -583,7 +583,7 @@
   - orchestrator full regression
   - final release regression
 - README 也已明确记录 `ddtrace` teardown hang 的命令层处理策略，以及 `visible_execution` 的分批运行方式。
-- 新增开发者指南 [docs/dev/orchestrator-decomposition-guide.md](/Users/zhengli/Desktop/workspace/MAPS-%20LZ/docs/dev/orchestrator-decomposition-guide.md)，固定：
+- 新增开发者指南 [docs/dev/orchestrator-decomposition-guide.md](/Users/zhengli/Desktop/workspace/CHORD/docs/dev/orchestrator-decomposition-guide.md)，固定：
   - `agent_loop.py` 当前职责
   - `flows / execution / runtime` 边界
   - `LoopDependencies` seam 规则
@@ -591,7 +591,7 @@
   - import boundary 规则
   - Flow / Runner checklist
   - docs truth checklist
-- Post-decomposition quality backlog lives in [docs/plans/post-decomposition-quality-backlog.md](/Users/zhengli/Desktop/workspace/MAPS-%20LZ/docs/plans/post-decomposition-quality-backlog.md).
+- Post-decomposition quality backlog lives in [docs/plans/post-decomposition-quality-backlog.md](/Users/zhengli/Desktop/workspace/CHORD/docs/plans/post-decomposition-quality-backlog.md).
 
 ## 2026-05-29 V4 Data Compatibility & Review Accuracy Pass
 
@@ -676,7 +676,7 @@
 - 🔲 未来新增（当前不存在）
 
 ```
-MAPS-LZ/
+CHORD/
 ├── app/
 │   ├── main.py                          ✅ FastAPI 入口（53 行）
 │   ├── api/

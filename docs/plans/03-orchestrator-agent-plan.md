@@ -196,7 +196,7 @@ python -m pytest data_acquisition_agent/tests/ -v
 **操作步骤**：
 
 ```powershell
-cd C:\Users\v-yimingliu\agent-userprofile\MAPS-LZ
+cd C:\Users\v-yimingliu\agent-userprofile\CHORD
 git log --oneline | Select-String "complete.*model-client-refactor"
 python -m pytest tests/ -v
 python -m pytest data_acquisition_agent/tests/ -v

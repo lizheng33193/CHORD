@@ -954,8 +954,8 @@ if ([float]$drift -gt 2.0) {
 }
 
 # v3.1 补：push 前必须校验 remote 指向、避免误推到错误仓库
-git remote -v | Select-String 'origin\s+.*lizheng33193/MAPS-LZ'
-if ($LASTEXITCODE -ne 0) { Write-Error 'origin 未指向 lizheng33193/MAPS-LZ，中止 push'; exit 1 }
+git remote -v | Select-String 'origin\s+.*lizheng33193/CHORD'
+if ($LASTEXITCODE -ne 0) { Write-Error 'origin 未指向 lizheng33193/CHORD，中止 push'; exit 1 }
 
 git commit --allow-empty -m "[complete] plan-09 — eval system with rubric + ci"
 git push origin main

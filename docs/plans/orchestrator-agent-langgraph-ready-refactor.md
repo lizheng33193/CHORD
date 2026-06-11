@@ -19,7 +19,7 @@
 - Phase 6C closeout persistence boundary + docs sync: Done
 - Phase 7: Done
 
-> Post-decomposition stabilization 作为后续独立阶段处理，不再计入本计划的 Phase 6/7。当前 baseline freeze、标准回归命令与开发者维护规则见 [README.md](/Users/zhengli/Desktop/workspace/MAPS-%20LZ/README.md) 与 [docs/dev/orchestrator-decomposition-guide.md](/Users/zhengli/Desktop/workspace/MAPS-%20LZ/docs/dev/orchestrator-decomposition-guide.md)。
+> Post-decomposition stabilization 作为后续独立阶段处理，不再计入本计划的 Phase 6/7。当前 baseline freeze、标准回归命令与开发者维护规则见 [README.md](/Users/zhengli/Desktop/workspace/CHORD/README.md) 与 [docs/dev/orchestrator-decomposition-guide.md](/Users/zhengli/Desktop/workspace/CHORD/docs/dev/orchestrator-decomposition-guide.md)。
 
 ## 当前落地范围
 

@@ -1057,7 +1057,7 @@ git commit -m "feat(08): phase 4 sidecar wrapper + kill switch + multi-country s
 
 ### Task 4.8 [complete] marker + push
 ```powershell
-git remote -v | findstr origin   # 必须先验证 origin 指向 lizheng33193/MAPS-LZ（或当前批准仓库）
+git remote -v | findstr origin   # 必须先验证 origin 指向 lizheng33193/CHORD（或当前批准仓库）
 git commit --allow-empty -m "[complete] plan-08 — sql judge as sidecar wrapper"
 git push origin main
 ```

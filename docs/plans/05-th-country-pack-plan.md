@@ -127,7 +127,7 @@
 ### Task 0.1：Git baseline 标记
 
 ```powershell
-cd c:\Users\v-yimingliu\agent-userprofile\MAPS-LZ
+cd c:\Users\v-yimingliu\agent-userprofile\CHORD
 git status --short
 git log -1 --oneline
 git diff HEAD --stat

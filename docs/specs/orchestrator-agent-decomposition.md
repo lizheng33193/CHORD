@@ -69,8 +69,8 @@
 
 ## 稳定化入口
 
-- Post-decomposition 的默认质量门以 [README.md](/Users/zhengli/Desktop/workspace/MAPS-%20LZ/README.md) 中的三档回归为准：
+- Post-decomposition 的默认质量门以 [README.md](/Users/zhengli/Desktop/workspace/CHORD/README.md) 中的三档回归为准：
   - `Minimal PR Regression`
   - `Orchestrator Full Regression`
   - `Final Release Regression`
-- 日常维护规则、Flow / Runner checklist 与 import boundary 说明见 [docs/dev/orchestrator-decomposition-guide.md](/Users/zhengli/Desktop/workspace/MAPS-%20LZ/docs/dev/orchestrator-decomposition-guide.md)。
+- 日常维护规则、Flow / Runner checklist 与 import boundary 说明见 [docs/dev/orchestrator-decomposition-guide.md](/Users/zhengli/Desktop/workspace/CHORD/docs/dev/orchestrator-decomposition-guide.md)。

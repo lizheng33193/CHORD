@@ -25,7 +25,7 @@ few.md 同时出现 `hive.dwb.dwb_b1_data_burying_point` 和 `hive.dwb_paimon.dw
 
 ## 1. Background / Problem
 
-`MAPS-LZ` 项目当前的画像 Skill 链路（app/behavior/credit/comprehensive）依赖**已经准备好的 UID 列表 + 本地数据文件**。这些数据来源于：
+`CHORD` 项目当前的画像 Skill 链路（app/behavior/credit/comprehensive）依赖**已经准备好的 UID 列表 + 本地数据文件**。这些数据来源于：
 - 数据分析师手工写 SQL（依赖经验 + few-shot 跑通的代码片段）
 - 跑数仓（Hive / StarRocks via 内网代理）
 - 切片成 UID 文件 + 各类 JSON / CSV
@@ -98,7 +98,7 @@ Business Stage 1：画像
 `data_acquisition_agent/` 是**顶层独立 Python package**，与 `app/runtime_skills` 解耦，**不进入 SkillRegistry**；**V1 不启动独立服务，而是通过 `app/main.py include_router` 挂载到现有 FastAPI 进程中，复用现有 ModelClient、logger 和配置能力。**
 
 ```
-MAPS-LZ/
+CHORD/
 ├── app/                              # 现有画像系统
 │   ├── runtime_skills/               # 不动
 │   ├── core/model_client.py          # data_acquisition_agent V1 复用

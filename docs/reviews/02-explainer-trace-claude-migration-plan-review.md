@@ -200,7 +200,7 @@ Plan #02 Phase 0 只跑了"前置 [complete] 检查 + 270 测试"，**没核对 
 ### Task 0.5.1 — 7 个 explainer 真实接口扫描
 
 ```powershell
-cd C:\Users\v-yimingliu\agent-userprofile\MAPS-LZ
+cd C:\Users\v-yimingliu\agent-userprofile\CHORD
 Get-ChildItem app\runtime_skills\*\explainer.py | ForEach-Object {
   Write-Host "==== $($_.FullName) ===="
   Select-String -Path $_.FullName -Pattern "^class \w+|def __init__|def explain\(|generate_structured\(|fallback_result=|response_schema="
@@ -358,7 +358,7 @@ Task 3.1 写"灰度顺序：app → behavior → ... → trace"，但 Task 3.2 R
 ### Task 0.5.1 — 7 个 explainer 真实接口扫描
 
 ```powershell
-cd C:\Users\v-yimingliu\agent-userprofile\MAPS-LZ
+cd C:\Users\v-yimingliu\agent-userprofile\CHORD
 Get-ChildItem app\runtime_skills\*\explainer.py | ForEach-Object {
   Write-Host "==== $($_.FullName -replace [regex]::Escape($PWD.Path)+'\\','') ===="
   Select-String -Path $_.FullName -Pattern "^class \w+|def __init__|def explain\(|generate_structured\(|fallback_result=|response_schema=" |
@@ -385,7 +385,7 @@ Get-ChildItem app\runtime_skills\*\explainer.py | ForEach-Object {
 ### Task 0.5.2 — 全仓 generate_structured 调用点统计（守护无遗漏）
 
 ```powershell
-cd C:\Users\v-yimingliu\agent-userprofile\MAPS-LZ
+cd C:\Users\v-yimingliu\agent-userprofile\CHORD
 Select-String -Path "app\**\*.py" -Pattern "generate_structured\(" -Recurse | Group-Object Path | Format-Table Count, Name -AutoSize
 ```
 

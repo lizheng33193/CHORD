@@ -100,7 +100,7 @@
 ## 2. 目录结构
 
 ```text
-MAPS-LZ/
+CHORD/
 ├─ app/
 │  ├─ api/                         # FastAPI 路由
 │  ├─ core/                        # 配置、日志、模型客户端
@@ -419,7 +419,7 @@ sequenceDiagram
 - 当前架构 **不是 multi-agent**，也**没有启用 multi-tool ReAct 产品能力**
 - 当前状态是 **LangGraph-ready**，不是 **LangGraph-migrated**；LangGraph 迁移仍是可选后续工作
 
-维护者入口见 [docs/dev/orchestrator-decomposition-guide.md](/Users/zhengli/Desktop/workspace/MAPS-%20LZ/docs/dev/orchestrator-decomposition-guide.md)。
+维护者入口见 [docs/dev/orchestrator-decomposition-guide.md](/Users/zhengli/Desktop/workspace/CHORD/docs/dev/orchestrator-decomposition-guide.md)。
 
 ### 3.11 Data Acquisition 流程
 
@@ -1453,7 +1453,7 @@ scripts/local_mysql/dev_smoke.sh
 scripts/local_mysql/dev_down.sh
 ```
 
-详细说明见 [docs/dev/local-mysql-sandbox-quickstart.md](/Users/zhengli/Desktop/workspace/MAPS-%20LZ/docs/dev/local-mysql-sandbox-quickstart.md)。
+详细说明见 [docs/dev/local-mysql-sandbox-quickstart.md](/Users/zhengli/Desktop/workspace/CHORD/docs/dev/local-mysql-sandbox-quickstart.md)。
 
 ### 11.3 页面使用顺序
 

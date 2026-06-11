@@ -83,7 +83,7 @@ out = client.generate_structured(
 **操作步骤**：
 
 ```powershell
-cd C:\Users\v-yimingliu\agent-userprofile\MAPS-LZ
+cd C:\Users\v-yimingliu\agent-userprofile\CHORD
 python -m pytest tests/ -v
 python -m pytest data_acquisition_agent/tests/ -v
 git status

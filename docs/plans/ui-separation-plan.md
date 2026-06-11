@@ -751,7 +751,7 @@ Step-1 完成后整体 push（git remote -v 确认）：
 
 ```bash
 git remote -v
-# 必须看到 origin → lizheng33193/MAPS-LZ（或其他已确认指向当前项目的 GitHub remote）
+# 必须看到 origin → lizheng33193/CHORD（或其他已确认指向当前项目的 GitHub remote）
 git push origin main
 ```
 

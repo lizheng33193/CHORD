@@ -84,7 +84,7 @@ R5.4 已修正以上问题：统一版本标识、改为“执行当日实际基
 **验证命令**：
 
 ```powershell
-cd C:\Users\v-yimingliu\agent-userprofile\MAPS-LZ
+cd C:\Users\v-yimingliu\agent-userprofile\CHORD
 git log --oneline | Select-String "\[complete\] orchestrator-agent"
 ```
 
