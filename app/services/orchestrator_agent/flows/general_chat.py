@@ -9,6 +9,8 @@ import re
 import uuid
 from typing import Any, AsyncIterator
 
+from app.auth.permissions import require_permissions
+from app.core.audit import record_runtime_audit_event
 from app.services.orchestrator_agent.budget import BudgetExceeded, check_and_increment
 from app.services.orchestrator_agent.context_fit import MODEL_MAX_TOKENS_PER_TURN, ensure_context_fits
 from app.services.orchestrator_agent.execution.data_query_runner import (
@@ -60,6 +62,11 @@ _MEMORY_WRITE_INTENT_RE = re.compile(
 _MEMORY_READ_INTENT_RE = re.compile(
     r"(你还记得|还记得吗|查记忆|读取记忆|回忆一下|之前说过什么|recall|read memory|what do you remember)",
     re.IGNORECASE,
+)
+
+_QUERY_DATA_REQUIRED_PERMISSIONS = (
+    "data:query:view_sql",
+    "data:query:execute",
 )
 _TRACE_TOOL_INTENT_RE = re.compile(
     r"(run\s*trace|trace|行为轨迹|操作路径|时间线|timeline|轨迹|路径)",
@@ -592,6 +599,33 @@ class GeneralChatFlow:
             default_auto_profile=False,
         )
         update_internal_trace_metadata(trace, {"tool_name": "query_data"})
+        if ctx.user_context is not None:
+            update_internal_trace_metadata(trace, {"approved_by": ctx.user_context.username})
+            try:
+                require_permissions(ctx.user_context, _QUERY_DATA_REQUIRED_PERMISSIONS)
+            except PermissionError as exc:
+                record_runtime_audit_event(
+                    user=ctx.user_context,
+                    request_context=ctx.request_context,
+                    event_type="data.query.preview",
+                    action="preview",
+                    status="denied",
+                    resource_type="tool",
+                    resource_id="query_data",
+                    metadata={
+                        "country": input_obj.country or normalized_query.country,
+                        "required_permissions": list(_QUERY_DATA_REQUIRED_PERMISSIONS),
+                    },
+                )
+                async for evt in self._fail(
+                    ctx,
+                    trace,
+                    str(exc),
+                    session_status="error",
+                    terminal_reason="permission_denied",
+                ):
+                    yield evt
+                return
 
         runner = DataQueryRunner(
             session=ctx.session,

@@ -248,6 +248,24 @@ class RequestContext:
 - 或存在与目标国家完全匹配的 membership
 - 否则 `403`
 
+### HTTP Semantics
+
+认证失败与越权失败在第一版已明确拆开：
+
+- `401`：token 无效、session 不存在、session 已撤销、session 过期、user 不存在或已停用
+- `403`：permission 不足、project scope 不匹配、country scope 不匹配
+
+前端只对 `401` 自动退出；`403` 只提示“无权限或 scope 不匹配”，不清登录态。
+
+### Country Alias Normalization
+
+country scope 判断统一走别名归一化，第一版至少支持：
+
+- `mx` / `mexico` -> `mx`
+- `th` / `thailand` -> `th`
+
+`UserContext.country`、`project_scopes.country`、`X-Country` override、Data Acquisition target country 都以归一化后的 country code 比较。
+
 ## Orchestrator / Memory / Trace Integration
 
 ### Session Identity
@@ -262,6 +280,12 @@ class RequestContext:
 
 - `request_context`
 - `user_context_snapshot`
+
+已创建 session 的可见性与续跑边界固定为 `(user_id, project_id, country)` 三元组：
+
+- 同 user 但不同 project/country 不能读取旧 session
+- `_apply_request_identity(...)` 只刷新 request snapshot，不再重写 session 绑定 identity
+- 旧 session 不允许被新的 scope override“重新挂接”
 
 ### Agent Loop
 
@@ -302,12 +326,37 @@ class RequestContext:
 
 这保证长期记忆即使暂时不迁 MySQL，也具备真实 actor 隔离。
 
+SQLite v1 memory 的读取语义固定为：
+
+- `session`：同 `user + project + country + session`
+- `user`：同 `user + project + country`
+- `project`：同 `project + country`，跨用户共享
+- `global`：同 `project`，跨国家共享
+
+去重规则同步固定为：
+
+- `session/user`：继续带 `user_id`
+- `project`：按 `project + country` 去重
+- `global`：按 `project` 去重
+
+共享 scope 的记录仍保留 `user_id` 作为创建者，但可见性不再由创建者限制。
+
 ### Data Acquisition
 
 Data Agent API 层显式接权限：
 
 - generate 需要 `data:query:generate`
 - execute 需要 `data:query:execute`
+
+chat 中的 `query_data` 在 preview 前同时要求：
+
+- `data:query:view_sql`
+- `data:query:execute`
+
+此外：
+
+- `/api/data-acquisition/generate` 与 `/api/data-acquisition/execute` 都先做 `require_country_access(...)`
+- `approved_by` 从 `UserContext.username` 贯穿 preview / execute / trace / audit
 
 执行审计与 reviewer/executor 预留字段：
 
@@ -337,9 +386,12 @@ Data Agent API 层显式接权限：
 启动流程：
 
 1. 读取 `localStorage.access_token`
-2. 调 `/api/auth/me`
-3. 成功 -> hydrate `authStore` -> 渲染主应用
-4. 失败 -> 清理 token -> 渲染登录页
+2. 读取 `/api/auth/my-projects` 作为授权 scope 真源
+3. 按 `supported_countries ∩ authorizedScopes` 解析有效 project/country
+4. 调 `/api/auth/me`
+5. 成功 -> hydrate `authStore` -> 渲染主应用
+6. `403` -> 回退到合法 scope 后重试
+7. `401` -> 清理 token -> 渲染登录页
 
 ### Visual Direction
 
@@ -359,6 +411,12 @@ Data Agent API 层显式接权限：
 - 无 `data:query:execute`：执行按钮 disabled
 - 无 `memory:manage`：隐藏 Memory 管理按钮
 - 无 `audit:view`：隐藏 Trace/Audit 管理入口
+
+scope selector 也必须走真实授权边界：
+
+- 不再硬编码国家列表
+- 国家选项来自 `supported_countries ∩ authorizedScopes`
+- 项目只有一个时不额外展示项目切换
 
 ## Persistence Strategy
 

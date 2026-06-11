@@ -13,7 +13,7 @@ from app.services.orchestrator_agent.memory_store import (
     DEFAULT_PROJECT_ID,
     DEFAULT_USER_ID,
     MemoryRecord,
-    make_dedupe_key,
+    build_scope_dedupe_key,
     make_memory_id,
 )
 
@@ -136,12 +136,14 @@ def build_memory_record(
     metadata = dict(metadata or {})
     if hits:
         metadata["redaction_hits"] = hits
-    dedupe_key = make_dedupe_key(
-        user_id,
-        project_id,
-        country,
-        normalized_category,
-        redacted,
+    dedupe_key = build_scope_dedupe_key(
+        scope=scope,
+        user_id=user_id,
+        project_id=project_id,
+        country=(country or DEFAULT_COUNTRY).lower(),
+        session_id=session_id,
+        category=normalized_category,
+        content=redacted,
     )
     record = MemoryRecord(
         memory_id=make_memory_id(),

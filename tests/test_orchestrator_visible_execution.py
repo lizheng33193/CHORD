@@ -6405,15 +6405,14 @@ def test_run_agent_loop_clarification_auto_profile_false_stops_after_query_data(
     assert not any(any(step["step_id"] == "run_profile" for step in evt["steps"]) for evt in plan_events)
     assert not any(evt["type"] == "tool_started" and evt.get("tool_name") == "run_profile" for evt in events)
     assert [evt["type"] for evt in events].count("final") == 1
-    assert session.execution_traces[-1].internal_metadata == {
-        "flow_name": "QueryDataThenProfileFlow",
-        "flow_mode": "query_only",
-        "auto_profile": False,
-        "country": "mx",
-        "clarification_resume": True,
-        "cohort_size": 2,
-        "ack_result": "approved",
-    }
+    metadata = session.execution_traces[-1].internal_metadata
+    assert metadata["flow_name"] == "QueryDataThenProfileFlow"
+    assert metadata["flow_mode"] == "query_only"
+    assert metadata["auto_profile"] is False
+    assert metadata["country"] == "mx"
+    assert metadata["clarification_resume"] is True
+    assert metadata["cohort_size"] == 2
+    assert metadata["ack_result"] == "approved"
     _assert_no_internal_trace_keys_in_events(events)
 
 
@@ -6671,15 +6670,14 @@ def test_run_agent_loop_clarification_auto_profile_true_success_runs_query_then_
     assert not any(any(step["step_id"] == "data_acquisition_unavailable" for step in evt["steps"]) for evt in plan_events)
     assert events.index(query_completed) < events.index(check_data_done) < events.index(run_profile_started) < events.index(run_profile_completed) < events.index(review_evt) < events.index(final_evt)
     assert [evt["type"] for evt in events].count("final") == 1
-    assert session.execution_traces[-1].internal_metadata == {
-        "flow_name": "QueryDataThenProfileFlow",
-        "flow_mode": "query_profile",
-        "auto_profile": True,
-        "country": "mx",
-        "clarification_resume": True,
-        "cohort_size": 2,
-        "ack_result": "approved",
-    }
+    metadata = session.execution_traces[-1].internal_metadata
+    assert metadata["flow_name"] == "QueryDataThenProfileFlow"
+    assert metadata["flow_mode"] == "query_profile"
+    assert metadata["auto_profile"] is True
+    assert metadata["country"] == "mx"
+    assert metadata["clarification_resume"] is True
+    assert metadata["cohort_size"] == 2
+    assert metadata["ack_result"] == "approved"
     _assert_no_internal_trace_keys_in_events(events)
 
 
@@ -8116,6 +8114,73 @@ def test_run_agent_loop_general_chat_query_data_tool_loop_visible_failure(monkey
     assert tool_completed["status"] == "error"
     assert tool_completed_index < failed_index < run_failed_index < error_index
     assert "final" not in types
+
+
+def test_run_agent_loop_general_chat_query_data_requires_view_sql_and_execute_permissions(monkeypatch):
+    from app.core.user_context import ProjectAccessScope, UserContext
+    from app.services.orchestrator_agent.agent_loop import run_agent_loop
+    from app.services.orchestrator_agent.schemas import NormalizedRequest
+    from app.services.orchestrator_agent.session_store import create_session
+
+    class _GeneralClient:
+        last_token_usage = {"prompt": 80, "completion": 20, "total": 100}
+
+        def generate_structured(self, **kwargs):
+            return {
+                "status": "ok",
+                "structured_result": {
+                    "tool_call": {
+                        "name": "query_data",
+                        "arguments": {"request": "筛选最近 7 天高风险用户", "country": "mx"},
+                    },
+                },
+            }
+
+    async def _preview(*_args, **_kwargs):
+        raise AssertionError("query_data preview must be blocked before permission passes")
+
+    monkeypatch.setattr("app.services.orchestrator_agent.agent_loop.ModelClient", lambda: _GeneralClient())
+    monkeypatch.setattr(
+        "app.services.orchestrator_agent.agent_loop.normalize_request",
+        lambda prompt, session, detected_country=None: NormalizedRequest(
+            intent="general_chat",
+            country="mx",
+            request_summary="筛选用户列表",
+            request_understanding=None,
+        ),
+    )
+    monkeypatch.setattr(
+        "app.services.orchestrator_agent.agent_loop.refine_normalized_request",
+        lambda client, prompt, session, normalized_request: normalized_request,
+    )
+    monkeypatch.setattr("app.services.orchestrator_agent.agent_loop.execute_query_data_cohort", _preview)
+
+    session = create_session(country="mx", user_id="12", project_id="1")
+    user_context = UserContext(
+        user_id="12",
+        username="analyst",
+        email="analyst@example.com",
+        display_name="Analyst",
+        roles=("analyst",),
+        permissions=("profile:run", "data:query:generate"),
+        project_id="1",
+        project_code="maps_lz",
+        country="mx",
+        project_scopes=(ProjectAccessScope(project_id="1", project_code="maps_lz", access_level="member", country="mx"),),
+        is_superuser=False,
+    )
+
+    async def _drive():
+        return [evt async for evt in run_agent_loop(session=session, prompt="帮我筛选最近 7 天高风险用户列表", user_context=user_context)]
+
+    events = asyncio.run(_drive())
+    types = [evt["type"] for evt in events]
+    messages = [evt.get("message", "") for evt in events if isinstance(evt, dict)]
+
+    assert not any(evt["type"] == "tool_started" and evt.get("tool_name") == "query_data" for evt in events)
+    assert "awaiting_user_ack" not in types
+    assert "run_failed" in types
+    assert any("data:query:view_sql" in message or "data:query:execute" in message for message in messages)
 
 
 def test_run_agent_loop_general_chat_run_profile_tool_loop_visible_success(monkeypatch):

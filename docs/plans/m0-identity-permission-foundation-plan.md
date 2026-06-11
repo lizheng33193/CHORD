@@ -47,6 +47,7 @@
 
 - `app/core/config.py`
 - `app/main.py`
+- `app/auth/errors.py`
 - `app/api/analyze.py`
 - `app/api/analyze_module.py`
 - `app/api/analyze_stream.py`
@@ -59,6 +60,11 @@
 - `app/services/orchestrator_agent/loop_context.py`
 - `app/services/orchestrator_agent/agent_loop.py`
 - `app/services/orchestrator_agent/memory_context.py`
+- `app/services/orchestrator_agent/memory_policy.py`
+- `app/services/orchestrator_agent/memory_store.py`
+- `app/services/orchestrator_agent/tools/query_data.py`
+- `app/services/orchestrator_agent/flows/general_chat.py`
+- `app/services/orchestrator_agent/flows/query_data_then_profile.py`
 - `data_acquisition_agent/api.py`
 - `requirements.txt`
 - `PLANNING.md`
@@ -95,6 +101,7 @@
 
 - `tests/orchestrator_agent/test_memory_api_sqlite.py`
 - `tests/test_trace_analyzer_api.py`
+- `tests/test_orchestrator_visible_execution.py`
 
 ## Execution Order
 
@@ -148,6 +155,16 @@
 - `git remote -v` 校验
 - `git push`
 
+## Hardening Delta
+
+本轮在“第一阶段闭环”基础上继续收紧 5 个公开契约：
+
+1. `401` 与 `403` 严格分开，scope 不合法一律 `403`
+2. country alias 统一归一化，至少覆盖 `mx/mexico` 与 `th/thailand`
+3. Orchestrator session 改为 `user + project + country` 三元组绑定
+4. chat `query_data` 在 preview 前同时要求 `data:query:view_sql + data:query:execute`
+5. Memory scope 语义正式固定为 `session / user / project / global`
+
 ## Verification Matrix
 
 ### Backend
@@ -174,6 +191,10 @@
 - `viewer` 无法 execute SQL
 - `analyst` 可跑 analyze / orchestrator
 - memory 查询按 user/project/country 隔离
+- `project` memory 同项目同国家跨用户可见
+- `global` memory 同项目跨国家可见
+- `query_data` 无 SQL 明文/执行权限时不会进入 preview
+- `/api/orchestrator/sessions/{id}` 同 user 但不同 project/country 返回 `403`
 
 ## Commit Strategy
 

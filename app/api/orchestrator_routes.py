@@ -21,7 +21,9 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from app.auth.dependencies import build_request_context, require_permission
+from app.auth.permissions import normalize_country_scope_value
 from app.core.config import settings
+from app.core.audit import record_runtime_audit_event
 from app.core.user_context import UserContext
 from app.services.orchestrator_agent.ack_bus import abort_ack, resolve_ack
 from app.services.orchestrator_agent.resolve_bus import abort_resolution, resolve_pending_resolution
@@ -78,7 +80,6 @@ async def chat_endpoint(
     request: Request,
     ctx: UserContext = Depends(require_permission("profile:run")),
 ) -> StreamingResponse:
-    identity = _identity_from_request(request, ctx=ctx)
     if req.session_id:
         sess = get_session(req.session_id)
         if sess is None:
@@ -92,7 +93,14 @@ async def chat_endpoint(
             if req.session_id in _PENDING_PROMPTS:
                 raise HTTPException(409, "A pending prompt already exists for this session")
     else:
+        identity = _identity_from_request(request, ctx=ctx)
         sess = create_session(**identity)
+    if req.session_id:
+        identity = {
+            "user_id": sess.user_id,
+            "project_id": sess.project_id,
+            "country": normalize_country_scope_value(sess.country) or DEFAULT_COUNTRY,
+        }
     request_ctx = build_request_context(request, user=ctx, session_id=sess.session_id)
 
     async def event_stream() -> AsyncGenerator[bytes, None]:
@@ -510,6 +518,20 @@ async def memory_create_endpoint(
         user_id=identity["user_id"],
         project_id=identity["project_id"],
         country=identity["country"],
+        session_id=body.session_id,
+    )
+    record_runtime_audit_event(
+        user=ctx,
+        request_context=build_request_context(request, user=ctx),
+        event_type="memory.create",
+        action="create",
+        resource_type="memory",
+        resource_id=record.memory_id,
+        metadata={
+            "scope": memory.get("scope") if memory else body.scope,
+            "category": body.category,
+            "country": identity["country"],
+        },
     )
     return {
         "success": True,
@@ -543,10 +565,10 @@ async def memory_update_endpoint(
     decision = build_memory_record(
         content=body.content if body.content is not None else existing["content"],
         category=body.category if body.category is not None else existing["category"],
-        user_id=identity["user_id"],
+        user_id=existing["user_id"],
         project_id=identity["project_id"],
         session_id=existing.get("session_id"),
-        country=identity["country"],
+        country=existing.get("country") or identity["country"],
         scope=existing.get("scope") or "user",
         memory_type=existing.get("memory_type") or "semantic",
         source="memory_admin",
@@ -572,6 +594,20 @@ async def memory_update_endpoint(
         user_id=identity["user_id"],
         project_id=identity["project_id"],
         country=identity["country"],
+        session_id=existing.get("session_id"),
+    )
+    record_runtime_audit_event(
+        user=ctx,
+        request_context=build_request_context(request, user=ctx),
+        event_type="memory.update",
+        action="update",
+        resource_type="memory",
+        resource_id=record.memory_id,
+        metadata={
+            "scope": memory.get("scope") if memory else existing.get("scope"),
+            "category": memory.get("category") if memory else existing.get("category"),
+            "country": identity["country"],
+        },
     )
     return {"success": True, "memory": memory, "redaction_hits": decision.redaction_hits}
 
@@ -648,38 +684,58 @@ def _identity_from_request(
         identity = {
             "user_id": ctx.user_id,
             "project_id": str(ctx.project_id or DEFAULT_PROJECT_ID),
-            "country": (ctx.country or DEFAULT_COUNTRY).lower(),
+            "country": normalize_country_scope_value(ctx.country or DEFAULT_COUNTRY) or DEFAULT_COUNTRY,
         }
         if ctx.is_superuser:
             return {
                 "user_id": user_id or identity["user_id"],
                 "project_id": project_id or identity["project_id"],
-                "country": (country or identity["country"]).lower(),
+                "country": normalize_country_scope_value(country or identity["country"]) or identity["country"],
             }
         return identity
     return {
         "user_id": user_id or request.headers.get("X-User-ID") or DEFAULT_USER_ID,
         "project_id": project_id or request.headers.get("X-Project-ID") or DEFAULT_PROJECT_ID,
-        "country": (country or request.headers.get("X-Country") or DEFAULT_COUNTRY).lower(),
+        "country": normalize_country_scope_value(country or request.headers.get("X-Country") or DEFAULT_COUNTRY) or DEFAULT_COUNTRY,
     }
 
 
 def _apply_request_identity(sess, request: Request, ctx: UserContext | None = None) -> dict[str, str]:
-    identity = _identity_from_request(request, ctx=ctx)
-    sess.user_id = identity["user_id"]
-    sess.project_id = identity["project_id"]
-    sess.country = identity["country"]
+    requested_identity = _identity_from_request(request, ctx=ctx)
+    changed = False
+    if not sess.user_id:
+        sess.user_id = requested_identity["user_id"]
+        changed = True
+    if not sess.project_id:
+        sess.project_id = requested_identity["project_id"]
+        changed = True
+    if not sess.country:
+        sess.country = requested_identity["country"]
+        changed = True
+    identity = {
+        "user_id": sess.user_id,
+        "project_id": sess.project_id,
+        "country": normalize_country_scope_value(sess.country) or requested_identity["country"],
+    }
     if ctx is not None:
         sess.active_entities["user_context_snapshot"] = ctx.to_dict()
         sess.active_entities["request_context"] = build_request_context(request, user=ctx, session_id=sess.session_id).to_dict()
-    save_session(sess)
+        changed = True
+    if changed:
+        save_session(sess)
     return identity
 
 
 def _require_session_access(sess, ctx: UserContext) -> None:
     if ctx.is_superuser:
         return
-    if str(sess.user_id) != str(ctx.user_id):
+    session_country = normalize_country_scope_value(sess.country) or DEFAULT_COUNTRY
+    context_country = normalize_country_scope_value(ctx.country) or DEFAULT_COUNTRY
+    if (
+        str(sess.user_id) != str(ctx.user_id)
+        or str(sess.project_id or DEFAULT_PROJECT_ID) != str(ctx.project_id or DEFAULT_PROJECT_ID)
+        or session_country != context_country
+    ):
         raise HTTPException(status_code=403, detail="session is not visible to the current user")
 
 
@@ -720,4 +776,15 @@ def _set_memory_status(
         memory = SQLiteMemoryStore().set_status(memory_id, status=status, **identity)
     except MemoryStoreNotFound as exc:
         raise HTTPException(status_code=404, detail="memory not found") from exc
+    if ctx is not None:
+        action = {"archived": "archive", "active": "restore", "deleted": "delete"}.get(status, status)
+        record_runtime_audit_event(
+            user=ctx,
+            request_context=build_request_context(request, user=ctx),
+            event_type=f"memory.{action}",
+            action=action,
+            resource_type="memory",
+            resource_id=memory_id,
+            metadata={"scope": memory.get("scope"), "country": identity["country"]},
+        )
     return {"success": True, "memory": memory}

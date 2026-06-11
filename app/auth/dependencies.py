@@ -9,6 +9,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from app.auth.database import get_db
+from app.auth.errors import AuthenticationError, AuthorizationError
 from app.auth.jwt import JWTError, decode_access_token
 from app.auth.permissions import require_permission as require_permission_check
 from app.auth.service import AuthService
@@ -99,8 +100,10 @@ def optional_user_context(
             requested_project_id=requested_project_id,
             requested_country=requested_country,
         )
-    except PermissionError as exc:
+    except AuthenticationError as exc:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
+    except AuthorizationError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
 
 
 def get_current_user_context(ctx: UserContext | None = Depends(optional_user_context)) -> UserContext:
@@ -113,7 +116,7 @@ def require_permission(permission: str):
     def _dependency(ctx: UserContext = Depends(get_current_user_context)) -> UserContext:
         try:
             require_permission_check(ctx, permission)
-        except PermissionError as exc:
+        except AuthorizationError as exc:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
         return ctx
 

@@ -35,6 +35,7 @@ const DEFAULT_CHAT_WIDTH = 440;
 const DESKTOP_COLLAPSED_CHAT_WIDTH = 76;
 const SAFE_LEFT_WIDTH = 800;
 const CHAT_AUTO_COLLAPSE_BREAKPOINT = 1280;
+const COUNTRY_NAMES = { mx: '墨西哥', th: '泰国' };
 const DASHBOARD_LAYOUT_STYLES = `
   #workspace {
     display: flex;
@@ -363,6 +364,11 @@ function clampChatWidth(width, viewportWidth) {
   return Math.min(safeMax, Math.max(MIN_CHAT_WIDTH, width));
 }
 
+function formatCountryLabel(countryCode) {
+  const code = String(countryCode || '').toLowerCase();
+  return `${COUNTRY_NAMES[code] || code.toUpperCase()} · ${code.toUpperCase()}`;
+}
+
 function DashboardView({
   activeTab,
   setActiveTab,
@@ -380,6 +386,10 @@ function DashboardView({
   currentUser = null,
   permissions = [],
   onLogout = null,
+  authorizedScopes = [],
+  supportedCountries = [],
+  projectId = '',
+  onProjectChange,
   country = 'mx',
   onCountryChange,
   chatFocusRequested = false,
@@ -574,7 +584,24 @@ function DashboardView({
   const showSecondaryStack = Boolean(selectedResult.standardized_labels) || hasMultipleResults;
   const userDisplayName = currentUser && (currentUser.display_name || currentUser.username) ? (currentUser.display_name || currentUser.username) : '当前用户';
   const userRoleLabel = currentUser && Array.isArray(currentUser.roles) && currentUser.roles.length ? currentUser.roles[0] : 'analyst';
-  const projectLabel = currentUser && currentUser.project_code ? String(currentUser.project_code).toUpperCase() : 'MAPS-LZ';
+  const projectEntries = [];
+  const seenProjects = new Set();
+  (authorizedScopes || []).forEach((scope) => {
+    if (!scope || seenProjects.has(scope.project_id)) return;
+    seenProjects.add(scope.project_id);
+    projectEntries.push(scope);
+  });
+  const currentProject = projectEntries.find((scope) => scope.project_id === projectId) || projectEntries[0] || null;
+  const projectLabel = currentProject && currentProject.project_code
+    ? String(currentProject.project_code).toUpperCase()
+    : (currentUser && currentUser.project_code ? String(currentUser.project_code).toUpperCase() : 'MAPS-LZ');
+  const allowedCountries = (() => {
+    const supported = Array.isArray(supportedCountries) && supportedCountries.length ? supportedCountries : ['mx', 'th'];
+    if (!currentProject) return supported;
+    const projectScopes = (authorizedScopes || []).filter((scope) => scope && scope.project_id === currentProject.project_id);
+    if (projectScopes.some((scope) => scope.country == null)) return supported;
+    return supported.filter((code) => projectScopes.some((scope) => scope.country === code));
+  })();
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-[#F4F7F9] font-sans text-slate-800">
@@ -594,14 +621,31 @@ function DashboardView({
         </div>
 
         <div className="flex items-center gap-4 text-sm">
+          {projectEntries.length > 1 ? (
+            <select
+              value={projectId}
+              onChange={(e) => onProjectChange && onProjectChange(e.target.value)}
+              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700"
+              title="切换项目"
+            >
+              {projectEntries.map((scope) => (
+                <option key={scope.project_id} value={scope.project_id}>
+                  {String(scope.project_code || scope.project_id).toUpperCase()}
+                </option>
+              ))}
+            </select>
+          ) : null}
           <select
             value={country}
             onChange={(e) => onCountryChange && onCountryChange(e.target.value)}
             className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700"
             title="切换国家"
           >
-            <option value="mx">墨西哥 (MX)</option>
-            <option value="th">泰国 (TH)</option>
+            {allowedCountries.map((countryCode) => (
+              <option key={countryCode} value={countryCode}>
+                {formatCountryLabel(countryCode)}
+              </option>
+            ))}
           </select>
           <div className="h-4 w-px bg-slate-200"></div>
           <span className="text-slate-500">当前模式: <span className="font-medium text-slate-700">api-live</span></span>

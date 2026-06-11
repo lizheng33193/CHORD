@@ -8,10 +8,11 @@ from datetime import datetime, timedelta
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session, selectinload
 
+from app.auth.errors import AuthenticationError
 from app.auth.jwt import create_access_token, hash_token
 from app.auth.models import Permission, Project, Role, RolePermission, User, UserProjectAccess, UserRole, UserSession
 from app.auth.password import hash_password, verify_password
-from app.auth.permissions import resolve_scope
+from app.auth.permissions import normalize_country_scope_value, resolve_scope
 from app.auth.seed import DEFAULT_PROJECT_CODE
 from app.core.config import settings
 from app.core.user_context import ProjectAccessScope, UserContext
@@ -59,7 +60,7 @@ class AuthService:
             status="active",
             is_superuser=False,
             default_project_id=project.id,
-            default_country=(default_country or "mx").lower(),
+            default_country=normalize_country_scope_value(default_country or "mx") or "mx",
         )
         self.db.add(user)
         self.db.flush()
@@ -72,7 +73,7 @@ class AuthService:
             UserProjectAccess(
                 user_id=user.id,
                 project_id=project.id,
-                country=(default_country or "mx").lower(),
+                country=normalize_country_scope_value(default_country or "mx") or "mx",
                 access_level="member",
             )
         )
@@ -132,11 +133,11 @@ class AuthService:
     def validate_session(self, session_key: str) -> UserSession:
         session = self.db.scalar(select(UserSession).where(UserSession.session_key == session_key))
         if session is None:
-            raise PermissionError("session not found")
+            raise AuthenticationError("session not found")
         if session.revoked_at is not None:
-            raise PermissionError("session revoked")
+            raise AuthenticationError("session revoked")
         if session.expires_at <= datetime.utcnow():
-            raise PermissionError("session expired")
+            raise AuthenticationError("session expired")
         return session
 
     def revoke_session(self, session_key: str) -> None:
@@ -165,7 +166,7 @@ class AuthService:
     ) -> UserContext:
         user = self.get_user_by_id(user_id)
         if user is None or user.status != "active":
-            raise PermissionError("user not found or inactive")
+            raise AuthenticationError("user not found or inactive")
 
         roles = sorted({
             link.role.code
@@ -191,7 +192,7 @@ class AuthService:
                 project_id=str(link.project_id),
                 project_code=link.project.code if link.project is not None else DEFAULT_PROJECT_CODE,
                 access_level=link.access_level,
-                country=link.country.lower() if link.country else None,
+                country=normalize_country_scope_value(link.country) or None,
             )
             for link in user.project_links
         )
@@ -200,7 +201,9 @@ class AuthService:
         fallback_scope = project_scopes[0] if project_scopes else None
         project_id = str(user.default_project_id) if user.default_project_id is not None else (fallback_scope.project_id if fallback_scope else None)
         project_code = default_project.code if default_project is not None else (fallback_scope.project_code if fallback_scope else None)
-        country = (user.default_country or (fallback_scope.country if fallback_scope else None) or settings.auth_demo_country).lower()
+        country = normalize_country_scope_value(
+            user.default_country or (fallback_scope.country if fallback_scope else None) or settings.auth_demo_country
+        ) or "mx"
 
         ctx = UserContext(
             user_id=str(user.id),

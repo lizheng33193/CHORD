@@ -52,6 +52,15 @@
     - `AuthGate`、登录/注册页、`authStore`、`httpClient`
     - Bearer token、401 自动退出、国家/项目 header 自动透传
     - Dashboard / Chat / Memory Inspector 已绑定真实登录身份与权限可见性
+  - 2026-06-11 hardening closure：
+    - `401/403` 语义拆分完成，非法 scope 不再误触发前端登出
+    - `mx/mexico`、`th/thailand` country alias 已统一到同一套授权判断
+    - `query_data` chat preview 前已收紧到 `data:query:view_sql + data:query:execute`
+    - Data Acquisition generate / execute 已补国家 scope 校验
+    - Orchestrator session 已改为 `user + project + country` 三元组可见性
+    - Memory `project/global` scope 已改为真实共享语义，并补共享去重
+    - runtime audit 已覆盖 `profile.run`、`trace.view`、`memory.*`、`data.query.generate/preview/execute`
+    - 前端 scope selector 已改为 `/api/auth/my-projects` + `/api/ui-config.supported_countries`
 - [x] Data Agent 本地 MySQL 沙盒（目标 1）→ 已落地 `DA_LOCAL_DEV` 路由修复、4 表 local_dev 知识库、Docker MySQL 资产、chunked CSV 导入脚本与 by_uid 闭环验证入口（2026-06-05）
 - [x] Data Agent 本地 MySQL “开机即测”联调脚本 → 已新增 `.env.local-mysql.example`、`scripts/local_mysql/local_stack.py`、`dev_up/dev_smoke/dev_down.sh` 与 quickstart 文档，支持一键 `up / smoke / down`（2026-06-05）
 - [x] ModelClient 重构 → [docs/plans/01-model-client-refactor-plan.md](docs/plans/01-model-client-refactor-plan.md)（[complete] a949830 2026-05-02）

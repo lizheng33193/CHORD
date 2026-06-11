@@ -7,6 +7,8 @@ import uuid
 from dataclasses import dataclass
 from typing import Any, AsyncIterator, Literal
 
+from app.auth.permissions import require_permissions
+from app.core.audit import record_runtime_audit_event
 from app.core.data_acquisition_capability import data_acquisition_unavailable_message
 from app.services.orchestrator_agent.execution.data_query_runner import (
     DataQueryPreview,
@@ -121,6 +123,10 @@ class _PostQueryProfileDecision:
 
 
 _REPAIRABLE_BUCKETS = {"credit", "behavior", "app"}
+_QUERY_DATA_REQUIRED_PERMISSIONS = (
+    "data:query:view_sql",
+    "data:query:execute",
+)
 
 
 class QueryDataThenProfileFlow:
@@ -1223,6 +1229,25 @@ class QueryDataThenProfileFlow:
             default_auto_profile=default_auto_profile,
         )
         country_for_execution = request.country or ctx.detected_country or ctx.session.country or normalized_query.country or "mx"
+        if ctx.user_context is not None:
+            self._update_trace_metadata(trace, approved_by=ctx.user_context.username)
+            try:
+                require_permissions(ctx.user_context, _QUERY_DATA_REQUIRED_PERMISSIONS)
+            except PermissionError as exc:
+                record_runtime_audit_event(
+                    user=ctx.user_context,
+                    request_context=ctx.request_context,
+                    event_type="data.query.preview",
+                    action="preview",
+                    status="denied",
+                    resource_type="tool",
+                    resource_id="query_data",
+                    metadata={
+                        "country": country_for_execution,
+                        "required_permissions": list(_QUERY_DATA_REQUIRED_PERMISSIONS),
+                    },
+                )
+                raise
         tool_call_id: str | None = None
         ack_requested = False
 

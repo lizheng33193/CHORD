@@ -9,6 +9,7 @@ Phase 3 Task 3.4 在本文件追加 ACK 分支特殊处理，工具中 query_dat
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import inspect
 import json
 import logging
@@ -17,8 +18,10 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, AsyncGenerator
 
+from app.auth.permissions import require_permissions
+from app.core.audit import record_runtime_audit_event
 from app.core.request_context import RequestContext
-from app.core.user_context import UserContext
+from app.core.user_context import ProjectAccessScope, UserContext
 from app.core.data_acquisition_capability import (
     data_acquisition_unavailable_message,
     get_data_acquisition_capability,
@@ -239,6 +242,121 @@ def _append_data_acquisition_issue(
     )
 
 
+_QUERY_DATA_REQUIRED_PERMISSIONS = (
+    "data:query:view_sql",
+    "data:query:execute",
+)
+
+
+def _user_context_from_session(session: OrchestratorSession) -> UserContext | None:
+    snapshot = session.active_entities.get("user_context_snapshot")
+    if not isinstance(snapshot, dict):
+        return None
+    scope_rows = snapshot.get("project_scopes") if isinstance(snapshot.get("project_scopes"), list) else []
+    project_scopes = tuple(
+        ProjectAccessScope(
+            project_id=str(scope.get("project_id") or ""),
+            project_code=str(scope.get("project_code") or ""),
+            access_level=str(scope.get("access_level") or "member"),
+            country=scope.get("country"),
+        )
+        for scope in scope_rows
+        if isinstance(scope, dict)
+    )
+    return UserContext(
+        user_id=str(snapshot.get("user_id") or session.user_id),
+        username=str(snapshot.get("username") or ""),
+        email=snapshot.get("email"),
+        display_name=snapshot.get("display_name"),
+        roles=tuple(snapshot.get("roles") or ()),
+        permissions=tuple(snapshot.get("permissions") or ()),
+        project_id=str(snapshot.get("project_id") or session.project_id or "") or None,
+        project_code=snapshot.get("project_code"),
+        country=snapshot.get("country"),
+        project_scopes=project_scopes,
+        is_superuser=bool(snapshot.get("is_superuser")),
+    )
+
+
+def _request_context_from_session(session: OrchestratorSession) -> RequestContext | None:
+    snapshot = session.active_entities.get("request_context")
+    if not isinstance(snapshot, dict):
+        return None
+    user_snapshot = snapshot.get("user") if isinstance(snapshot.get("user"), dict) else None
+    user = None
+    if isinstance(user_snapshot, dict):
+        user = _user_context_from_session(
+            session.model_copy(update={"active_entities": {"user_context_snapshot": user_snapshot}})
+        )
+    request_id = str(snapshot.get("request_id") or "").strip()
+    if not request_id:
+        return None
+    return RequestContext(
+        request_id=request_id,
+        user=user,
+        session_id=snapshot.get("session_id"),
+        trace_id=snapshot.get("trace_id"),
+    )
+
+
+def _audit_query_data_event(
+    session: OrchestratorSession,
+    *,
+    event_type: str,
+    action: str,
+    status: str,
+    country: str,
+    request_text: str,
+    sql_text: str | None = None,
+    approved_by: str | None = None,
+    rows_estimated: int | None = None,
+    rows_actual: int | None = None,
+) -> None:
+    user = _user_context_from_session(session)
+    request_context = _request_context_from_session(session)
+    metadata = {
+        "country": country,
+        "request_text": request_text,
+        "approved_by": approved_by,
+        "rows_estimated": rows_estimated,
+        "rows_actual": rows_actual,
+    }
+    if sql_text:
+        metadata["sql_hash"] = hashlib.sha256(sql_text.encode("utf-8")).hexdigest()
+    record_runtime_audit_event(
+        user=user,
+        request_context=request_context,
+        event_type=event_type,
+        action=action,
+        status=status,
+        resource_type="tool",
+        resource_id="query_data",
+        metadata=metadata,
+    )
+
+
+def _require_query_data_permissions(session: OrchestratorSession, *, country: str, request_text: str) -> str:
+    user = _user_context_from_session(session)
+    approved_by = "orchestrator_agent"
+    if user is None:
+        return approved_by
+    approved_by = user.username or approved_by
+    try:
+        require_permissions(user, _QUERY_DATA_REQUIRED_PERMISSIONS)
+    except PermissionError:
+        _audit_query_data_event(
+            session,
+            event_type="data.query.preview",
+            action="preview",
+            status="denied",
+            country=country,
+            request_text=request_text,
+            approved_by=approved_by,
+        )
+        raise
+    return approved_by
+
+
 async def execute_query_data_cohort(session: OrchestratorSession, request_text: str, country: str) -> dict[str, Any]:
     """Query cohort UIDs through data_acquisition_agent with session-level cancel semantics."""
     # Compatibility / dependency-injection seam retained for LoopDependencies
@@ -249,15 +367,54 @@ async def execute_query_data_cohort(session: OrchestratorSession, request_text: 
     from app.services.orchestrator_agent.tools.query_data import _ChildAgent
 
     if is_query_cancelled(session.session_id):
+        _audit_query_data_event(
+            session,
+            event_type="data.query.preview",
+            action="preview",
+            status="cancelled",
+            country=country,
+            request_text=request_text,
+        )
         raise PermissionError("user cancelled in this session")
 
+    approved_by = _require_query_data_permissions(
+        session,
+        country=country,
+        request_text=request_text,
+    )
     child = _ChildAgent(country=country)
-    qr = await asyncio.to_thread(child.run_query, request_text)
-    return {
-        "child": child,
-        "sql_text": qr.sql_text,
-        "rows_estimated": qr.rows_estimated,
-    }
+    try:
+        qr = await asyncio.to_thread(child.run_query, request_text)
+        _audit_query_data_event(
+            session,
+            event_type="data.query.preview",
+            action="preview",
+            status="success",
+            country=country,
+            request_text=request_text,
+            sql_text=qr.sql_text,
+            approved_by=approved_by,
+            rows_estimated=qr.rows_estimated,
+        )
+        return {
+            "child": child,
+            "sql_text": qr.sql_text,
+            "rows_estimated": qr.rows_estimated,
+            "approved_by": approved_by,
+        }
+    except PermissionError:
+        raise
+    except Exception:
+        _audit_query_data_event(
+            session,
+            event_type="data.query.preview",
+            action="preview",
+            status="error",
+            country=country,
+            request_text=request_text,
+            approved_by=approved_by,
+        )
+        raise
 
 
 async def _complete_query_data_cohort(
@@ -267,13 +424,56 @@ async def _complete_query_data_cohort(
 ) -> dict[str, Any]:
     # Compatibility / dependency-injection seam retained for LoopDependencies
     # and monkeypatch-based tests around query completion.
-    execute_out = await asyncio.to_thread(child.execute, sql_text)
-    return {
-        "uids": list(execute_out.get("uids") or []),
-        "rows_actual": int(execute_out.get("rows_actual") or 0),
-        "sql_text": sql_text,
-        "rows_estimated": int(execute_out.get("rows_estimated") or -1),
-    }
+    approved_by = _require_query_data_permissions(
+        session,
+        country=getattr(child, "_country_code", "mx"),
+        request_text=sql_text,
+    )
+    try:
+        execute_out = await asyncio.to_thread(child.execute, sql_text, approved_by=approved_by)
+        _audit_query_data_event(
+            session,
+            event_type="data.query.execute",
+            action="execute",
+            status="success",
+            country=getattr(child, "_country_code", "mx"),
+            request_text=sql_text,
+            sql_text=sql_text,
+            approved_by=approved_by,
+            rows_estimated=int(execute_out.get("rows_estimated") or -1),
+            rows_actual=int(execute_out.get("rows_actual") or 0),
+        )
+        return {
+            "uids": list(execute_out.get("uids") or []),
+            "rows_actual": int(execute_out.get("rows_actual") or 0),
+            "sql_text": sql_text,
+            "rows_estimated": int(execute_out.get("rows_estimated") or -1),
+            "approved_by": execute_out.get("approved_by") or approved_by,
+        }
+    except PermissionError:
+        _audit_query_data_event(
+            session,
+            event_type="data.query.execute",
+            action="execute",
+            status="denied",
+            country=getattr(child, "_country_code", "mx"),
+            request_text=sql_text,
+            sql_text=sql_text,
+            approved_by=approved_by,
+        )
+        raise
+    except Exception:
+        _audit_query_data_event(
+            session,
+            event_type="data.query.execute",
+            action="execute",
+            status="error",
+            country=getattr(child, "_country_code", "mx"),
+            request_text=sql_text,
+            sql_text=sql_text,
+            approved_by=approved_by,
+        )
+        raise
 
 
 def build_loop_dependencies() -> LoopDependencies:

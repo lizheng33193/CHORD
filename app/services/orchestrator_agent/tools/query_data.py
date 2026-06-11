@@ -153,7 +153,7 @@ class _ChildAgent:
         output_bucket: str = "behavior",
         output_format: str = "json",
     ) -> dict[str, Any]:
-        del approved_by, output_bucket, output_format
+        del output_bucket, output_format
         request_id = uuid.uuid4().hex
         manifest = _load_manifest(self._country_name)
         settings = _load_settings()
@@ -201,6 +201,7 @@ class _ChildAgent:
             "uids": uids,
             "rows_actual": int(len(df)),
             "rows_estimated": int(rows_estimated),
+            "approved_by": approved_by,
         }
 
 
