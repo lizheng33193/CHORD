@@ -1,4 +1,4 @@
-const { UserRoundPlus, Shield, Mail, KeyRound, ArrowLeft, AlertCircle: RegisterAlertCircle } = window.LucideReact || {};
+const { UserPlus, Shield, Mail, KeyRound, ArrowLeft, AlertCircle: RegisterAlertCircle } = window.LucideReact || {};
 
 function RegisterPage({
   onSubmit,
@@ -32,7 +32,7 @@ function RegisterPage({
           <div className="flex h-full flex-col justify-between">
             <div>
               <div className="mb-10 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/14">
-                <UserRoundPlus className="h-6 w-6" />
+                <UserPlus className="h-6 w-6" />
               </div>
               <p className="text-sm font-semibold uppercase tracking-[0.22em] text-blue-100/85">Register</p>
               <h1 className="mt-4 font-['Lexend'] text-4xl font-semibold leading-tight">
@@ -81,7 +81,7 @@ function RegisterPage({
                 用户名
               </label>
               <div className="relative">
-                <UserRoundPlus className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <UserPlus className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <input
                   id="register-username"
                   type="text"
