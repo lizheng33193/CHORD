@@ -2,6 +2,12 @@
 // Source: HomeView at L206-L331.
 
 const { BrainCircuit, Bot, Search, ChevronRight, AlertCircle, FileUp, MessageCircle } = window.LucideReact || {};
+const COUNTRY_NAMES = { mx: '墨西哥', th: '泰国' };
+
+function formatCountryLabel(countryCode) {
+  const code = String(countryCode || '').toLowerCase();
+  return `${COUNTRY_NAMES[code] || code.toUpperCase()} · ${code.toUpperCase()}`;
+}
 
 function HomeView({
   uid,
@@ -18,14 +24,35 @@ function HomeView({
   errorMessage,
   currentUser = null,
   onLogout = null,
+  authorizedScopes = [],
+  supportedCountries = [],
+  projectId = '',
+  onProjectChange,
   country = 'mx',
   onCountryChange
 }) {
   const displayName = currentUser && (currentUser.display_name || currentUser.username);
-  const projectCode = currentUser && currentUser.project_code ? String(currentUser.project_code).toUpperCase() : 'MAPS-LZ';
+  const projectEntries = [];
+  const seenProjects = new Set();
+  (authorizedScopes || []).forEach((scope) => {
+    if (!scope || seenProjects.has(scope.project_id)) return;
+    seenProjects.add(scope.project_id);
+    projectEntries.push(scope);
+  });
+  const currentProject = projectEntries.find((scope) => scope.project_id === projectId) || projectEntries[0] || null;
+  const projectCode = currentProject && currentProject.project_code
+    ? String(currentProject.project_code).toUpperCase()
+    : (currentUser && currentUser.project_code ? String(currentUser.project_code).toUpperCase() : 'MAPS-LZ');
   const roleLabel = currentUser && Array.isArray(currentUser.roles) && currentUser.roles.length
     ? currentUser.roles[0]
     : 'analyst';
+  const allowedCountries = (() => {
+    const supported = Array.isArray(supportedCountries) && supportedCountries.length ? supportedCountries : ['mx', 'th'];
+    if (!currentProject) return supported;
+    const projectScopes = (authorizedScopes || []).filter((scope) => scope && scope.project_id === currentProject.project_id);
+    if (projectScopes.some((scope) => scope.country == null)) return supported;
+    return supported.filter((code) => projectScopes.some((scope) => scope.country === code));
+  })();
 
   return (
     <div className="min-h-screen bg-[#f8fafc] flex flex-col items-center justify-center relative overflow-hidden">
@@ -68,15 +95,34 @@ function HomeView({
           <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
           <span className="text-sm text-slate-600">UID 与文件上传均已接通真实后端</span>
         </div>
-        <div className="inline-flex items-center gap-2 mb-4">
+        <div className="mb-4 flex flex-wrap items-center gap-3">
+          {projectEntries.length > 1 ? (
+            <>
+              <span className="text-sm text-slate-500">项目：</span>
+              <select
+                value={projectId}
+                onChange={(e) => onProjectChange && onProjectChange(e.target.value)}
+                className="text-sm border border-slate-300 rounded-md px-2 py-1 bg-white"
+              >
+                {projectEntries.map((scope) => (
+                  <option key={scope.project_id} value={scope.project_id}>
+                    {String(scope.project_code || scope.project_id).toUpperCase()}
+                  </option>
+                ))}
+              </select>
+            </>
+          ) : null}
           <span className="text-sm text-slate-500">国家：</span>
           <select
             value={country}
             onChange={(e) => onCountryChange && onCountryChange(e.target.value)}
             className="text-sm border border-slate-300 rounded-md px-2 py-1 bg-white"
           >
-            <option value="mx">墨西哥 (MX)</option>
-            <option value="th">泰国 (TH)</option>
+            {allowedCountries.map((countryCode) => (
+              <option key={countryCode} value={countryCode}>
+                {formatCountryLabel(countryCode)}
+              </option>
+            ))}
           </select>
         </div>
         <h1 className="text-3xl md:text-4xl font-bold text-slate-800 mb-4 tracking-wide flex items-center gap-3 text-center">

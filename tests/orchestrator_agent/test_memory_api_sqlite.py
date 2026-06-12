@@ -162,6 +162,105 @@ def test_memory_management_api_identity_isolation_and_duplicate_update_conflict(
 
 
 @pytest.mark.timeout(3)
+def test_project_scope_memory_is_shared_within_same_project_and_country():
+    store = SQLiteMemoryStore()
+    decision = build_memory_record(
+        content="项目事实：这个结论应该在项目内共享",
+        category="project",
+        user_id="alice",
+        project_id="proj-shared",
+        country="mx",
+        scope="project",
+        source="memory_admin",
+    )
+    assert decision.accepted and decision.record
+    store.add(decision.record)
+
+    visible = store.search(
+        "项目内共享",
+        user_id="bob",
+        project_id="proj-shared",
+        country="mx",
+    )
+    hidden_other_country = store.search(
+        "项目内共享",
+        user_id="bob",
+        project_id="proj-shared",
+        country="th",
+    )
+
+    assert visible
+    assert visible[0]["scope"] == "project"
+    assert hidden_other_country == []
+
+
+@pytest.mark.timeout(3)
+def test_global_scope_memory_is_shared_across_countries_within_same_project():
+    store = SQLiteMemoryStore()
+    decision = build_memory_record(
+        content="项目全局事实：这个结论应该跨国家共享",
+        category="project",
+        user_id="alice",
+        project_id="proj-global",
+        country="mx",
+        scope="global",
+        source="memory_admin",
+    )
+    assert decision.accepted and decision.record
+    store.add(decision.record)
+
+    same_project_other_country = store.search(
+        "跨国家共享",
+        user_id="bob",
+        project_id="proj-global",
+        country="th",
+    )
+    other_project = store.search(
+        "跨国家共享",
+        user_id="bob",
+        project_id="other-project",
+        country="mx",
+    )
+
+    assert same_project_other_country
+    assert same_project_other_country[0]["scope"] == "global"
+    assert other_project == []
+
+
+@pytest.mark.timeout(3)
+@pytest.mark.parametrize("scope,country", [("project", "mx"), ("global", "mx")])
+def test_shared_scope_dedupe_ignores_creator_identity(scope: str, country: str):
+    store = SQLiteMemoryStore()
+    first = build_memory_record(
+        content="项目事实：共享记忆不应按创建者重复",
+        category="project",
+        user_id="alice",
+        project_id="proj-dedupe",
+        country=country,
+        scope=scope,
+        source="memory_admin",
+    )
+    second = build_memory_record(
+        content="项目事实：共享记忆不应按创建者重复",
+        category="project",
+        user_id="bob",
+        project_id="proj-dedupe",
+        country=country,
+        scope=scope,
+        source="memory_admin",
+    )
+    assert first.accepted and first.record
+    assert second.accepted and second.record
+
+    record_1 = store.add(first.record)
+    record_2 = store.add(second.record)
+
+    assert record_1.memory_id == record_2.memory_id
+    listed = store.list_records(project_id="proj-dedupe", status="active", limit=20)
+    assert len([item for item in listed if item["memory_id"] == record_1.memory_id]) == 1
+
+
+@pytest.mark.timeout(3)
 def test_session_history_list_api_identity_sorting_preview_and_limit():
     first = create_session(user_id="history-user", project_id="history-project", country="mx")
     first.messages.append(OrchestratorMessage(

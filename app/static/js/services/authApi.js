@@ -1,11 +1,20 @@
 const httpClient = window.AppServices.httpClient;
 const authStoreForApi = window.AppState.authStore;
 
+function normalizeSupportedCountries(rawCountries) {
+  if (!Array.isArray(rawCountries) || !rawCountries.length) return ['mx', 'th'];
+  return rawCountries.map((country) => String(country).toLowerCase()).filter(Boolean);
+}
+
 async function fetchAuthRuntimeConfig() {
   try {
-    return await httpClient.json('/api/ui-config', {}, '获取运行时配置失败。');
+    const payload = await httpClient.json('/api/ui-config', {}, '获取运行时配置失败。');
+    return {
+      ...payload,
+      supported_countries: normalizeSupportedCountries(payload && payload.supported_countries),
+    };
   } catch (_err) {
-    return { auth_enabled: true };
+    return { auth_enabled: true, supported_countries: ['mx', 'th'] };
   }
 }
 
@@ -22,13 +31,25 @@ async function loginAuthUser(payload) {
     body: JSON.stringify(payload || {})
   }, '登录失败，请检查账号密码。');
   authStoreForApi.setSession(response.access_token, response.user);
+  try {
+    await fetchAuthorizedScopes();
+  } catch (_err) {}
   return response;
 }
 
-async function fetchCurrentUser() {
-  const user = await httpClient.json('/api/auth/me', {}, '获取当前用户失败。');
+async function fetchCurrentUser(options) {
+  const user = await httpClient.json('/api/auth/me', options || {}, '获取当前用户失败。');
   authStoreForApi.setUser(user);
   return user;
+}
+
+async function fetchAuthorizedScopes() {
+  const payload = await httpClient.json('/api/auth/my-projects', {
+    skipScopeHeaders: true,
+  }, '获取授权项目失败。');
+  const projects = Array.isArray(payload && payload.projects) ? payload.projects : [];
+  authStoreForApi.setAuthorizedScopes(projects);
+  return projects;
 }
 
 async function restoreAuthSession() {
@@ -43,8 +64,36 @@ async function restoreAuthSession() {
   }
   if (!state.token) return null;
   try {
-    return await fetchCurrentUser();
-  } catch (_err) {
+    const authorizedScopes = await fetchAuthorizedScopes();
+    const resolvedScope = authStoreForApi.resolvePreferredScope(
+      authorizedScopes,
+      runtimeConfig.supported_countries
+    );
+    if (resolvedScope.projectId) {
+      authStoreForApi.setPreferredProjectId(resolvedScope.projectId);
+    }
+    if (resolvedScope.country) {
+      authStoreForApi.setPreferredCountry(resolvedScope.country);
+    }
+    return await fetchCurrentUser({
+      skipScopeHeaders: true,
+      headers: {
+        ...(resolvedScope.projectId ? { 'X-Project-ID': resolvedScope.projectId } : {}),
+        ...(resolvedScope.country ? { 'X-Country': resolvedScope.country } : {}),
+      }
+    });
+  } catch (error) {
+    if (error && error.status === 403) {
+      authStoreForApi.clearInvalidScopeOverride();
+      const fallbackState = authStoreForApi.getState();
+      return await fetchCurrentUser({
+        skipScopeHeaders: true,
+        headers: {
+          ...(fallbackState.preferredProjectId ? { 'X-Project-ID': fallbackState.preferredProjectId } : {}),
+          ...(fallbackState.preferredCountry ? { 'X-Country': fallbackState.preferredCountry } : {}),
+        }
+      });
+    }
     authStoreForApi.clearSession();
     return null;
   }
@@ -63,6 +112,7 @@ window.AppServices.authApi = {
   register: registerAuthUser,
   login: loginAuthUser,
   fetchMe: fetchCurrentUser,
+  fetchAuthorizedScopes,
   fetchRuntimeConfig: fetchAuthRuntimeConfig,
   restoreSession: restoreAuthSession,
   logout: logoutAuthUser,

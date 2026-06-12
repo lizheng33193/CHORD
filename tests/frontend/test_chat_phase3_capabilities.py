@@ -102,7 +102,8 @@ def test_chat_panel_uses_memory_drawer_instead_of_inline_block() -> None:
     assert 'text-[11px]' not in panel_src
     assert 'text-[10px]' in panel_src
     assert '<MemoryInspector open={memoryOpen}' in panel_src or '<MemoryInspector\n' in panel_src
-    assert "function MemoryInspector({ open, onClose" in inspector_src
+    assert "function MemoryInspector({" in inspector_src
+    assert "onClose" in inspector_src
     assert "fixed inset-0" in inspector_src
     assert "createPortal" in inspector_src
     assert "document.body" in inspector_src

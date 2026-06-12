@@ -90,7 +90,13 @@ async function fetchTrace(uid) {
 
 async function fetchUiConfig() {
   const res = await httpClient.request('/api/ui-config');
-  return res.ok ? await res.json() : {};
+  const payload = res.ok ? await res.json() : {};
+  return {
+    ...payload,
+    supported_countries: Array.isArray(payload && payload.supported_countries)
+      ? payload.supported_countries.map((country) => String(country).toLowerCase())
+      : [],
+  };
 }
 
 async function analyzeModule(targetUid, moduleName, normalizedApplicationTime, country) {

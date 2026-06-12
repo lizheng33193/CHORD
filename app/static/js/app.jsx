@@ -307,6 +307,7 @@ function restoreWorkspaceFromSession(sessionPayload) {
 const INITIAL_WORKSPACE_STATE = restoreWorkspaceSnapshot(_readWorkspaceSnapshotFromSessionStorage()) || null;
 
 function AppShell({ currentUser, onLogout, setPreferredCountry, setPreferredProjectId }) {
+  const authState = authStore.useAuthState();
   const [view, setView] = useState(getInitialViewFromUrl);
   const [uid, setUid] = useState('');
   const [uidError, setUidError] = useState('');
@@ -327,8 +328,32 @@ function AppShell({ currentUser, onLogout, setPreferredCountry, setPreferredProj
   // 避免用户跳到 trace tab 时再发一次 /api/trace 请求（trace 同样会跑 LLM）。
   const [traceSeedByUid, setTraceSeedByUid] = useState(() => (INITIAL_WORKSPACE_STATE && INITIAL_WORKSPACE_STATE.traceSeedByUid) || {});
   const userPermissions = Array.isArray(currentUser && currentUser.permissions) ? currentUser.permissions : [];
+  const [supportedCountries, setSupportedCountries] = useState(['mx', 'th']);
 
   const [country, setCountry] = useState(getInitialCountry);
+  const authorizedScopes = Array.isArray(authState && authState.authorizedScopes) ? authState.authorizedScopes : [];
+  const preferredProjectId = authState && authState.preferredProjectId ? String(authState.preferredProjectId) : '';
+
+  function getProjectEntries(scopes) {
+    const entries = [];
+    const seen = new Set();
+    (scopes || []).forEach((scope) => {
+      if (!scope || seen.has(scope.project_id)) return;
+      seen.add(scope.project_id);
+      entries.push(scope);
+    });
+    return entries;
+  }
+
+  function getAllowedCountries(scopes, projectId, backendSupportedCountries) {
+    const supported = Array.isArray(backendSupportedCountries) && backendSupportedCountries.length
+      ? backendSupportedCountries
+      : ['mx', 'th'];
+    const projectScopes = (scopes || []).filter((scope) => !projectId || scope.project_id === projectId);
+    if (!projectScopes.length) return supported;
+    if (projectScopes.some((scope) => scope.country == null)) return supported;
+    return supported.filter((code) => projectScopes.some((scope) => scope.country === code));
+  }
 
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -344,8 +369,25 @@ function AppShell({ currentUser, onLogout, setPreferredCountry, setPreferredProj
 
   useEffect(() => {
     if (!currentUser || !setPreferredProjectId || !currentUser.default_project_id) return;
-    setPreferredProjectId(currentUser.default_project_id);
-  }, [currentUser, setPreferredProjectId]);
+    if (!preferredProjectId) {
+      setPreferredProjectId(currentUser.default_project_id);
+    }
+  }, [currentUser, preferredProjectId, setPreferredProjectId]);
+
+  useEffect(() => {
+    const projectEntries = getProjectEntries(authorizedScopes);
+    if (!projectEntries.length) return;
+    const activeProjectId = preferredProjectId || projectEntries[0].project_id;
+    const projectStillAllowed = projectEntries.some((scope) => scope.project_id === activeProjectId);
+    if (!projectStillAllowed && setPreferredProjectId) {
+      setPreferredProjectId(projectEntries[0].project_id);
+      return;
+    }
+    const allowedCountries = getAllowedCountries(authorizedScopes, activeProjectId, supportedCountries);
+    if (!allowedCountries.includes(country)) {
+      setCountry(allowedCountries[0] || 'mx');
+    }
+  }, [authorizedScopes, preferredProjectId, supportedCountries, country, setPreferredProjectId]);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !window.sessionStorage) return;
@@ -380,6 +422,17 @@ function AppShell({ currentUser, onLogout, setPreferredCountry, setPreferredProj
     setCountry(next);
   }
 
+  function handleProjectChange(nextProjectId) {
+    if (!nextProjectId || nextProjectId === preferredProjectId) return;
+    if (!window.confirm('切换项目会清空当前分析结果，是否继续？')) return;
+    resetAnalysisStateForCountry();
+    if (setPreferredProjectId) {
+      setPreferredProjectId(nextProjectId);
+    }
+    const nextAllowedCountries = getAllowedCountries(authorizedScopes, nextProjectId, supportedCountries);
+    setCountry(nextAllowedCountries[0] || 'mx');
+  }
+
   const handleChatSessionChange = useCallback((nextSessionId) => {
     setChatSessionId(nextSessionId || '');
     if (nextSessionId) {
@@ -410,6 +463,12 @@ function AppShell({ currentUser, onLogout, setPreferredCountry, setPreferredProj
         const d = Number(config && config.uid_transition_duration_ms);
         if (isMounted && Number.isFinite(d) && d >= 0) {
           setUidTransitionDurationMs(d);
+        }
+        const backendSupportedCountries = Array.isArray(config && config.supported_countries)
+          ? config.supported_countries.map((countryCode) => String(countryCode).toLowerCase())
+          : [];
+        if (isMounted && backendSupportedCountries.length) {
+          setSupportedCountries(backendSupportedCountries);
         }
       })
       .catch(() => {});
@@ -715,6 +774,10 @@ function AppShell({ currentUser, onLogout, setPreferredCountry, setPreferredProj
         errorMessage={errorMessage}
         currentUser={currentUser}
         onLogout={onLogout}
+        authorizedScopes={authorizedScopes}
+        supportedCountries={supportedCountries}
+        projectId={preferredProjectId}
+        onProjectChange={handleProjectChange}
         country={country}
         onCountryChange={handleCountryChange}
       />
@@ -743,6 +806,10 @@ function AppShell({ currentUser, onLogout, setPreferredCountry, setPreferredProj
       currentUser={currentUser}
       permissions={userPermissions}
       onLogout={onLogout}
+      authorizedScopes={authorizedScopes}
+      supportedCountries={supportedCountries}
+      projectId={preferredProjectId}
+      onProjectChange={handleProjectChange}
       country={country}
       onCountryChange={handleCountryChange}
       chatFocusRequested={chatFocusRequested}

@@ -26,6 +26,16 @@
   - `AuthGate + LoginPage + RegisterPage + authStore + httpClient`
   - Bearer token、401 自动退出、项目/国家头自动注入
   - Memory/Session UI 已绑定真实登录身份，不再默认手填 demo identity
+- 2026-06-11 hardening 补丁已补齐当前阶段 4 个关键缺口：
+  - `401` 只用于认证失败，scope / permission 一律返回 `403`
+  - country alias 统一归一化（`mx/mexico`、`th/thailand`）
+  - Orchestrator session 现按 `user + project + country` 三元组绑定，旧 session 不再被新 scope 改写
+  - chat `query_data` 现要求 `data:query:view_sql + data:query:execute`，并补 preview / execute runtime audit
+- Memory SQLite v1 现已固定共享语义：
+  - `project` = 同项目同国家跨用户共享
+  - `global` = 同项目跨国家共享
+  - 共享 scope 去重不再受创建者 `user_id` 影响
+- 前端 scope selector 现以 `/api/auth/my-projects` + `/api/ui-config.supported_countries` 为真源，不再硬编码 `mx/th`
 - 当前边界保持 P0-lite：
   - 已具备本地账号、角色权限、项目/国家 scope、关键 API 鉴权与 actor 审计基础
   - 暂未进入 OAuth/SSO、复杂组织架构、可视化 RBAC 后台、LangGraph 正式迁移

@@ -25,11 +25,12 @@ import queue
 import threading
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
 
 from app.auth.dependencies import require_permission
 from app.auth.permissions import require_country_access
+from app.core.audit import record_runtime_audit_event
 from app.core.user_context import UserContext
 from app.schemas.request import AnalyzeRequest
 from app.services.batch_service import BatchAnalysisService
@@ -84,6 +85,7 @@ def _run_analysis_in_thread(
 
 @router.post("/analyze-stream", summary="Stream analysis progress as Server-Sent Events")
 async def analyze_stream(
+    http_request: Request,
     request: AnalyzeRequest,
     ctx: UserContext = Depends(require_permission("profile:run")),
 ) -> StreamingResponse:
@@ -96,6 +98,15 @@ async def analyze_stream(
     uids = request.get_uid_list()
     application_time = request.application_time
     country_code = request.country
+    record_runtime_audit_event(
+        user=ctx,
+        request_id=http_request.headers.get("X-Request-ID"),
+        event_type="profile.run",
+        action="run",
+        resource_type="profile_stream",
+        resource_id="batch_stream",
+        metadata={"country": country_code, "uid_count": len(uids), "stream": True},
+    )
     q: queue.Queue = queue.Queue()
 
     thread = threading.Thread(
@@ -107,7 +118,7 @@ async def analyze_stream(
     thread.start()
 
     async def event_gen():
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         deadline = loop.time() + TOTAL_TIMEOUT_SEC
         while True:
             remaining = deadline - loop.time()
@@ -119,11 +130,8 @@ async def analyze_stream(
                 return
             wait_for = min(HEARTBEAT_INTERVAL_SEC, remaining)
             try:
-                evt = await asyncio.wait_for(
-                    loop.run_in_executor(None, q.get),
-                    timeout=wait_for,
-                )
-            except asyncio.TimeoutError:
+                evt = await asyncio.to_thread(q.get, True, wait_for)
+            except queue.Empty:
                 yield ": keepalive\n\n"
                 continue
             if evt is None:

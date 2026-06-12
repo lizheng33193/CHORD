@@ -97,6 +97,29 @@ def _normalize_for_hash(text: str) -> str:
     return re.sub(r"\s+", " ", str(text or "").strip().lower())
 
 
+def build_scope_dedupe_key(
+    *,
+    scope: str,
+    user_id: str,
+    project_id: str,
+    country: str,
+    session_id: str | None,
+    category: str,
+    content: str,
+) -> str:
+    normalized_scope = scope if scope in VALID_SCOPES else "user"
+    parts = [normalized_scope]
+    if normalized_scope in {"session", "user"}:
+        parts.append(user_id)
+    parts.append(project_id)
+    if normalized_scope != "global":
+        parts.append(country)
+    if normalized_scope == "session":
+        parts.append(session_id or "")
+    parts.extend([category, content])
+    return make_dedupe_key(*parts)
+
+
 @dataclass
 class MemoryRecord:
     memory_id: str
@@ -152,7 +175,7 @@ class MemoryStoreNotFound(KeyError):
 
 
 class SQLiteMemoryStore:
-    """Small local memory store with FTS5 retrieval and hard identity filters."""
+    """Small local memory store with FTS5 retrieval and scope-aware visibility."""
 
     def __init__(self, db_path: Path | None = None) -> None:
         self.db_path = db_path or default_db_path()
@@ -203,17 +226,24 @@ class SQLiteMemoryStore:
         record = self._validated(record)
         row = record.to_row()
         with self._connect() as conn:
+            where_sql, where_params = self._dedupe_lookup_clause(record, alias="")
             existing = conn.execute(
-                """
-                SELECT memory_id, created_at FROM memory_records
-                WHERE user_id = ? AND project_id = ? AND country = ? AND dedupe_key = ?
-                """,
-                (record.user_id, record.project_id, record.country, record.dedupe_key),
+                f"SELECT memory_id, created_at FROM memory_records WHERE {where_sql}",
+                where_params,
             ).fetchone()
             if existing:
                 record.memory_id = str(existing["memory_id"])
                 record.created_at = str(existing["created_at"])
                 record.updated_at = now_iso()
+                existing_row = conn.execute(
+                    "SELECT * FROM memory_records WHERE memory_id = ?",
+                    (record.memory_id,),
+                ).fetchone()
+                if existing_row is not None:
+                    record.user_id = str(existing_row["user_id"])
+                    record.session_id = existing_row["session_id"]
+                    if record.scope in {"project", "global"}:
+                        record.country = str(existing_row["country"])
                 row = record.to_row()
                 conn.execute(
                     """
@@ -260,21 +290,22 @@ class SQLiteMemoryStore:
         self.initialize()
         query = str(query or "").strip()
         top_k = max(1, min(50, int(top_k or DEFAULT_TOP_K)))
-        filters = [user_id, project_id, country]
+        visibility_sql, visibility_params = self._visibility_clause(
+            user_id=user_id,
+            project_id=project_id,
+            country=country,
+            session_id=session_id,
+            alias="r",
+        )
+        filters = [*visibility_params, now_iso()]
         where = [
-            "r.user_id = ?",
-            "r.project_id = ?",
-            "r.country = ?",
+            visibility_sql,
             "r.status = 'active'",
             "(r.expires_at IS NULL OR r.expires_at > ?)",
         ]
-        filters.append(now_iso())
         if category:
             where.append("r.category = ?")
             filters.append(_normalize_category(category))
-        if session_id:
-            where.append("(r.session_id = ? OR r.scope IN ('user', 'project', 'global'))")
-            filters.append(session_id)
 
         rows = self._search_fts(query, where, filters, top_k * 3)
         if not rows:
@@ -293,15 +324,20 @@ class SQLiteMemoryStore:
         user_id: str = DEFAULT_USER_ID,
         project_id: str = DEFAULT_PROJECT_ID,
         country: str = DEFAULT_COUNTRY,
+        session_id: str | None = None,
     ) -> dict[str, Any] | None:
         self.initialize()
+        visibility_sql, visibility_params = self._visibility_clause(
+            user_id=user_id,
+            project_id=project_id,
+            country=country,
+            session_id=session_id,
+            alias="memory_records",
+        )
         with self._connect() as conn:
             row = conn.execute(
-                """
-                SELECT *, NULL AS fts_rank FROM memory_records
-                WHERE memory_id = ? AND user_id = ? AND project_id = ? AND country = ?
-                """,
-                (memory_id, user_id, project_id, (country or DEFAULT_COUNTRY).lower()),
+                f"SELECT *, NULL AS fts_rank FROM memory_records WHERE memory_id = ? AND {visibility_sql}",
+                (memory_id, *visibility_params),
             ).fetchone()
         return self._row_to_dict(row) if row else None
 
@@ -309,29 +345,28 @@ class SQLiteMemoryStore:
         self.initialize()
         record = self._validated(record)
         with self._connect() as conn:
+            visibility_sql, visibility_params = self._visibility_clause(
+                user_id=record.user_id,
+                project_id=record.project_id,
+                country=record.country,
+                session_id=record.session_id,
+                alias="memory_records",
+            )
             existing = conn.execute(
-                """
-                SELECT * FROM memory_records
-                WHERE memory_id = ? AND user_id = ? AND project_id = ? AND country = ?
-                """,
-                (record.memory_id, record.user_id, record.project_id, record.country),
+                f"SELECT * FROM memory_records WHERE memory_id = ? AND {visibility_sql}",
+                (record.memory_id, *visibility_params),
             ).fetchone()
             if existing is None:
                 raise MemoryStoreNotFound(record.memory_id)
 
+            record.user_id = str(existing["user_id"])
+            record.session_id = existing["session_id"]
+            if record.scope in {"project", "global"}:
+                record.country = str(existing["country"])
+            conflict_sql, conflict_params = self._dedupe_lookup_clause(record, alias="")
             conflict = conn.execute(
-                """
-                SELECT memory_id FROM memory_records
-                WHERE user_id = ? AND project_id = ? AND country = ?
-                  AND dedupe_key = ? AND memory_id != ?
-                """,
-                (
-                    record.user_id,
-                    record.project_id,
-                    record.country,
-                    record.dedupe_key,
-                    record.memory_id,
-                ),
+                f"SELECT memory_id FROM memory_records WHERE {conflict_sql} AND memory_id != ?",
+                (*conflict_params, record.memory_id),
             ).fetchone()
             if conflict is not None:
                 raise MemoryStoreConflict(str(conflict["memory_id"]))
@@ -362,19 +397,24 @@ class SQLiteMemoryStore:
         user_id: str = DEFAULT_USER_ID,
         project_id: str = DEFAULT_PROJECT_ID,
         country: str = DEFAULT_COUNTRY,
+        session_id: str | None = None,
     ) -> dict[str, Any]:
         self.initialize()
         normalized_status = str(status or "").strip().lower()
         if normalized_status not in VALID_STATUSES:
             raise ValueError(f"unsupported status: {status}")
         normalized_country = (country or DEFAULT_COUNTRY).lower()
+        visibility_sql, visibility_params = self._visibility_clause(
+            user_id=user_id,
+            project_id=project_id,
+            country=normalized_country,
+            session_id=session_id,
+            alias="memory_records",
+        )
         with self._connect() as conn:
             row = conn.execute(
-                """
-                SELECT * FROM memory_records
-                WHERE memory_id = ? AND user_id = ? AND project_id = ? AND country = ?
-                """,
-                (memory_id, user_id, project_id, normalized_country),
+                f"SELECT * FROM memory_records WHERE memory_id = ? AND {visibility_sql}",
+                (memory_id, *visibility_params),
             ).fetchone()
             if row is None:
                 raise MemoryStoreNotFound(memory_id)
@@ -387,6 +427,7 @@ class SQLiteMemoryStore:
             user_id=user_id,
             project_id=project_id,
             country=normalized_country,
+            session_id=session_id,
         )
         if updated is None:
             raise MemoryStoreNotFound(memory_id)
@@ -401,6 +442,7 @@ class SQLiteMemoryStore:
         status: str | None = "active",
         category: str | None = None,
         limit: int = 100,
+        session_id: str | None = None,
     ) -> list[dict[str, Any]]:
         self.initialize()
         where: list[str] = []
@@ -412,12 +454,26 @@ class SQLiteMemoryStore:
             where.append("status = ?")
             params.append(normalized_status)
         if user_id:
-            where.append("user_id = ?")
-            params.append(user_id)
-        if project_id:
+            if project_id and country:
+                visibility_sql, visibility_params = self._visibility_clause(
+                    user_id=user_id,
+                    project_id=project_id,
+                    country=country,
+                    session_id=session_id,
+                    alias="memory_records",
+                )
+                where.append(visibility_sql)
+                params.extend(visibility_params)
+            else:
+                where.append("user_id = ?")
+                params.append(user_id)
+        elif project_id:
             where.append("project_id = ?")
             params.append(project_id)
-        if country:
+            if country:
+                where.append("(scope = 'global' OR country = ?)")
+                params.append(country.lower())
+        elif country:
             where.append("country = ?")
             params.append(country.lower())
         if category:
@@ -543,6 +599,53 @@ class SQLiteMemoryStore:
         data.pop("fts_rank", None)
         return data
 
+    def _visibility_clause(
+        self,
+        *,
+        user_id: str,
+        project_id: str,
+        country: str,
+        session_id: str | None,
+        alias: str,
+    ) -> tuple[str, list[Any]]:
+        q = f"{alias}." if alias else ""
+        clauses: list[str] = []
+        params: list[Any] = []
+        if session_id:
+            clauses.append(
+                f"({q}scope = 'session' AND {q}user_id = ? AND {q}project_id = ? AND {q}country = ? AND {q}session_id = ?)"
+            )
+            params.extend([user_id, project_id, country.lower(), session_id])
+        clauses.append(f"({q}scope = 'user' AND {q}user_id = ? AND {q}project_id = ? AND {q}country = ?)")
+        params.extend([user_id, project_id, country.lower()])
+        clauses.append(f"({q}scope = 'project' AND {q}project_id = ? AND {q}country = ?)")
+        params.extend([project_id, country.lower()])
+        clauses.append(f"({q}scope = 'global' AND {q}project_id = ?)")
+        params.append(project_id)
+        return "(" + " OR ".join(clauses) + ")", params
+
+    def _dedupe_lookup_clause(self, record: MemoryRecord, *, alias: str) -> tuple[str, list[Any]]:
+        q = f"{alias}." if alias else ""
+        if record.scope == "session":
+            return (
+                f"{q}scope = ? AND {q}user_id = ? AND {q}project_id = ? AND {q}country = ? AND {q}session_id = ? AND {q}dedupe_key = ?",
+                [record.scope, record.user_id, record.project_id, record.country, record.session_id, record.dedupe_key],
+            )
+        if record.scope == "project":
+            return (
+                f"{q}scope = ? AND {q}project_id = ? AND {q}country = ? AND {q}dedupe_key = ?",
+                [record.scope, record.project_id, record.country, record.dedupe_key],
+            )
+        if record.scope == "global":
+            return (
+                f"{q}scope = ? AND {q}project_id = ? AND {q}dedupe_key = ?",
+                [record.scope, record.project_id, record.dedupe_key],
+            )
+        return (
+            f"{q}scope = ? AND {q}user_id = ? AND {q}project_id = ? AND {q}country = ? AND {q}dedupe_key = ?",
+            [record.scope, record.user_id, record.project_id, record.country, record.dedupe_key],
+        )
+
     def _validated(self, record: MemoryRecord) -> MemoryRecord:
         record.scope = record.scope if record.scope in VALID_SCOPES else "user"
         record.category = _normalize_category(record.category)
@@ -554,13 +657,14 @@ class SQLiteMemoryStore:
         record.project_id = record.project_id or DEFAULT_PROJECT_ID
         record.country = (record.country or DEFAULT_COUNTRY).lower()
         if not record.dedupe_key:
-            record.dedupe_key = make_dedupe_key(
-                record.scope,
-                record.user_id,
-                record.project_id,
-                record.country,
-                record.category,
-                record.content,
+            record.dedupe_key = build_scope_dedupe_key(
+                scope=record.scope,
+                user_id=record.user_id,
+                project_id=record.project_id,
+                country=record.country,
+                session_id=record.session_id,
+                category=record.category,
+                content=record.content,
             )
         return record
 

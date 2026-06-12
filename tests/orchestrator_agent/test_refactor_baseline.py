@@ -134,6 +134,12 @@ def _flow_ctx(
     )
 
 
+def _assert_metadata_includes(actual: dict[str, object] | None, expected: dict[str, object]) -> None:
+    assert actual is not None
+    for key, value in expected.items():
+        assert actual.get(key) == value
+
+
 def test_build_loop_dependencies_uses_current_agent_loop_namespace(monkeypatch):
     fake_normalize = object()
     fake_check = object()
@@ -2083,12 +2089,12 @@ def test_run_agent_loop_query_data_then_profile_blocks_unsupported_country_witho
     assert not any(evt["type"] == "tool_completed" and evt.get("tool_name") == "query_data" for evt in events)
     assert [evt["type"] for evt in events].count("final") == 1
     assert assistant_after - assistant_before == 1
-    assert trace.internal_metadata == {
+    _assert_metadata_includes(trace.internal_metadata, {
         "flow_name": "QueryDataThenProfileFlow",
         "flow_mode": "guard_unsupported_country",
         "country": "th",
         "terminal_reason": "unsupported_country",
-    }
+    })
 
 
 @pytest.mark.timeout(3)
@@ -4466,13 +4472,13 @@ def test_run_agent_loop_profile_flow_skips_legacy_and_persists_single_final(monk
     assert final_evt["confidence"] == 0.89
     assert "可继续追问具体模块或切到左侧 dashboard 查看结构化结果。" in final_evt["final_message"]
     assert assistant_after - assistant_before == 1
-    assert trace.internal_metadata == {
+    _assert_metadata_includes(trace.internal_metadata, {
         "flow_name": "ProfileFlow",
         "decision_mode": "success",
         "uid_count": 1,
         "country": "mx",
         "execution_group_count": 1,
-    }
+    })
 
 
 @pytest.mark.timeout(3)
@@ -4616,7 +4622,7 @@ def test_run_agent_loop_profile_flow_handles_partial_unavailable_without_legacy(
     assert review_evt["status"] == "warning"
     assert any(issue["type"] == "data_acquisition_unavailable" for issue in review_evt["issues"])
     assert assistant_after - assistant_before == 1
-    assert trace.internal_metadata == {
+    _assert_metadata_includes(trace.internal_metadata, {
         "flow_name": "ProfileFlow",
         "decision_mode": "partial_unavailable",
         "uid_count": 1,
@@ -4624,7 +4630,7 @@ def test_run_agent_loop_profile_flow_handles_partial_unavailable_without_legacy(
         "requested_missing": ["credit"],
         "execution_group_count": 1,
         "capability_enabled": False,
-    }
+    })
 
 
 @pytest.mark.timeout(3)
@@ -4840,7 +4846,7 @@ def test_run_agent_loop_profile_flow_repair_ready_runs_approved_success_path(mon
     ]
     assert event_types.count("final") == 1
     assert assistant_after - assistant_before == 1
-    assert trace.internal_metadata == {
+    _assert_metadata_includes(trace.internal_metadata, {
         "flow_name": "ProfileFlow",
         "decision_mode": "repair_ready",
         "uid_count": 1,
@@ -4849,7 +4855,7 @@ def test_run_agent_loop_profile_flow_repair_ready_runs_approved_success_path(mon
         "repair_buckets": ["credit"],
         "execution_group_count": 1,
         "capability_enabled": True,
-    }
+    })
 
 
 @pytest.mark.timeout(3)

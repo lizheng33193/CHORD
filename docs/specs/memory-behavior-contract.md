@@ -51,11 +51,13 @@ still useful, such as "user prefers Chinese output, token=<TOKEN>".
 
 ## Identity And Recall
 
-Every long-term memory is scoped by:
+Every long-term memory stores:
 
+- `scope`
 - `user_id`
 - `project_id`
 - `country`
+- `session_id`
 - `status`
 
 Default identity:
@@ -65,11 +67,23 @@ Default identity:
 - `country=mx`
 
 Routes may override identity through `X-User-ID`, `X-Project-ID`, and
-`X-Country`. The debug query API may also accept identity in the request body.
+`X-Country`. Under `AUTH_ENABLED=true`, non-superuser requests are always
+resolved to the current authenticated `UserContext`, not arbitrary headers.
 
-Recall uses hard identity filters first, then SQLite FTS5/LIKE retrieval, then
-score ranking by relevance, importance, confidence, and recency. Empty query
-means "list recent active memories" under the same filters.
+Read visibility is scope-aware:
+
+- `session`: same `user_id + project_id + country + session_id`
+- `user`: same `user_id + project_id + country`
+- `project`: same `project_id + country`, cross-user shared
+- `global`: same `project_id`, cross-country shared
+
+Shared scope records still retain the original `user_id` as creator/actor, but
+visibility is no longer determined by creator identity.
+
+Recall first applies the scope-aware visibility filter, then SQLite FTS5/LIKE
+retrieval, then score ranking by relevance, importance, confidence, and
+recency. Empty query means "list recent active memories visible under the same
+scope rules".
 
 ## Debug Interfaces
 
@@ -85,9 +99,9 @@ means "list recent active memories" under the same filters.
 Memory management is available only under `/api/orchestrator/memory/*`.
 
 - `GET /api/orchestrator/memory/list`
-  lists rows by `user_id`, `project_id`, `country`, optional `category`, optional
-  `status`, and `limit`. The default status is `active`; `status=all` lists all
-  statuses under the same identity.
+  lists rows visible under the current scope identity, with optional
+  `category`, optional `status`, and `limit`. The default status is `active`;
+  `status=all` lists all statuses visible under the same scope rules.
 - `POST /api/orchestrator/memory`
   manually creates a memory row. The row still passes redaction, length limits,
   category whitelist checks, low-value rejection, and credential rejection.
@@ -101,10 +115,15 @@ Memory management is available only under `/api/orchestrator/memory/*`.
 - `DELETE /api/orchestrator/memory/{memory_id}`
   performs soft delete by setting `status=deleted`.
 
-All management operations must match `user_id`, `project_id`, and `country`.
-When the identity does not match, the API returns 404 so memory ids cannot be
-used to discover or mutate another user's rows. Duplicate update conflicts
-return 409. Manual create/edit rows use `source=memory_admin`.
+Management lookups respect the same visibility contract:
+
+- `user/session` memory must still match the original viewer identity
+- `project/global` memory can be managed by another authorized user in the same
+  visible scope
+
+When a row is not visible, the API returns 404 so memory ids cannot be used to
+discover another scope's rows. Duplicate update conflicts return 409. Manual
+create/edit rows use `source=memory_admin`.
 
 The NL Chat Memory Inspector is the first UI for these APIs. It supports list,
 search, create, edit, archive, restore, and soft delete, but it does not hard

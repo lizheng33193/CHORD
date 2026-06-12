@@ -1,16 +1,17 @@
 const authStore = (window.AppState && window.AppState.authStore) || null;
 
-function buildRequestHeaders(extraHeaders, body) {
+function buildRequestHeaders(extraHeaders, body, options) {
   const headers = new Headers(extraHeaders || {});
+  const opts = options || {};
   const authState = authStore ? authStore.getState() : { token: '', preferredProjectId: '', preferredCountry: 'mx' };
 
-  if (authState.token && !headers.has('Authorization')) {
+  if (!opts.skipAuthHeaders && authState.token && !headers.has('Authorization')) {
     headers.set('Authorization', `Bearer ${authState.token}`);
   }
-  if (authState.preferredCountry && !headers.has('X-Country')) {
+  if (!opts.skipScopeHeaders && authState.preferredCountry && !headers.has('X-Country')) {
     headers.set('X-Country', authState.preferredCountry);
   }
-  if (authState.preferredProjectId && !headers.has('X-Project-ID')) {
+  if (!opts.skipScopeHeaders && authState.preferredProjectId && !headers.has('X-Project-ID')) {
     headers.set('X-Project-ID', authState.preferredProjectId);
   }
   if (!(body instanceof FormData) && body != null && !headers.has('Content-Type')) {
@@ -28,9 +29,17 @@ function resolveHttpErrorMessage(payload, response, fallback) {
 
 async function request(url, options) {
   const opts = options || {};
+  const {
+    skipAuthHeaders,
+    skipScopeHeaders,
+    ...fetchOptions
+  } = opts;
   const response = await fetch(url, {
-    ...opts,
-    headers: buildRequestHeaders(opts.headers, opts.body),
+    ...fetchOptions,
+    headers: buildRequestHeaders(fetchOptions.headers, fetchOptions.body, {
+      skipAuthHeaders: Boolean(skipAuthHeaders),
+      skipScopeHeaders: Boolean(skipScopeHeaders),
+    }),
   });
 
   if (response.status === 401 && authStore) {

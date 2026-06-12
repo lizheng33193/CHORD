@@ -11,10 +11,19 @@ def _req_ddl(): return {"approved_sql":"CREATE TABLE dm_model.yyp_tmp_x AS SELEC
     "output_bucket":"app","output_format":"csv","uid_column":"uid"}
 
 def test_t1_build_table_script_422_no_connect():
+    from data_acquisition_agent import executor as ex
+
     called = {"n": 0}
-    def fail_connect(*a, **kw): called["n"] += 1; raise AssertionError("must not connect")
-    with patch("data_acquisition_agent.connection.pymysql.connect",
-               side_effect=fail_connect):
+
+    class _NeverEnter:
+        def __enter__(self_):
+            called["n"] += 1
+            raise AssertionError("must not connect")
+
+        def __exit__(self_, *a):
+            return False
+
+    with patch.object(ex, "open_starrocks_connection", return_value=_NeverEnter()):
         r = _client().post("/api/data-acquisition/execute", json=_req_ddl())
     assert r.status_code == 422
     assert r.json()["error_type"] == "ddl_not_supported_in_v2"

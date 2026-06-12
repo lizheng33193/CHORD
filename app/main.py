@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from app.api.analyze import router as analyze_router
 from app.api.analyze_module import router as analyze_module_router
 from app.api.analyze_stream import router as analyze_stream_router
+from app.auth.errors import AuthenticationError, AuthorizationError
 from app.auth.router import router as auth_router
 from app.api.trace import router as trace_router
 from app.core.config import settings
@@ -52,6 +53,16 @@ async def request_validation_exception_handler(_, exc: RequestValidationError) -
     first_error = exc.errors()[0] if exc.errors() else {}
     message = str(first_error.get("msg") or "Invalid request payload.")
     return JSONResponse(status_code=400, content={"detail": message})
+
+
+@app.exception_handler(AuthorizationError)
+async def authorization_exception_handler(_, exc: AuthorizationError) -> JSONResponse:
+    return JSONResponse(status_code=403, content={"detail": str(exc)})
+
+
+@app.exception_handler(AuthenticationError)
+async def authentication_exception_handler(_, exc: AuthenticationError) -> JSONResponse:
+    return JSONResponse(status_code=401, content={"detail": str(exc)})
 
 
 @app.get("/", response_class=HTMLResponse, summary="Homepage")
