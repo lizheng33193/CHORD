@@ -63,6 +63,8 @@ LOAD_ORDER = [
     "js/components/panels/chat/ChatExecutionTraceCard.jsx",
     "js/components/panels/chat/ChatToolCallStream.jsx",
     "js/components/panels/chat/ChatAckCard.jsx",
+    "js/components/panels/chat/DataAgentRunForm.jsx",
+    "js/components/panels/chat/SQLReviewCard.jsx",
     "js/components/panels/chat/ChatBudgetBanner.jsx",
     "js/components/panels/chat/ChatProviderFallbackBanner.jsx",
     "js/components/panels/chat/MemoryInspector.jsx",

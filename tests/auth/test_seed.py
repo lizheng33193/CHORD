@@ -95,4 +95,5 @@ def test_seed_role_permission_map_matches_m0_contract(auth_db) -> None:
             "data:query:view_sql",
             "data:query:review",
             "data:query:execute",
+            "data:bucket:writeback",
         }.issubset(data_admin_permissions)

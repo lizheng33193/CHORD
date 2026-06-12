@@ -35,6 +35,24 @@
 - [x] E1 单用户埋点深度解析 → docs/plans/trace-analyzer-plan.md（2026-05-01）
 
 ## 当前进行中的功能
+- [ ] M1：Data Agent SQL HITL — 进行中（2026-06-12）
+  - design / plan：
+    - `docs/specs/m1-data-agent-sql-hitl-design.md`
+    - `docs/plans/m1-data-agent-sql-hitl-plan.md`
+  - 后端目标：
+    - 新增 `app/data_agent/` 领域层与 auth DB 持久化表
+    - 新增 SQL version / review / approve hash / execute / writeback 状态机
+    - 新增 `/api/data-agent/runs*`
+    - 新增 `data:bucket:writeback` 权限
+  - 前端目标：
+    - ChatPanel 显式 Data Agent 模式
+    - run form / run list / SQLReviewCard
+    - 基于 `view_sql / review / execute / bucket:writeback` 的 UI gating
+  - 当前边界：
+    - `query_only` 可执行
+    - `build_table_script` review-only
+    - `cohort_query` 不写回
+    - `bucket_writeback` 写 `data/*/by_uid`
 - [x] M0：Identity & Permission Foundation → 已完成第一阶段闭环（2026-06-11）
   - design / plan：
     - `docs/specs/m0-identity-permission-foundation-design.md`

@@ -4,13 +4,30 @@ const {
   ChatToolCallStream,
   ChatExecutionTraceCard,
   ChatAckCard,
+  DataAgentRunForm,
+  SQLReviewCard,
   ChatBudgetBanner,
   ChatProviderFallbackBanner,
   MemoryInspector,
   chatReducer,
   chatInitialState,
 } = window.AppComponents;
-const { createOrchestratorSession, sendOrchestratorMessage, openOrchestratorStream, ackOrchestratorTool, cancelOrchestratorRun, resolveOrchestratorStep, fetchOrchestratorSession } = window.AppServices.api;
+const {
+  createOrchestratorSession,
+  sendOrchestratorMessage,
+  openOrchestratorStream,
+  ackOrchestratorTool,
+  cancelOrchestratorRun,
+  resolveOrchestratorStep,
+  fetchOrchestratorSession,
+  createDataAgentRun,
+  fetchDataAgentRuns,
+  approveDataAgentRun,
+  editDataAgentRun,
+  reviseDataAgentRun,
+  rejectDataAgentRun,
+  executeDataAgentRun,
+} = window.AppServices.api;
 const { Bot, Clock3, PanelRightClose, X } = window.LucideReact || {};
 const { useReducer, useState, useRef, useEffect, useCallback } = React;
 
@@ -255,6 +272,11 @@ function ChatPanel({
   const [stopping, setStopping] = useState(false);
   const [memoryOpen, setMemoryOpen] = useState(false);
   const [clarificationDraft, setClarificationDraft] = useState({ country: 'mx', time_window: '最近 7 天', auto_profile: true });
+  const [dataAgentMode, setDataAgentMode] = useState(false);
+  const [dataAgentDraft, setDataAgentDraft] = useState({ natural_language_request: '', target_country: currentCountry || 'mx', run_type: 'cohort_query', output_bucket: 'behavior', output_format: 'json' });
+  const [dataAgentRuns, setDataAgentRuns] = useState([]);
+  const [dataAgentLoading, setDataAgentLoading] = useState(false);
+  const [dataAgentError, setDataAgentError] = useState('');
   const [ingestedUids, setIngestedUids] = useState([]);
   const [traceUids, setTraceUids] = useState([]);
   const [profileModulesByUid, setProfileModulesByUid] = useState({});
@@ -271,6 +293,12 @@ function ChatPanel({
     || permissionSet.has('memory:read')
     || permissionSet.has('memory:write')
     || permissionSet.has('memory:manage');
+  const canUseDataAgent = !currentUser
+    || currentUser.is_superuser
+    || (permissionSet.has('data:query:generate') && permissionSet.has('data:query:view_sql'));
+  const canReviewDataAgent = !currentUser || currentUser.is_superuser || permissionSet.has('data:query:review');
+  const canExecuteDataAgent = !currentUser || currentUser.is_superuser || permissionSet.has('data:query:execute');
+  const canWritebackDataAgent = !currentUser || currentUser.is_superuser || permissionSet.has('data:bucket:writeback');
   const esRef = useRef(null);
   const dispatchedToolsRef = useRef(new Set());
   const dispatchedProfileResultsRef = useRef(new Set());
@@ -366,6 +394,97 @@ function ChatPanel({
   const activeRunPair = _findActiveRun(state.turns);
   const activeRun = activeRunPair ? activeRunPair.run : null;
   const activeTurn = activeRunPair ? activeRunPair.turn : null;
+
+  function upsertDataAgentRun(nextRun) {
+    if (!nextRun || !nextRun.run_id) return;
+    setDataAgentRuns((prev) => {
+      const exists = prev.some((run) => run && run.run_id === nextRun.run_id);
+      if (!exists) return [nextRun].concat(prev);
+      return prev.map((run) => (run && run.run_id === nextRun.run_id ? nextRun : run));
+    });
+  }
+
+  async function loadDataAgentRuns() {
+    if (!canUseDataAgent) return;
+    setDataAgentLoading(true);
+    setDataAgentError('');
+    try {
+      const payload = await fetchDataAgentRuns();
+      setDataAgentRuns(Array.isArray(payload && payload.runs) ? payload.runs : []);
+    } catch (error) {
+      setDataAgentError(error && error.message ? error.message : '加载 Data Agent runs 失败。');
+    } finally {
+      setDataAgentLoading(false);
+    }
+  }
+
+  async function onCreateDataAgentRun() {
+    setDataAgentLoading(true);
+    setDataAgentError('');
+    try {
+      const payload = {
+        natural_language_request: (dataAgentDraft.natural_language_request || '').trim(),
+        target_country: dataAgentDraft.target_country || currentCountry || 'mx',
+        run_type: dataAgentDraft.run_type || 'cohort_query',
+      };
+      if (payload.run_type === 'bucket_writeback') {
+        payload.output_bucket = dataAgentDraft.output_bucket || 'behavior';
+        payload.output_format = dataAgentDraft.output_format || 'json';
+      }
+      const created = await createDataAgentRun(payload);
+      upsertDataAgentRun(created);
+      setDataAgentDraft((prev) => ({ ...prev, natural_language_request: '' }));
+    } catch (error) {
+      setDataAgentError(error && error.message ? error.message : '创建 Data Agent run 失败。');
+    } finally {
+      setDataAgentLoading(false);
+    }
+  }
+
+  async function mutateDataAgentRun(runId, action) {
+    setDataAgentLoading(true);
+    setDataAgentError('');
+    try {
+      const updated = await action();
+      upsertDataAgentRun(updated);
+    } catch (error) {
+      setDataAgentError(error && error.message ? error.message : '更新 Data Agent run 失败。');
+    } finally {
+      setDataAgentLoading(false);
+    }
+  }
+
+  function onApproveDataAgentRun(run) {
+    mutateDataAgentRun(run.run_id, () => approveDataAgentRun(run.run_id, {}));
+  }
+
+  function onRejectDataAgentRun(run) {
+    const comment = window.prompt('可选：填写 reject 原因', '') || '';
+    mutateDataAgentRun(run.run_id, () => rejectDataAgentRun(run.run_id, { comment }));
+  }
+
+  function onEditDataAgentRun(run) {
+    const currentSql = run && run.current_sql && run.current_sql.sql_text ? run.current_sql.sql_text : '';
+    const nextSql = window.prompt('编辑 SQL，保存后会重新跑 Safety Gate。', currentSql);
+    if (!nextSql || !nextSql.trim()) return;
+    const comment = window.prompt('可选：填写 edit 备注', '') || '';
+    mutateDataAgentRun(run.run_id, () => editDataAgentRun(run.run_id, { sql_text: nextSql, comment }));
+  }
+
+  function onReviseDataAgentRun(run) {
+    const comment = window.prompt('告诉 Agent 需要如何 revise 这条 SQL。', '');
+    if (!comment || !comment.trim()) return;
+    mutateDataAgentRun(run.run_id, () => reviseDataAgentRun(run.run_id, { comment }));
+  }
+
+  function onExecuteDataAgentRun(run) {
+    mutateDataAgentRun(run.run_id, () => executeDataAgentRun(run.run_id));
+  }
+
+  useEffect(() => {
+    if (!dataAgentMode) return;
+    loadDataAgentRuns();
+  }, [dataAgentMode, currentUser]);
 
   useEffect(() => {
     state.toolCalls.forEach((t) => {
@@ -758,8 +877,26 @@ function ChatPanel({
               >
                 {Bot ? <Bot className="h-4 w-4" /> : null}
               </button>
-              <div className="min-w-0">
+              <div className="min-w-0 space-y-1">
                 <h2 id="chat-panel-title" className="truncate text-sm font-semibold text-slate-800">自然语言助手 (NL Chat)</h2>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setDataAgentMode(false)}
+                    className={`rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors ${!dataAgentMode ? 'bg-slate-900 text-white' : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-100'}`}
+                  >
+                    普通对话
+                  </button>
+                  {canUseDataAgent ? (
+                    <button
+                      type="button"
+                      onClick={() => setDataAgentMode(true)}
+                      className={`rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors ${dataAgentMode ? 'bg-blue-600 text-white' : 'border border-blue-200 bg-white text-blue-700 hover:bg-blue-50'}`}
+                    >
+                      Data Agent
+                    </button>
+                  ) : null}
+                </div>
               </div>
             </div>
           </div>
@@ -805,7 +942,41 @@ function ChatPanel({
             <ChatBudgetBanner used={state.budget && state.budget.used} limit={state.budget && state.budget.limit} />
             <ChatProviderFallbackBanner from={state.providerFallback && state.providerFallback.from} to={state.providerFallback && state.providerFallback.to} reason={state.providerFallback && state.providerFallback.reason} />
             {state.error ? <div className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{state.error.error_type}: {state.error.message}</div> : null}
-
+            {dataAgentMode ? (
+              <div className="space-y-4">
+                <DataAgentRunForm
+                  draft={dataAgentDraft}
+                  currentCountry={currentCountry}
+                  loading={dataAgentLoading}
+                  error={dataAgentError}
+                  onChange={setDataAgentDraft}
+                  onSubmit={onCreateDataAgentRun}
+                  canCreate={canUseDataAgent}
+                />
+                <div className="space-y-4">
+                  {dataAgentRuns.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-slate-300 bg-white/80 px-4 py-6 text-sm text-slate-500">
+                      {dataAgentLoading ? '正在加载 Data Agent runs...' : '当前 scope 下还没有 SQL 审核任务。'}
+                    </div>
+                  ) : dataAgentRuns.map((run) => (
+                    <SQLReviewCard
+                      key={run.run_id}
+                      run={run}
+                      loading={dataAgentLoading}
+                      canViewSql={!currentUser || currentUser.is_superuser || permissionSet.has('data:query:view_sql')}
+                      canReview={canReviewDataAgent}
+                      canExecute={canExecuteDataAgent}
+                      canWriteback={canWritebackDataAgent}
+                      onApprove={onApproveDataAgentRun}
+                      onReject={onRejectDataAgentRun}
+                      onEdit={onEditDataAgentRun}
+                      onRevise={onReviseDataAgentRun}
+                      onExecute={onExecuteDataAgentRun}
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : (
             <div className="space-y-6">
               {Array.isArray(state.turns) && state.turns.length > 0 ? state.turns.map((turn) => (
                 (() => {
@@ -1026,22 +1197,29 @@ function ChatPanel({
                 <ChatMessageList messages={state.messages} />
               )}
             </div>
+            )}
 
           </div>
         </div>
       </div>
 
       <div id="chat-panel-footer" className="shrink-0 border-t border-slate-100 bg-white p-4">
-        <ChatInputBox
-          value={input}
-          onChange={setInput}
-          onSend={onSend}
-          onStop={onStop}
-          disabled={!!state.pendingAck || !!state.pendingResolution}
-          running={streaming || !!activeRun}
-          stopping={runStopping}
-        />
-        <p className="mt-2 text-center text-[10px] text-slate-400">AI 助手可能会犯错，请结合左侧结构化结果核实。</p>
+        {dataAgentMode ? (
+          <div className="text-center text-[11px] text-slate-500">Data Agent 模式使用上方显式 SQL review 卡片；普通聊天与 orchestrator 路由保持不变。</div>
+        ) : (
+          <>
+            <ChatInputBox
+              value={input}
+              onChange={setInput}
+              onSend={onSend}
+              onStop={onStop}
+              disabled={!!state.pendingAck || !!state.pendingResolution}
+              running={streaming || !!activeRun}
+              stopping={runStopping}
+            />
+            <p className="mt-2 text-center text-[10px] text-slate-400">AI 助手可能会犯错，请结合左侧结构化结果核实。</p>
+          </>
+        )}
       </div>
 
       <MemoryInspector
