@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 
 import pytest
@@ -94,10 +95,12 @@ def _stub_generate_result(sql: str, sql_kind: str = "query_only") -> dict:
 def test_data_agent_run_lifecycle_create_list_and_hidden_sql_without_view_permission(client: TestClient, monkeypatch) -> None:
     _register_privileged_user(username="da-admin", email="da-admin@example.com", role_codes=["data_admin"])
     token, _user = _login(client, "da-admin", "passw0rd123")
+    raw_sql = "  SELECT uid FROM users LIMIT 5  \n"
+    normalized_sql = "SELECT uid FROM users LIMIT 5"
 
     monkeypatch.setattr(
         "app.data_agent.service._generate_sql_response",
-        lambda *_args, **_kwargs: _stub_generate_result("SELECT uid FROM users LIMIT 5"),
+        lambda *_args, **_kwargs: _stub_generate_result(raw_sql),
     )
     create = client.post(
         "/api/data-agent/runs",
@@ -111,7 +114,8 @@ def test_data_agent_run_lifecycle_create_list_and_hidden_sql_without_view_permis
     assert create.status_code == 201
     payload = create.json()
     assert payload["status"] == "awaiting_review"
-    assert payload["current_sql"]["sql_text"] == "SELECT uid FROM users LIMIT 5"
+    assert payload["current_sql"]["sql_text"] == normalized_sql
+    assert payload["current_sql"]["sql_hash"] == hashlib.sha256(normalized_sql.encode("utf-8")).hexdigest()
     run_id = payload["run_id"]
 
     listed = client.get("/api/data-agent/runs", headers={"Authorization": f"Bearer {token}"})
@@ -210,12 +214,13 @@ def test_data_agent_edit_requires_review_permission_and_clears_previous_approval
         json={},
     )
     assert approve.status_code == 200
+    assert approve.json()["approved_sql_hash"] == approve.json()["current_sql"]["sql_hash"]
     approved_hash = approve.json()["approved_sql_hash"]
 
     edit = client.post(
         f"/api/data-agent/runs/{run_id}/edit",
         headers={"Authorization": f"Bearer {token}"},
-        json={"sql_text": "SELECT uid FROM users LIMIT 10", "comment": "扩大范围"},
+        json={"sql_text": "  SELECT uid FROM users LIMIT 10  \n", "comment": "扩大范围"},
     )
     assert edit.status_code == 200
     edit_payload = edit.json()
@@ -223,6 +228,10 @@ def test_data_agent_edit_requires_review_permission_and_clears_previous_approval
     assert edit_payload["approved_sql_hash"] is None
     assert edit_payload["current_sql"]["sql_hash"] != approved_hash
     assert edit_payload["current_sql"]["source"] == "manual_edited"
+    assert edit_payload["current_sql"]["sql_text"] == "SELECT uid FROM users LIMIT 10"
+    assert edit_payload["current_sql"]["sql_hash"] == hashlib.sha256(
+        "SELECT uid FROM users LIMIT 10".encode("utf-8")
+    ).hexdigest()
 
 
 def test_data_agent_execute_requires_writeback_permission_for_bucket_writeback(client: TestClient, monkeypatch) -> None:
@@ -283,14 +292,15 @@ def test_data_agent_execute_requires_writeback_permission_for_bucket_writeback(c
 def test_data_agent_execute_rejects_hash_mismatch_and_supports_cohort_query_execution(client: TestClient, monkeypatch) -> None:
     _register_privileged_user(username="da-exec", email="da-exec@example.com", role_codes=["data_admin"])
     token, _ = _login(client, "da-exec", "passw0rd123")
+    captured: dict[str, str] = {}
 
     monkeypatch.setattr(
         "app.data_agent.service._generate_sql_response",
-        lambda *_args, **_kwargs: _stub_generate_result("SELECT uid FROM users LIMIT 2"),
+        lambda *_args, **_kwargs: _stub_generate_result("  SELECT uid FROM users LIMIT 2  \n"),
     )
     monkeypatch.setattr(
         "app.data_agent.service._execute_cohort_query",
-        lambda *_args, **_kwargs: {
+        lambda *, sql_text, target_country: captured.update({"sql_text": sql_text, "target_country": target_country}) or {
             "uids": ["u1", "u2"],
             "rows_actual": 2,
             "rows_estimated": 2,
@@ -346,4 +356,141 @@ def test_data_agent_execute_rejects_hash_mismatch_and_supports_cohort_query_exec
     assert payload["execution"]["rows_actual"] == 2
     assert payload["execution"]["uids"] == ["u1", "u2"]
     assert payload["writeback"] is None
+    assert captured["sql_text"] == "SELECT uid FROM users LIMIT 5"
+    assert captured["target_country"] == "mx"
 
+
+def test_data_agent_bucket_writeback_records_real_target_dir_in_api_db_and_audit(client: TestClient, monkeypatch, tmp_path: Path) -> None:
+    from app.auth.database import AuthSessionLocal
+    from app.auth.models import AuditEvent
+    from app.data_agent.models import DataAgentWritebackEvent
+
+    _register_privileged_user(username="da-writeback", email="da-writeback@example.com", role_codes=["data_admin"])
+    token, _ = _login(client, "da-writeback", "passw0rd123")
+    target_dir = str(tmp_path / "behavior" / "by_uid")
+
+    monkeypatch.setattr(
+        "app.data_agent.service._generate_sql_response",
+        lambda *_args, **_kwargs: _stub_generate_result("SELECT uid, score FROM users LIMIT 2"),
+    )
+    monkeypatch.setattr(
+        "app.data_agent.service._execute_bucket_writeback",
+        lambda *, run, sql_text, approved_by: {
+            "rows_actual": 2,
+            "rows_estimated": 2,
+            "uids": ["u1", "u2"],
+            "preview_rows": [],
+            "artifact": {
+                "filenames": ["u1.json", "u2.json"],
+                "written_file_count": 2,
+                "total_uids": 2,
+                "rows_per_uid": {"u1": 1, "u2": 1},
+            },
+            "output_bucket": "behavior",
+            "output_format": "json",
+            "target_dir": target_dir,
+            "written_uid_count": 2,
+        },
+    )
+
+    create = client.post(
+        "/api/data-agent/runs",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "natural_language_request": "写回行为画像 bucket",
+            "target_country": "mexico",
+            "run_type": "bucket_writeback",
+            "output_bucket": "behavior",
+            "output_format": "json",
+        },
+    )
+    assert create.status_code == 201
+    run_id = create.json()["run_id"]
+
+    approve = client.post(
+        f"/api/data-agent/runs/{run_id}/approve",
+        headers={"Authorization": f"Bearer {token}"},
+        json={},
+    )
+    assert approve.status_code == 200
+
+    execute = client.post(
+        f"/api/data-agent/runs/{run_id}/execute",
+        headers={"Authorization": f"Bearer {token}"},
+        json={},
+    )
+    assert execute.status_code == 200
+    payload = execute.json()
+    assert payload["writeback"]["target_dir"] == target_dir
+    assert payload["writeback"]["artifact"]["filenames"] == ["u1.json", "u2.json"]
+    assert all("/" not in filename for filename in payload["writeback"]["artifact"]["filenames"])
+
+    with AuthSessionLocal() as db:
+        writeback_event = db.scalar(
+            select(DataAgentWritebackEvent).where(DataAgentWritebackEvent.run_id == run_id)
+        )
+        assert writeback_event is not None
+        assert writeback_event.target_dir == target_dir
+
+        audit_event = db.scalar(
+            select(AuditEvent)
+            .where(AuditEvent.event_type == "data.bucket.writeback", AuditEvent.resource_id == run_id)
+            .order_by(AuditEvent.id.desc())
+        )
+        assert audit_event is not None
+        assert audit_event.metadata_json["target_dir"] == target_dir
+
+
+def test_data_agent_review_without_view_sql_can_reject_but_cannot_approve_or_edit(client: TestClient, monkeypatch) -> None:
+    from app.auth.database import AuthSessionLocal
+
+    with AuthSessionLocal() as db:
+        _create_role(
+            db,
+            code="review_only",
+            name="Review Only",
+            permission_codes=["data:query:review"],
+        )
+
+    _register_privileged_user(username="da-owner", email="da-owner@example.com", role_codes=["data_admin"])
+    owner_token, _ = _login(client, "da-owner", "passw0rd123")
+    _register_privileged_user(username="da-reviewer", email="da-reviewer@example.com", role_codes=["review_only"])
+    reviewer_token, _ = _login(client, "da-reviewer", "passw0rd123")
+
+    monkeypatch.setattr(
+        "app.data_agent.service._generate_sql_response",
+        lambda *_args, **_kwargs: _stub_generate_result("SELECT uid FROM users LIMIT 8"),
+    )
+    create = client.post(
+        "/api/data-agent/runs",
+        headers={"Authorization": f"Bearer {owner_token}"},
+        json={
+            "natural_language_request": "创建一个待审 SQL",
+            "target_country": "mexico",
+            "run_type": "cohort_query",
+        },
+    )
+    assert create.status_code == 201
+    run_id = create.json()["run_id"]
+
+    approve = client.post(
+        f"/api/data-agent/runs/{run_id}/approve",
+        headers={"Authorization": f"Bearer {reviewer_token}"},
+        json={},
+    )
+    assert approve.status_code == 403
+
+    edit = client.post(
+        f"/api/data-agent/runs/{run_id}/edit",
+        headers={"Authorization": f"Bearer {reviewer_token}"},
+        json={"sql_text": "SELECT uid FROM users LIMIT 9", "comment": "nope"},
+    )
+    assert edit.status_code == 403
+
+    reject = client.post(
+        f"/api/data-agent/runs/{run_id}/reject",
+        headers={"Authorization": f"Bearer {reviewer_token}"},
+        json={"comment": "先拒绝，等待更高权限复审"},
+    )
+    assert reject.status_code == 200
+    assert reject.json()["status"] == "rejected"

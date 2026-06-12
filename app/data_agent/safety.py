@@ -26,8 +26,8 @@ def resolve_country_names(target_country: str) -> tuple[str, str]:
 
 def run_sql_safety_gate(sql_text: str, sql_kind: str, target_country: str) -> dict:
     normalized_country, full_country = resolve_country_names(target_country)
-    sql_hash = hashlib.sha256((sql_text or "").encode("utf-8")).hexdigest()
     normalized_sql = (sql_text or "").strip()
+    sql_hash = hashlib.sha256(normalized_sql.encode("utf-8")).hexdigest()
     if sql_kind == "build_table_script":
         return {
             "status": "review_only",
@@ -67,4 +67,3 @@ def run_sql_safety_gate(sql_text: str, sql_kind: str, target_country: str) -> di
         "sql_hash": sql_hash,
         "target_country": normalized_country,
     }
-

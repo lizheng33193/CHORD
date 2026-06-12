@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import re
 import uuid
 from datetime import datetime
@@ -117,10 +116,7 @@ def _execute_bucket_writeback(*, run, sql_text: str, approved_by: str) -> dict[s
         overwrite=bool(run.overwrite),
     )
     payload = run_execute_pipeline(request, request_id=uuid.uuid4().hex)
-    target_dir = None
     filenames = payload.get("filenames") or []
-    if filenames:
-        target_dir = str((filenames[0].rsplit("/", 1)[0]) if "/" in filenames[0] else "")
     return {
         "rows_actual": payload.get("metadata", {}).get("row_count_total"),
         "rows_estimated": payload.get("metadata", {}).get("row_count_total"),
@@ -134,7 +130,7 @@ def _execute_bucket_writeback(*, run, sql_text: str, approved_by: str) -> dict[s
         },
         "output_bucket": payload.get("output_bucket"),
         "output_format": payload.get("output_format"),
-        "target_dir": target_dir,
+        "target_dir": payload.get("target_dir"),
         "written_uid_count": payload.get("total_uids"),
     }
 
@@ -154,7 +150,7 @@ class DataAgentService:
             target_country=target_country,
             target_action=body.target_action,
         )
-        sql_text = str(generated.get("sql") or "").strip()
+        sql_text = str(generated.get("sql") or "")
         sql_kind = str(generated.get("sql_kind") or "query_only")
         safety_result = run_sql_safety_gate(sql_text, sql_kind, target_country)
         run_id = uuid.uuid4().hex
@@ -175,7 +171,7 @@ class DataAgentService:
         version = self.repo.add_sql_version(
             run_id=run_id,
             version_no=1,
-            sql_text=sql_text,
+            sql_text=safety_result["normalized_sql"],
             sql_hash=safety_result["sql_hash"],
             source="agent_generated",
             sql_kind=sql_kind,
@@ -216,7 +212,7 @@ class DataAgentService:
         return self._to_detail(run, can_view_sql="data:query:view_sql" in ctx.permissions)
 
     def approve_run(self, *, ctx: UserContext, run_id: str, comment: str | None = None) -> DataAgentRunDetail:
-        require_permissions(ctx, ("data:query:review",))
+        require_permissions(ctx, ("data:query:review", "data:query:view_sql"))
         run = self._get_scoped_run(ctx, run_id)
         current = self.repo.get_sql_version(run.current_sql_version_id)
         if current is None:
@@ -242,7 +238,7 @@ class DataAgentService:
         return self._to_detail(run, can_view_sql="data:query:view_sql" in ctx.permissions)
 
     def edit_run(self, *, ctx: UserContext, run_id: str, body: DataAgentEditRequest) -> DataAgentRunDetail:
-        require_permissions(ctx, ("data:query:review",))
+        require_permissions(ctx, ("data:query:review", "data:query:view_sql"))
         run = self._get_scoped_run(ctx, run_id)
         current = self.repo.get_sql_version(run.current_sql_version_id)
         previous_hash = run.approved_sql_hash
@@ -250,7 +246,7 @@ class DataAgentService:
         version = self.repo.add_sql_version(
             run_id=run.run_id,
             version_no=self.repo.next_version_no(run.run_id),
-            sql_text=body.sql_text.strip(),
+            sql_text=safety_result["normalized_sql"],
             sql_hash=safety_result["sql_hash"],
             source="manual_edited",
             sql_kind=run.sql_kind or "query_only",
@@ -286,13 +282,13 @@ class DataAgentService:
             target_country=run.country,
             target_action="extract",
         )
-        sql_text = str(generated.get("sql") or "").strip()
+        sql_text = str(generated.get("sql") or "")
         sql_kind = str(generated.get("sql_kind") or run.sql_kind or "query_only")
         safety_result = run_sql_safety_gate(sql_text, sql_kind, run.country)
         version = self.repo.add_sql_version(
             run_id=run.run_id,
             version_no=self.repo.next_version_no(run.run_id),
-            sql_text=sql_text,
+            sql_text=safety_result["normalized_sql"],
             sql_hash=safety_result["sql_hash"],
             source="agent_revised",
             sql_kind=sql_kind,
@@ -406,8 +402,22 @@ class DataAgentService:
                 run.status = "executed"
                 run.updated_at = datetime.utcnow()
                 self.db.commit()
-                self._audit(ctx=ctx, event_type="data.query.executed", action="execute", run=run, sql_hash=current.sql_hash)
-                self._audit(ctx=ctx, event_type="data.bucket.writeback", action="writeback", run=run, sql_hash=current.sql_hash)
+                self._audit(
+                    ctx=ctx,
+                    event_type="data.query.executed",
+                    action="execute",
+                    run=run,
+                    sql_hash=current.sql_hash,
+                    extra_metadata={"target_dir": payload.get("target_dir")},
+                )
+                self._audit(
+                    ctx=ctx,
+                    event_type="data.bucket.writeback",
+                    action="writeback",
+                    run=run,
+                    sql_hash=current.sql_hash,
+                    extra_metadata={"target_dir": payload.get("target_dir")},
+                )
         except HTTPException:
             run.status = "failed"
             run.updated_at = datetime.utcnow()
@@ -533,7 +543,16 @@ class DataAgentService:
         )
 
     @staticmethod
-    def _audit(*, ctx: UserContext, event_type: str, action: str, run, sql_hash: str | None, status: str = "success") -> None:
+    def _audit(
+        *,
+        ctx: UserContext,
+        event_type: str,
+        action: str,
+        run,
+        sql_hash: str | None,
+        status: str = "success",
+        extra_metadata: dict[str, Any] | None = None,
+    ) -> None:
         record_runtime_audit_event(
             user=ctx,
             event_type=event_type,
@@ -550,6 +569,6 @@ class DataAgentService:
                 "approved_sql_hash": run.approved_sql_hash,
                 "output_bucket": run.output_bucket,
                 "output_format": run.output_format,
+                **(extra_metadata or {}),
             },
         )
-

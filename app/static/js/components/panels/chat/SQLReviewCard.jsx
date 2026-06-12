@@ -21,6 +21,7 @@ function SQLReviewCard({
   loading = false,
   canViewSql = false,
   canReview = false,
+  canReviewSql = false,
   canExecute = false,
   canWriteback = false,
   onApprove,
@@ -117,16 +118,22 @@ function SQLReviewCard({
           <div className="rounded-xl border border-slate-200 p-3">
             <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Review Actions</div>
             <div className="mt-3 flex flex-wrap gap-2">
-              {canReview ? (
+              {canReviewSql ? (
                 <>
                   <button type="button" disabled={loading} onClick={() => onEdit && onEdit(run)} className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-100 disabled:opacity-50">Edit SQL</button>
                   <button type="button" disabled={loading} onClick={() => onRevise && onRevise(run)} className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-100 disabled:opacity-50">Ask Agent Revise</button>
                   <button type="button" disabled={loading || run.sql_kind !== 'query_only' || !currentSql || currentSql.safety_status !== 'passed'} onClick={() => onApprove && onApprove(run)} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-emerald-500 disabled:opacity-50">Approve</button>
-                  <button type="button" disabled={loading} onClick={() => onReject && onReject(run)} className="rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-rose-500 disabled:opacity-50">Reject</button>
                 </>
-              ) : (
+              ) : null}
+              {canReview ? (
+                <button type="button" disabled={loading} onClick={() => onReject && onReject(run)} className="rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-rose-500 disabled:opacity-50">Reject</button>
+              ) : null}
+              {!canReview ? (
                 <div className="text-xs text-slate-500">当前身份没有 `data:query:review`，只能查看状态。</div>
-              )}
+              ) : null}
+              {canReview && !canReviewSql ? (
+                <div className="text-xs text-amber-700">当前身份可以执行拒绝操作，但缺少 `data:query:view_sql`，不能 approve 或 edit SQL。</div>
+              ) : null}
             </div>
             <div className="mt-3">
               <button

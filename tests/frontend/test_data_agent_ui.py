@@ -52,3 +52,5 @@ def test_data_agent_components_render_expected_actions() -> None:
     assert "Execute & Write Back" in review_src
     assert "Edit SQL" in review_src
     assert "Ask Agent Revise" in review_src
+    assert "canReviewSql" in review_src
+    assert "canReview ?" in review_src or "canReview?" in review_src

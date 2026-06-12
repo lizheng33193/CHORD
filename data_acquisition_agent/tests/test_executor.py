@@ -209,8 +209,10 @@ def test_pipeline_happy_path(monkeypatch, tmp_path):
 
     result = run_execute_pipeline(_exec_req(), request_id="rid-happy")
     assert result["output_bucket"] == "app"
+    assert result["target_dir"] == str(bucket)
     assert result["written_file_count"] == 2
     assert sorted(result["filenames"]) == ["u1.csv", "u2.csv"]
+    assert all("/" not in filename for filename in result["filenames"])
     assert result["total_uids"] == 2
     assert result["metadata"]["row_count_total"] == 2
 
