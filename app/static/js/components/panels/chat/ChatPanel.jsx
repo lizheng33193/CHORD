@@ -300,6 +300,9 @@ function ChatPanel({
   const canReviewSqlDataAgent = !currentUser
     || currentUser.is_superuser
     || (permissionSet.has('data:query:review') && permissionSet.has('data:query:view_sql'));
+  const canReviseDataAgent = !currentUser
+    || currentUser.is_superuser
+    || (permissionSet.has('data:query:generate') && permissionSet.has('data:query:view_sql'));
   const canExecuteDataAgent = !currentUser || currentUser.is_superuser || permissionSet.has('data:query:execute');
   const canWritebackDataAgent = !currentUser || currentUser.is_superuser || permissionSet.has('data:bucket:writeback');
   const esRef = useRef(null);
@@ -969,6 +972,7 @@ function ChatPanel({
                       canViewSql={!currentUser || currentUser.is_superuser || permissionSet.has('data:query:view_sql')}
                       canReview={canReviewDataAgent}
                       canReviewSql={canReviewSqlDataAgent}
+                      canRevise={canReviseDataAgent}
                       canExecute={canExecuteDataAgent}
                       canWriteback={canWritebackDataAgent}
                       onApprove={onApproveDataAgentRun}

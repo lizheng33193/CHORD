@@ -22,6 +22,7 @@ function SQLReviewCard({
   canViewSql = false,
   canReview = false,
   canReviewSql = false,
+  canRevise = false,
   canExecute = false,
   canWriteback = false,
   onApprove,
@@ -121,9 +122,11 @@ function SQLReviewCard({
               {canReviewSql ? (
                 <>
                   <button type="button" disabled={loading} onClick={() => onEdit && onEdit(run)} className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-100 disabled:opacity-50">Edit SQL</button>
-                  <button type="button" disabled={loading} onClick={() => onRevise && onRevise(run)} className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-100 disabled:opacity-50">Ask Agent Revise</button>
                   <button type="button" disabled={loading || run.sql_kind !== 'query_only' || !currentSql || currentSql.safety_status !== 'passed'} onClick={() => onApprove && onApprove(run)} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-emerald-500 disabled:opacity-50">Approve</button>
                 </>
+              ) : null}
+              {canRevise ? (
+                <button type="button" disabled={loading} onClick={() => onRevise && onRevise(run)} className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-100 disabled:opacity-50">Ask Agent Revise</button>
               ) : null}
               {canReview ? (
                 <button type="button" disabled={loading} onClick={() => onReject && onReject(run)} className="rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-rose-500 disabled:opacity-50">Reject</button>
