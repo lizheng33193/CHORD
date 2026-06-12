@@ -40,6 +40,7 @@ def test_chat_panel_contains_explicit_data_agent_mode() -> None:
     assert "dataAgentMode" in chat_panel_src
     assert "createDataAgentRun" in chat_panel_src
     assert "fetchDataAgentRuns" in chat_panel_src
+    assert "canReviseDataAgent" in chat_panel_src
 
 
 def test_data_agent_components_render_expected_actions() -> None:
@@ -52,3 +53,6 @@ def test_data_agent_components_render_expected_actions() -> None:
     assert "Execute & Write Back" in review_src
     assert "Edit SQL" in review_src
     assert "Ask Agent Revise" in review_src
+    assert "canReviewSql" in review_src
+    assert "canRevise" in review_src
+    assert "canReview ?" in review_src or "canReview?" in review_src

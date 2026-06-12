@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 
 
 @pytest.fixture()
@@ -65,6 +66,18 @@ def _login(client: TestClient, username_or_email: str, password: str) -> str:
     return response.json()["access_token"]
 
 
+def _create_role(db, *, code: str, name: str, permission_codes: list[str]) -> None:
+    from app.auth.models import Permission, Role, RolePermission
+
+    role = Role(code=code, name=name, description=name)
+    db.add(role)
+    db.flush()
+    permissions = db.scalars(select(Permission).where(Permission.code.in_(permission_codes))).all()
+    for permission in permissions:
+        db.add(RolePermission(role_id=role.id, permission_id=permission.id))
+    db.commit()
+
+
 def test_normalize_country_alias_maps_business_names_to_codes() -> None:
     from app.auth.permissions import normalize_country_scope_value
 
@@ -120,3 +133,35 @@ def test_invalid_token_is_401_but_scope_override_is_403(client: TestClient) -> N
     )
     assert forbidden.status_code == 403
     assert "no access to country" in forbidden.json()["detail"]
+
+
+def test_review_and_view_sql_permissions_are_independent(auth_db, client: TestClient) -> None:
+    from app.auth.database import AuthSessionLocal
+    from app.auth.service import AuthService
+
+    with AuthSessionLocal() as db:
+        _create_role(
+            db,
+            code="review_only",
+            name="Review Only",
+            permission_codes=["data:query:review"],
+        )
+        service = AuthService(db)
+        created = service.register_user(
+            username="review-only-user",
+            email="review-only-user@example.com",
+            password="passw0rd123",
+            display_name="Review Only User",
+            role_codes=["review_only"],
+            allow_privileged_roles=True,
+        )
+        ctx = service.build_user_context(created.id)
+        assert "data:query:review" in ctx.permissions
+        assert "data:query:view_sql" not in ctx.permissions
+
+    token = _login(client, "review-only-user", "passw0rd123")
+    response = client.get("/api/auth/my-permissions", headers={"Authorization": f"Bearer {token}"})
+    assert response.status_code == 200
+    permissions = set(response.json()["permissions"])
+    assert "data:query:review" in permissions
+    assert "data:query:view_sql" not in permissions

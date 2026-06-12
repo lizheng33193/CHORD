@@ -142,6 +142,7 @@ def run_execute_pipeline(request: ExecuteRequest, *, request_id: str) -> dict:
         "request_id": request_id,
         "output_bucket": request.output_bucket,
         "output_format": request.output_format,
+        "target_dir": str(bucket_dir),
         "filenames": filenames,
         "written_file_count": len(filenames),
         "total_uids": len(items),
