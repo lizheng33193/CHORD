@@ -24,6 +24,7 @@ def test_api_layer_exposes_data_agent_routes() -> None:
     assert "/api/data-agent/runs" in api_src
     assert "createDataAgentRun" in api_src
     assert "fetchDataAgentRuns" in api_src
+    assert "fetchDataAgentRun" in api_src
     assert "approveDataAgentRun" in api_src
     assert "editDataAgentRun" in api_src
     assert "reviseDataAgentRun" in api_src
@@ -40,7 +41,10 @@ def test_chat_panel_contains_explicit_data_agent_mode() -> None:
     assert "dataAgentMode" in chat_panel_src
     assert "createDataAgentRun" in chat_panel_src
     assert "fetchDataAgentRuns" in chat_panel_src
+    assert "fetchDataAgentRun" in chat_panel_src
     assert "canReviseDataAgent" in chat_panel_src
+    assert "artifact.type === 'data_agent_run'" in chat_panel_src
+    assert "clarify_data_request" in chat_panel_src
 
 
 def test_data_agent_components_render_expected_actions() -> None:

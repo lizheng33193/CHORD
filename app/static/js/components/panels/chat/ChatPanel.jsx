@@ -22,6 +22,7 @@ const {
   fetchOrchestratorSession,
   createDataAgentRun,
   fetchDataAgentRuns,
+  fetchDataAgentRun,
   approveDataAgentRun,
   editDataAgentRun,
   reviseDataAgentRun,
@@ -274,7 +275,7 @@ function ChatPanel({
   const [clarificationDraft, setClarificationDraft] = useState({ country: 'mx', time_window: '最近 7 天', auto_profile: true });
   const [dataAgentMode, setDataAgentMode] = useState(false);
   const [dataAgentDraft, setDataAgentDraft] = useState({ natural_language_request: '', target_country: currentCountry || 'mx', run_type: 'cohort_query', output_bucket: 'behavior', output_format: 'json' });
-  const [dataAgentRuns, setDataAgentRuns] = useState([]);
+  const [dataAgentRunsById, setDataAgentRunsById] = useState({});
   const [dataAgentLoading, setDataAgentLoading] = useState(false);
   const [dataAgentError, setDataAgentError] = useState('');
   const [ingestedUids, setIngestedUids] = useState([]);
@@ -400,14 +401,18 @@ function ChatPanel({
   const activeRunPair = _findActiveRun(state.turns);
   const activeRun = activeRunPair ? activeRunPair.run : null;
   const activeTurn = activeRunPair ? activeRunPair.turn : null;
+  const dataAgentRuns = Object.values(dataAgentRunsById || {}).sort((left, right) => {
+    const leftTime = Date.parse((left && left.updated_at) || (left && left.created_at) || 0) || 0;
+    const rightTime = Date.parse((right && right.updated_at) || (right && right.created_at) || 0) || 0;
+    return rightTime - leftTime;
+  });
 
   function upsertDataAgentRun(nextRun) {
     if (!nextRun || !nextRun.run_id) return;
-    setDataAgentRuns((prev) => {
-      const exists = prev.some((run) => run && run.run_id === nextRun.run_id);
-      if (!exists) return [nextRun].concat(prev);
-      return prev.map((run) => (run && run.run_id === nextRun.run_id ? nextRun : run));
-    });
+    setDataAgentRunsById((prev) => ({
+      ...prev,
+      [nextRun.run_id]: nextRun,
+    }));
   }
 
   async function loadDataAgentRuns() {
@@ -416,7 +421,13 @@ function ChatPanel({
     setDataAgentError('');
     try {
       const payload = await fetchDataAgentRuns();
-      setDataAgentRuns(Array.isArray(payload && payload.runs) ? payload.runs : []);
+      const runs = Array.isArray(payload && payload.runs) ? payload.runs : [];
+      const next = {};
+      runs.forEach((run) => {
+        if (!run || !run.run_id) return;
+        next[run.run_id] = run;
+      });
+      setDataAgentRunsById(next);
     } catch (error) {
       setDataAgentError(error && error.message ? error.message : '加载 Data Agent runs 失败。');
     } finally {
@@ -460,6 +471,16 @@ function ChatPanel({
     }
   }
 
+  const ensureDataAgentRun = useCallback(async (runId) => {
+    if (!runId || dataAgentRunsById[runId] || !canUseDataAgent) return;
+    try {
+      const run = await fetchDataAgentRun(runId);
+      upsertDataAgentRun(run);
+    } catch (error) {
+      setDataAgentError(error && error.message ? error.message : '加载 Data Agent run 详情失败。');
+    }
+  }, [canUseDataAgent, dataAgentRunsById]);
+
   function onApproveDataAgentRun(run) {
     mutateDataAgentRun(run.run_id, () => approveDataAgentRun(run.run_id, {}));
   }
@@ -491,6 +512,21 @@ function ChatPanel({
     if (!dataAgentMode) return;
     loadDataAgentRuns();
   }, [dataAgentMode, currentUser]);
+
+  useEffect(() => {
+    if (!canUseDataAgent) return;
+    const runIds = new Set();
+    (state.turns || []).forEach((turn) => {
+      (Array.isArray(turn && turn.artifacts) ? turn.artifacts : []).forEach((artifact) => {
+        if (artifact && artifact.type === 'data_agent_run' && artifact.run_id) {
+          runIds.add(artifact.run_id);
+        }
+      });
+    });
+    runIds.forEach((runId) => {
+      if (!dataAgentRunsById[runId]) ensureDataAgentRun(runId);
+    });
+  }, [canUseDataAgent, dataAgentRunsById, ensureDataAgentRun, state.turns]);
 
   useEffect(() => {
     state.toolCalls.forEach((t) => {
@@ -994,6 +1030,8 @@ function ChatPanel({
                   const turnJumpUids = profileArtifact
                     ? profileArtifact.uids
                     : (traceArtifact ? traceArtifact.uids : []);
+                  const dataAgentArtifacts = (Array.isArray(turn.artifacts) ? turn.artifacts : [])
+                    .filter((artifact) => artifact && artifact.type === 'data_agent_run' && artifact.run_id);
                   const turnSelectedUid = turnJumpUids.includes(selectedJumpUid) ? selectedJumpUid : turnJumpUids[0];
                   const turnExpectedModules = (profileArtifact && turnSelectedUid && profileArtifact.expectedByUid[turnSelectedUid]) || [];
                   const turnCompletedModules = (profileArtifact && turnSelectedUid && profileArtifact.completedByUid[turnSelectedUid]) || [];
@@ -1078,7 +1116,11 @@ function ChatPanel({
                             {runPendingResolution ? (
                               <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3">
                                 <div className="text-sm font-semibold text-blue-800">
-                                  {runPendingResolution.resolution_type === 'repair_strategy' ? '请选择本次 cohort 的补数策略' : '请先补充执行条件'}
+                                  {runPendingResolution.resolution_type === 'repair_strategy'
+                                    ? '请选择本次 cohort 的补数策略'
+                                    : (runPendingResolution.resolution_type === 'clarify_data_request'
+                                      ? '请选择数据请求处理方式'
+                                      : '请先补充执行条件')}
                                 </div>
                                 <div className="mt-1 text-xs leading-5 text-blue-700">
                                   {runPendingResolution.prompt || '请补充完成当前执行所需的信息。'}
@@ -1145,6 +1187,20 @@ function ChatPanel({
                                     ))}
                                   </div>
                                 ) : null}
+                                {runPendingResolution.resolution_type === 'clarify_data_request' ? (
+                                  <div className="mt-3 flex flex-wrap gap-2">
+                                    {(runPendingResolution.options || []).map((option) => (
+                                      <button
+                                        key={option}
+                                        type="button"
+                                        onClick={() => onSelectResolutionOption(option)}
+                                        className="rounded-lg border border-blue-300 bg-white px-3 py-1.5 text-xs font-semibold text-blue-700 transition-colors hover:bg-blue-100"
+                                      >
+                                        {option === 'profile_chat' ? '继续普通画像/对话' : '创建 SQL 审核任务'}
+                                      </button>
+                                    ))}
+                                  </div>
+                                ) : null}
                               </div>
                             ) : null}
                           </>
@@ -1153,6 +1209,34 @@ function ChatPanel({
                     );
                       })}
                       {turn.assistantMessage ? <ChatMessageList messages={[turn.assistantMessage]} /> : null}
+                      {dataAgentArtifacts.map((artifact) => {
+                        const run = dataAgentRunsById[artifact.run_id] || null;
+                        if (!run) {
+                          return (
+                            <div key={`${turn.turnId}-${artifact.run_id}`} className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500 shadow-sm">
+                              正在加载 SQL 审核任务 {artifact.run_id}...
+                            </div>
+                          );
+                        }
+                        return (
+                          <SQLReviewCard
+                            key={`${turn.turnId}-${artifact.run_id}`}
+                            run={run}
+                            loading={dataAgentLoading}
+                            canViewSql={!currentUser || currentUser.is_superuser || permissionSet.has('data:query:view_sql')}
+                            canReview={canReviewDataAgent}
+                            canReviewSql={canReviewSqlDataAgent}
+                            canRevise={canReviseDataAgent}
+                            canExecute={canExecuteDataAgent}
+                            canWriteback={canWritebackDataAgent}
+                            onApprove={onApproveDataAgentRun}
+                            onReject={onRejectDataAgentRun}
+                            onEdit={onEditDataAgentRun}
+                            onRevise={onReviseDataAgentRun}
+                            onExecute={onExecuteDataAgentRun}
+                          />
+                        );
+                      })}
                       {turnJumpUids.length > 0 && onJumpToTab ? (
                         <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
                           <div className="text-sm font-semibold text-emerald-800">

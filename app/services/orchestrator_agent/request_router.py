@@ -33,6 +33,12 @@ _TIME_WINDOW_HINTS = ("最近", "过去", "近", "天", "周", "月", "上周", 
 _COUNTRY_HINTS = ("墨西哥", "mx", "mexico", "泰国", "th", "thailand", "哥伦比亚", "co", "colombia", "秘鲁", "pe", "peru", "智利", "cl", "chile", "巴西", "br", "brazil")
 _GENERAL_CHAT_BLOCKERS = ("讨论的方案", "这个方案", "这个计划", "刚才讨论")
 _UID_FILE_HINT = "data/id_files/"
+_DATA_AGENT_EXPLICIT_HINTS = (
+    "data agent", "数据代理", "sql 审核任务", "sql review task", "创建 sql 任务",
+    "创建sql任务", "生成 sql", "生成sql", "帮我写 sql", "帮我写sql",
+)
+_DATA_AGENT_WRITEBACK_HINTS = ("补数", "补齐数据", "写回", "回填", "writeback", "修复缺失数据")
+_AMBIGUOUS_DATA_REQUEST_HINTS = ("查数据", "帮我查一下数据", "取一下数据")
 _MODULE_PROMPT_HINTS: dict[str, tuple[str, ...]] = {
     "app": ("app画像", "应用画像", "app 使用", "安装应用", "app安装"),
     "behavior": ("行为画像", "行为摘要", "行为特点", "活跃度", "流失风险"),
@@ -48,6 +54,9 @@ def normalize_request(prompt: str, session=None, detected_country: str | None = 
     lowered = stripped_prompt.lower()
     focus = _detect_focus(stripped_prompt)
     uid_file_path = _extract_uid_file_path(stripped_prompt)
+    explicit_bucket = _detect_explicit_writeback_bucket(stripped_prompt)
+    explicit_writeback = _has_any(stripped_prompt, _DATA_AGENT_WRITEBACK_HINTS)
+    explicit_data_agent = _looks_like_explicit_data_agent_request(stripped_prompt)
     if _UID_FILE_HINT in lowered and uid_file_path:
         return _build_request(
             intent="profile_batch",
@@ -59,9 +68,76 @@ def normalize_request(prompt: str, session=None, detected_country: str | None = 
             application_time_hint=_workspace_application_time(session),
             request_summary=_build_request_summary(stripped_prompt, [], uid_file_path),
             query_request=None,
+            data_agent_run_type=None,
+            data_agent_output_bucket=None,
+            data_agent_output_format=None,
             read_only=False,
             prompt=stripped_prompt,
             focus=focus,
+        )
+
+    if explicit_data_agent:
+        country = detected_country or getattr(session, "country", None)
+        if explicit_writeback and explicit_bucket is None:
+            return _build_request(
+                intent="clarify_data_request",
+                country=country,
+                uids=[],
+                uid_file_path=None,
+                modules=[],
+                trace_days=7,
+                application_time_hint=_workspace_application_time(session),
+                request_summary="澄清数据任务类型",
+                query_request=stripped_prompt,
+                data_agent_run_type=None,
+                data_agent_output_bucket=None,
+                data_agent_output_format=None,
+                read_only=False,
+                prompt=stripped_prompt,
+                focus=["data_agent"],
+                missing_slots=["task_type"],
+                clarification_prompt="你是想继续普通画像/对话，还是创建一个需要人工审核的 SQL 任务？",
+                candidate_defaults={"task_type": "create_sql_review_task"},
+            )
+        run_type = "bucket_writeback" if explicit_writeback else "cohort_query"
+        return _build_request(
+            intent="create_data_agent_run",
+            country=country,
+            uids=[],
+            uid_file_path=None,
+            modules=[],
+            trace_days=7,
+            application_time_hint=_workspace_application_time(session),
+            request_summary="创建 Data Agent SQL 审核任务",
+            query_request=stripped_prompt,
+            data_agent_run_type=run_type,
+            data_agent_output_bucket=explicit_bucket,
+            data_agent_output_format="json" if run_type == "bucket_writeback" and explicit_bucket else None,
+            read_only=False,
+            prompt=stripped_prompt,
+            focus=["data_agent", "writeback" if run_type == "bucket_writeback" else "sql_review_task"],
+        )
+
+    if _looks_like_ambiguous_data_request(stripped_prompt):
+        return _build_request(
+            intent="clarify_data_request",
+            country=detected_country or getattr(session, "country", None),
+            uids=[],
+            uid_file_path=None,
+            modules=[],
+            trace_days=7,
+            application_time_hint=_workspace_application_time(session),
+            request_summary="澄清数据任务类型",
+            query_request=stripped_prompt,
+            data_agent_run_type=None,
+            data_agent_output_bucket=None,
+            data_agent_output_format=None,
+            read_only=False,
+            prompt=stripped_prompt,
+            focus=["data_request"],
+            missing_slots=["task_type"],
+            clarification_prompt="你是想继续普通画像/对话，还是创建一个需要人工审核的 SQL 任务？",
+            candidate_defaults={"task_type": "profile_chat"},
         )
 
     uids = _extract_uids(stripped_prompt)
@@ -88,6 +164,9 @@ def normalize_request(prompt: str, session=None, detected_country: str | None = 
             application_time_hint=_workspace_application_time(session),
             request_summary=request_summary,
             query_request=None,
+            data_agent_run_type=None,
+            data_agent_output_bucket=None,
+            data_agent_output_format=None,
             read_only=False,
             prompt=stripped_prompt,
             focus=focus or ["trace"],
@@ -105,6 +184,9 @@ def normalize_request(prompt: str, session=None, detected_country: str | None = 
                 application_time_hint=_workspace_application_time(session),
                 request_summary=request_summary,
                 query_request=None,
+                data_agent_run_type=None,
+                data_agent_output_bucket=None,
+                data_agent_output_format=None,
                 read_only=True,
                 prompt=stripped_prompt,
                 focus=focus,
@@ -124,6 +206,9 @@ def normalize_request(prompt: str, session=None, detected_country: str | None = 
             application_time_hint=_workspace_application_time(session),
             request_summary=request_summary,
             query_request=None,
+            data_agent_run_type=None,
+            data_agent_output_bucket=None,
+            data_agent_output_format=None,
             read_only=False,
             prompt=stripped_prompt,
             focus=base_focus,
@@ -140,6 +225,9 @@ def normalize_request(prompt: str, session=None, detected_country: str | None = 
             application_time_hint=_workspace_application_time(session),
             request_summary=request_summary,
             query_request=stripped_prompt,
+            data_agent_run_type=None,
+            data_agent_output_bucket=None,
+            data_agent_output_format=None,
             read_only=False,
             prompt=stripped_prompt,
             focus=focus or ["cohort"],
@@ -167,6 +255,9 @@ def normalize_request(prompt: str, session=None, detected_country: str | None = 
             application_time_hint=_workspace_application_time(session),
             request_summary=request_summary,
             query_request=stripped_prompt,
+            data_agent_run_type=None,
+            data_agent_output_bucket=None,
+            data_agent_output_format=None,
             read_only=False,
             prompt=stripped_prompt,
             focus=focus or ["cohort"],
@@ -185,6 +276,9 @@ def normalize_request(prompt: str, session=None, detected_country: str | None = 
         application_time_hint=_workspace_application_time(session),
         request_summary=request_summary,
         query_request=None,
+        data_agent_run_type=None,
+        data_agent_output_bucket=None,
+        data_agent_output_format=None,
         read_only=False,
         prompt=stripped_prompt,
         focus=focus,
@@ -294,6 +388,9 @@ def _build_request(
     application_time_hint: str | None,
     request_summary: str,
     query_request: str | None,
+    data_agent_run_type: str | None,
+    data_agent_output_bucket: str | None,
+    data_agent_output_format: str | None,
     read_only: bool,
     prompt: str,
     focus: list[str],
@@ -311,6 +408,9 @@ def _build_request(
         application_time_hint=application_time_hint,
         request_summary=request_summary,
         query_request=query_request,
+        data_agent_run_type=data_agent_run_type,
+        data_agent_output_bucket=data_agent_output_bucket,
+        data_agent_output_format=data_agent_output_format,
         read_only=read_only,
         request_understanding=build_request_understanding(
             prompt=prompt,
@@ -403,3 +503,46 @@ def _workspace_uids(session: Any) -> list[str]:
 def _has_any(prompt: str, keywords: tuple[str, ...]) -> bool:
     lowered = str(prompt or "").lower()
     return any(keyword.lower() in lowered for keyword in keywords)
+
+
+def _looks_like_explicit_data_agent_request(prompt: str) -> bool:
+    return _has_any(prompt, _DATA_AGENT_EXPLICIT_HINTS) or (
+        _has_any(prompt, _DATA_AGENT_WRITEBACK_HINTS)
+        and ("sql" in str(prompt or "").lower() or "data agent" in str(prompt or "").lower() or "数据代理" in str(prompt or ""))
+    )
+
+
+def _looks_like_ambiguous_data_request(prompt: str) -> bool:
+    lowered = str(prompt or "").lower()
+    if _looks_like_explicit_data_agent_request(prompt):
+        return False
+    return any(keyword.lower() in lowered for keyword in _AMBIGUOUS_DATA_REQUEST_HINTS)
+
+
+def _detect_explicit_writeback_bucket(prompt: str) -> str | None:
+    compact = str(prompt or "")
+    lowered = compact.lower()
+    if not _has_any(compact, _DATA_AGENT_WRITEBACK_HINTS):
+        return None
+    credit_patterns = (
+        r"(写回|回填|补数|补齐数据|修复缺失数据).{0,12}(credit|征信数据|征信画像|credit bucket)",
+        r"(credit|征信数据|征信画像|credit bucket).{0,12}(写回|回填|补数|补齐数据|修复缺失数据)",
+    )
+    behavior_patterns = (
+        r"(写回|回填|补数|补齐数据|修复缺失数据).{0,12}(behavior|行为数据|行为画像|behavior bucket)",
+        r"(behavior|行为数据|行为画像|behavior bucket).{0,12}(写回|回填|补数|补齐数据|修复缺失数据)",
+    )
+    app_patterns = (
+        r"(写回|回填|补数|补齐数据|修复缺失数据).{0,12}(app\s*(数据|画像|bucket)?|应用数据|应用画像)",
+        r"(app\s*(数据|画像|bucket)?|应用数据|应用画像).{0,12}(写回|回填|补数|补齐数据|修复缺失数据)",
+    )
+    for pattern in credit_patterns:
+        if re.search(pattern, lowered, re.IGNORECASE):
+            return "credit"
+    for pattern in behavior_patterns:
+        if re.search(pattern, lowered, re.IGNORECASE):
+            return "behavior"
+    for pattern in app_patterns:
+        if re.search(pattern, lowered, re.IGNORECASE):
+            return "app"
+    return None

@@ -74,4 +74,9 @@ class HumanInputController:
         resolution = await asyncio.to_thread(resolve_bus.wait_resolution, session_id, timeout_seconds)
         if not resolution:
             return HumanInputResult(status="expired")
-        return HumanInputResult(status="resolved", payload=dict((resolution or {}).get("answers") or {}))
+        payload = dict((resolution or {}).get("answers") or {})
+        if (resolution or {}).get("selected_option"):
+            payload["selected_option"] = (resolution or {}).get("selected_option")
+        if (resolution or {}).get("resolution_id"):
+            payload["resolution_id"] = (resolution or {}).get("resolution_id")
+        return HumanInputResult(status="resolved", payload=payload)
