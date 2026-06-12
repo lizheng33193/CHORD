@@ -11,6 +11,7 @@ AUTH_API = REPO / "app" / "static" / "js" / "services" / "authApi.js"
 AUTH_STORE = REPO / "app" / "static" / "js" / "state" / "authStore.js"
 HOME = REPO / "app" / "static" / "js" / "components" / "HomeView.jsx"
 DASHBOARD = REPO / "app" / "static" / "js" / "components" / "DashboardView.jsx"
+REGISTER = REPO / "app" / "static" / "js" / "components" / "RegisterPage.jsx"
 
 
 def test_frontend_bundle_includes_auth_components_and_store() -> None:
@@ -63,3 +64,10 @@ def test_scope_selectors_are_driven_by_authorized_scope_data() -> None:
     assert "泰国 (TH)" not in home_src
     assert "墨西哥 (MX)" not in dashboard_src
     assert "泰国 (TH)" not in dashboard_src
+
+
+def test_register_page_uses_supported_lucide_icons() -> None:
+    register_src = REGISTER.read_text(encoding="utf-8")
+
+    assert "UserPlus" in register_src
+    assert "UserRoundPlus" not in register_src
