@@ -273,11 +273,59 @@ async function fetchCurrentAuthUser() {
   return await httpClient.json('/api/auth/me', {}, '获取当前用户失败。');
 }
 
+async function createDataAgentRun(payload) {
+  return await httpClient.json('/api/data-agent/runs', {
+    method: 'POST',
+    body: JSON.stringify(payload || {})
+  }, '创建 Data Agent run 失败。');
+}
+
+async function fetchDataAgentRuns() {
+  return await httpClient.json('/api/data-agent/runs', {}, '获取 Data Agent runs 失败。');
+}
+
+async function approveDataAgentRun(runId, payload) {
+  return await httpClient.json(`/api/data-agent/runs/${encodeURIComponent(runId)}/approve`, {
+    method: 'POST',
+    body: JSON.stringify(payload || {})
+  }, '批准 SQL 失败。');
+}
+
+async function editDataAgentRun(runId, payload) {
+  return await httpClient.json(`/api/data-agent/runs/${encodeURIComponent(runId)}/edit`, {
+    method: 'POST',
+    body: JSON.stringify(payload || {})
+  }, '编辑 SQL 失败。');
+}
+
+async function reviseDataAgentRun(runId, payload) {
+  return await httpClient.json(`/api/data-agent/runs/${encodeURIComponent(runId)}/revise`, {
+    method: 'POST',
+    body: JSON.stringify(payload || {})
+  }, '请求 Agent revise 失败。');
+}
+
+async function rejectDataAgentRun(runId, payload) {
+  return await httpClient.json(`/api/data-agent/runs/${encodeURIComponent(runId)}/reject`, {
+    method: 'POST',
+    body: JSON.stringify(payload || {})
+  }, '拒绝 SQL 失败。');
+}
+
+async function executeDataAgentRun(runId) {
+  return await httpClient.json(`/api/data-agent/runs/${encodeURIComponent(runId)}/execute`, {
+    method: 'POST',
+    body: JSON.stringify({})
+  }, '执行 approved SQL 失败。');
+}
+
 window.AppServices = window.AppServices || {};
 window.AppServices.api = {
   analyzeByUid, analyzeByFile, analyzeByUidStream, fetchTrace, fetchUiConfig, analyzeModule,
   createOrchestratorSession, sendOrchestratorMessage, openOrchestratorStream,
   ackOrchestratorTool, cancelOrchestratorRun, resolveOrchestratorStep, fetchOrchestratorSession, fetchOrchestratorSessions, fetchMemoryStatus, queryMemory,
   listMemories, createMemory, updateMemory, archiveMemory, restoreMemory, deleteMemory,
-  fetchCurrentAuthUser
+  fetchCurrentAuthUser,
+  createDataAgentRun, fetchDataAgentRuns,
+  approveDataAgentRun, editDataAgentRun, reviseDataAgentRun, rejectDataAgentRun, executeDataAgentRun
 };

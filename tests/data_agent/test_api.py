@@ -1,0 +1,349 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+from fastapi.testclient import TestClient
+from sqlalchemy import select
+
+
+@pytest.fixture()
+def client(tmp_path: Path, monkeypatch):
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "auth_enabled", True, raising=False)
+    monkeypatch.setattr(settings, "auth_database_url", f"sqlite:///{tmp_path / 'auth.sqlite3'}", raising=False)
+    monkeypatch.setattr(settings, "auth_jwt_secret", "test-secret-for-data-agent", raising=False)
+    monkeypatch.setattr(settings, "default_admin_username", "admin", raising=False)
+    monkeypatch.setattr(settings, "default_admin_email", "admin@example.com", raising=False)
+    monkeypatch.setattr(settings, "default_admin_password", "admin123456", raising=False)
+
+    from app.auth.database import AuthSessionLocal, create_auth_schema, reset_auth_engine
+    from app.auth.seed import seed_auth_data
+    from app.main import app
+
+    reset_auth_engine()
+    create_auth_schema()
+    with AuthSessionLocal() as db:
+        seed_auth_data(db)
+
+    with TestClient(app) as test_client:
+        yield test_client
+
+    reset_auth_engine()
+
+
+def _login(client: TestClient, username_or_email: str, password: str) -> tuple[str, dict]:
+    response = client.post(
+        "/api/auth/login",
+        json={"username_or_email": username_or_email, "password": password},
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    return payload["access_token"], payload["user"]
+
+
+def _register_privileged_user(*, username: str, email: str, role_codes: list[str]) -> None:
+    from app.auth.database import AuthSessionLocal
+    from app.auth.service import AuthService
+
+    with AuthSessionLocal() as db:
+        AuthService(db).register_user(
+            username=username,
+            email=email,
+            password="passw0rd123",
+            display_name=username,
+            role_codes=role_codes,
+            allow_privileged_roles=True,
+        )
+
+
+def _create_role(db, *, code: str, name: str, permission_codes: list[str]) -> None:
+    from app.auth.models import Permission, Role, RolePermission
+
+    role = Role(code=code, name=name, description=name)
+    db.add(role)
+    db.flush()
+    permissions = db.scalars(select(Permission).where(Permission.code.in_(permission_codes))).all()
+    for permission in permissions:
+        db.add(RolePermission(role_id=role.id, permission_id=permission.id))
+    db.commit()
+
+
+def _stub_generate_result(sql: str, sql_kind: str = "query_only") -> dict:
+    return {
+        "request_id": "gen-001",
+        "target_country": "mexico",
+        "reasoning_summary": "stub",
+        "sql": sql,
+        "sql_kind": sql_kind,
+        "python": None,
+        "audit_report": {"high_risk_ddl": sql_kind == "build_table_script", "final_verdict": "ok"},
+        "metadata": {
+            "model": "stub",
+            "tokens_used": None,
+            "token_estimate": 1,
+            "knowledge_files_loaded": [],
+            "redaction_events": 0,
+            "danger_scan_events": 0,
+            "generated_at": "2026-06-12T00:00:00Z",
+        },
+    }
+
+
+def test_data_agent_run_lifecycle_create_list_and_hidden_sql_without_view_permission(client: TestClient, monkeypatch) -> None:
+    _register_privileged_user(username="da-admin", email="da-admin@example.com", role_codes=["data_admin"])
+    token, _user = _login(client, "da-admin", "passw0rd123")
+
+    monkeypatch.setattr(
+        "app.data_agent.service._generate_sql_response",
+        lambda *_args, **_kwargs: _stub_generate_result("SELECT uid FROM users LIMIT 5"),
+    )
+    create = client.post(
+        "/api/data-agent/runs",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "natural_language_request": "查询高风险用户",
+            "target_country": "mexico",
+            "run_type": "cohort_query",
+        },
+    )
+    assert create.status_code == 201
+    payload = create.json()
+    assert payload["status"] == "awaiting_review"
+    assert payload["current_sql"]["sql_text"] == "SELECT uid FROM users LIMIT 5"
+    run_id = payload["run_id"]
+
+    listed = client.get("/api/data-agent/runs", headers={"Authorization": f"Bearer {token}"})
+    assert listed.status_code == 200
+    runs = listed.json()["runs"]
+    assert any(run["run_id"] == run_id for run in runs)
+
+    from app.auth.database import AuthSessionLocal
+
+    with AuthSessionLocal() as db:
+        _create_role(
+            db,
+            code="data_execute_only",
+            name="Data Execute Only",
+            permission_codes=["data:query:execute"],
+        )
+    _register_privileged_user(
+        username="execute-only",
+        email="execute-only@example.com",
+        role_codes=["data_execute_only"],
+    )
+    no_view_token, _ = _login(client, "execute-only", "passw0rd123")
+
+    detail = client.get(
+        f"/api/data-agent/runs/{run_id}",
+        headers={"Authorization": f"Bearer {no_view_token}"},
+    )
+    assert detail.status_code == 200
+    detail_payload = detail.json()
+    assert detail_payload["current_sql"]["sql_text"] is None
+    assert detail_payload["current_sql"]["sql_hash"]
+
+
+def test_data_agent_build_table_script_is_review_only_and_cannot_be_approved_or_executed(client: TestClient, monkeypatch) -> None:
+    _register_privileged_user(username="da-script", email="da-script@example.com", role_codes=["data_admin"])
+    token, _ = _login(client, "da-script", "passw0rd123")
+
+    monkeypatch.setattr(
+        "app.data_agent.service._generate_sql_response",
+        lambda *_args, **_kwargs: _stub_generate_result(
+            "CREATE TABLE tmp.test AS SELECT uid FROM users",
+            sql_kind="build_table_script",
+        ),
+    )
+    create = client.post(
+        "/api/data-agent/runs",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "natural_language_request": "建表保存 cohort",
+            "target_country": "mexico",
+            "run_type": "cohort_query",
+        },
+    )
+    assert create.status_code == 201
+    run_id = create.json()["run_id"]
+    assert create.json()["current_sql"]["safety_status"] == "review_only"
+
+    approve = client.post(
+        f"/api/data-agent/runs/{run_id}/approve",
+        headers={"Authorization": f"Bearer {token}"},
+        json={},
+    )
+    assert approve.status_code == 409
+
+    execute = client.post(
+        f"/api/data-agent/runs/{run_id}/execute",
+        headers={"Authorization": f"Bearer {token}"},
+        json={},
+    )
+    assert execute.status_code == 409
+
+
+def test_data_agent_edit_requires_review_permission_and_clears_previous_approval(client: TestClient, monkeypatch) -> None:
+    _register_privileged_user(username="da-edit", email="da-edit@example.com", role_codes=["data_admin"])
+    token, _ = _login(client, "da-edit", "passw0rd123")
+
+    monkeypatch.setattr(
+        "app.data_agent.service._generate_sql_response",
+        lambda *_args, **_kwargs: _stub_generate_result("SELECT uid FROM users LIMIT 3"),
+    )
+    create = client.post(
+        "/api/data-agent/runs",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "natural_language_request": "查最近用户",
+            "target_country": "mexico",
+            "run_type": "cohort_query",
+        },
+    )
+    assert create.status_code == 201
+    run_id = create.json()["run_id"]
+
+    approve = client.post(
+        f"/api/data-agent/runs/{run_id}/approve",
+        headers={"Authorization": f"Bearer {token}"},
+        json={},
+    )
+    assert approve.status_code == 200
+    approved_hash = approve.json()["approved_sql_hash"]
+
+    edit = client.post(
+        f"/api/data-agent/runs/{run_id}/edit",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"sql_text": "SELECT uid FROM users LIMIT 10", "comment": "扩大范围"},
+    )
+    assert edit.status_code == 200
+    edit_payload = edit.json()
+    assert edit_payload["status"] == "awaiting_review"
+    assert edit_payload["approved_sql_hash"] is None
+    assert edit_payload["current_sql"]["sql_hash"] != approved_hash
+    assert edit_payload["current_sql"]["source"] == "manual_edited"
+
+
+def test_data_agent_execute_requires_writeback_permission_for_bucket_writeback(client: TestClient, monkeypatch) -> None:
+    from app.auth.database import AuthSessionLocal
+
+    with AuthSessionLocal() as db:
+        _create_role(
+            db,
+            code="review_execute_no_writeback",
+            name="Review Execute No Writeback",
+            permission_codes=[
+                "data:query:generate",
+                "data:query:view_sql",
+                "data:query:review",
+                "data:query:execute",
+            ],
+        )
+    _register_privileged_user(
+        username="da-no-writeback",
+        email="da-no-writeback@example.com",
+        role_codes=["review_execute_no_writeback"],
+    )
+    token, _ = _login(client, "da-no-writeback", "passw0rd123")
+
+    monkeypatch.setattr(
+        "app.data_agent.service._generate_sql_response",
+        lambda *_args, **_kwargs: _stub_generate_result("SELECT uid, score FROM users LIMIT 2"),
+    )
+    create = client.post(
+        "/api/data-agent/runs",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "natural_language_request": "补齐行为画像",
+            "target_country": "mexico",
+            "run_type": "bucket_writeback",
+            "output_bucket": "behavior",
+            "output_format": "json",
+        },
+    )
+    assert create.status_code == 201
+    run_id = create.json()["run_id"]
+
+    approve = client.post(
+        f"/api/data-agent/runs/{run_id}/approve",
+        headers={"Authorization": f"Bearer {token}"},
+        json={},
+    )
+    assert approve.status_code == 200
+
+    execute = client.post(
+        f"/api/data-agent/runs/{run_id}/execute",
+        headers={"Authorization": f"Bearer {token}"},
+        json={},
+    )
+    assert execute.status_code == 403
+
+
+def test_data_agent_execute_rejects_hash_mismatch_and_supports_cohort_query_execution(client: TestClient, monkeypatch) -> None:
+    _register_privileged_user(username="da-exec", email="da-exec@example.com", role_codes=["data_admin"])
+    token, _ = _login(client, "da-exec", "passw0rd123")
+
+    monkeypatch.setattr(
+        "app.data_agent.service._generate_sql_response",
+        lambda *_args, **_kwargs: _stub_generate_result("SELECT uid FROM users LIMIT 2"),
+    )
+    monkeypatch.setattr(
+        "app.data_agent.service._execute_cohort_query",
+        lambda *_args, **_kwargs: {
+            "uids": ["u1", "u2"],
+            "rows_actual": 2,
+            "rows_estimated": 2,
+            "preview_rows": [{"uid": "u1"}, {"uid": "u2"}],
+        },
+    )
+    create = client.post(
+        "/api/data-agent/runs",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "natural_language_request": "查 cohort",
+            "target_country": "mexico",
+            "run_type": "cohort_query",
+        },
+    )
+    assert create.status_code == 201
+    run_id = create.json()["run_id"]
+
+    approve = client.post(
+        f"/api/data-agent/runs/{run_id}/approve",
+        headers={"Authorization": f"Bearer {token}"},
+        json={},
+    )
+    assert approve.status_code == 200
+
+    client.post(
+        f"/api/data-agent/runs/{run_id}/edit",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"sql_text": "SELECT uid FROM users LIMIT 5", "comment": "扩大 cohort"},
+    )
+    stale_execute = client.post(
+        f"/api/data-agent/runs/{run_id}/execute",
+        headers={"Authorization": f"Bearer {token}"},
+        json={},
+    )
+    assert stale_execute.status_code == 409
+
+    approve_again = client.post(
+        f"/api/data-agent/runs/{run_id}/approve",
+        headers={"Authorization": f"Bearer {token}"},
+        json={},
+    )
+    assert approve_again.status_code == 200
+
+    execute = client.post(
+        f"/api/data-agent/runs/{run_id}/execute",
+        headers={"Authorization": f"Bearer {token}"},
+        json={},
+    )
+    assert execute.status_code == 200
+    payload = execute.json()
+    assert payload["status"] == "executed"
+    assert payload["execution"]["rows_actual"] == 2
+    assert payload["execution"]["uids"] == ["u1", "u2"]
+    assert payload["writeback"] is None
+

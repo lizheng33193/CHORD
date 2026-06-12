@@ -41,6 +41,7 @@ def build_demo_user_context(request: Request | None = None) -> UserContext:
         "data:query:review",
         "data:query:execute",
         "data:query:view_sql",
+        "data:bucket:writeback",
         "memory:read",
         "memory:write",
         "memory:manage",

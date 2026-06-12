@@ -40,6 +40,24 @@
   - 已具备本地账号、角色权限、项目/国家 scope、关键 API 鉴权与 actor 审计基础
   - 暂未进入 OAuth/SSO、复杂组织架构、可视化 RBAC 后台、LangGraph 正式迁移
 
+## 2026-06-12 M1 Data Agent SQL HITL Kickoff
+
+- 已确认下一阶段为 `M1: Data Agent SQL HITL`，相关设计与执行文档：
+  - `docs/specs/m1-data-agent-sql-hitl-design.md`
+  - `docs/plans/m1-data-agent-sql-hitl-plan.md`
+- 本阶段目标是在 M0 的身份、权限与审计基础上，落地受控 SQL 审核闭环：
+  - SQL 生成
+  - SQL Safety Gate
+  - human approve / edit / revise / reject
+  - 仅 approved `query_only` 可执行
+  - `cohort_query` 与 `bucket_writeback` 双产物模式
+  - 完整 actor / hash / review / execute / writeback 审计
+- 当前范围明确收敛：
+  - 首版挂在 `ChatPanel` 的显式 Data Agent 模式
+  - 不改 orchestrator 自动路由
+  - `build_table_script` 为 review-only artifact，不进入执行链路
+  - `bucket_writeback` 新增独立权限 `data:bucket:writeback`
+
 ## 2026-06-05 Data Agent Local MySQL Sandbox
 
 - `data_acquisition_agent` 新增本地 Docker MySQL 8 沙盒支持，用于验证 `generate -> execute -> write by_uid -> profile read` 的真实工程闭环。
