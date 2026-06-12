@@ -171,6 +171,56 @@ def test_data_acquisition_generate_rejects_country_outside_scope(client: TestCli
     assert response.status_code == 403
 
 
+def test_data_acquisition_generate_requires_view_sql_permission(client: TestClient, monkeypatch) -> None:
+    from sqlalchemy import select
+
+    from app.auth.database import AuthSessionLocal
+    from app.auth.models import Permission, Role, RolePermission
+    from app.auth.service import AuthService
+
+    with AuthSessionLocal() as db:
+        generate_permission = db.scalar(select(Permission).where(Permission.code == "data:query:generate"))
+        assert generate_permission is not None
+
+        role = Role(
+            code="generate_only",
+            name="Generate Only",
+            description="Can generate SQL requests without viewing SQL text.",
+        )
+        db.add(role)
+        db.flush()
+        db.add(RolePermission(role_id=role.id, permission_id=generate_permission.id))
+        db.commit()
+
+        service = AuthService(db)
+        service.register_user(
+            username="generate-only-user",
+            email="generate-only@example.com",
+            password="passw0rd123",
+            display_name="Generate Only User",
+            role_codes=["generate_only"],
+            allow_privileged_roles=True,
+        )
+
+    token, _user = _login(client, "generate-only-user", "passw0rd123")
+
+    def _unexpected_orchestrator():
+        raise AssertionError("generate should be blocked before orchestrator call")
+
+    monkeypatch.setattr("data_acquisition_agent.api._get_orchestrator", _unexpected_orchestrator)
+    response = client.post(
+        "/api/data-acquisition/generate",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "natural_language_request": "拉取最近高风险用户",
+            "target_country": "mexico",
+            "target_action": "extract",
+        },
+    )
+    assert response.status_code == 403
+    assert "data:query:view_sql" in response.json()["detail"]
+
+
 def test_data_acquisition_execute_rejects_country_outside_scope(client: TestClient, monkeypatch) -> None:
     register = client.post(
         "/api/auth/register",

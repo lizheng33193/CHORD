@@ -79,11 +79,19 @@ def test_apply_stack_env_exports_values(monkeypatch, tmp_path):
         project_root=tmp_path,
         sandbox_root=Path("/Users/zhengli/Desktop/docker-data"),
     )
+    original_values = {key: os.environ.get(key) for key in env}
     monkeypatch.delenv("DA_LOCAL_DEV", raising=False)
 
-    apply_stack_env(env)
+    try:
+        apply_stack_env(env)
 
-    assert os.environ["DA_LOCAL_DEV"] == "1"
+        assert os.environ["DA_LOCAL_DEV"] == "1"
+    finally:
+        for key, value in original_values.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
 
 
 def test_load_stack_env_prefers_env_file_over_ambient_shell(monkeypatch, tmp_path):

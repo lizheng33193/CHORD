@@ -235,7 +235,13 @@ def test_golden_case(case_path, monkeypatch):
         class _MockChild:
             def __init__(self, country): pass
             def run_query(self, req): return mock_qr
-            def execute(self, sql): return {"uids": ["MOCK_UID"], "rows_actual": 1}
+            def execute(self, sql, *, approved_by="orchestrator_agent", output_bucket="behavior", output_format="json"):
+                return {
+                    "uids": ["MOCK_UID"],
+                    "rows_actual": 1,
+                    "approved_by": approved_by,
+                    "rows_estimated": 10,
+                }
         import importlib
         _qd_mod = importlib.import_module("app.services.orchestrator_agent.tools.query_data")
         monkeypatch.setattr(_qd_mod, "_ChildAgent", _MockChild)

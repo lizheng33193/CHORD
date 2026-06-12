@@ -39,7 +39,7 @@ def client_with_short_timeout(monkeypatch):
 def test_stream_emits_stream_error_on_total_timeout(monkeypatch, client_with_short_timeout):
     """When background thread takes longer than TOTAL_TIMEOUT_SEC, stream_error fires."""
 
-    def slow_run(uids, application_time, q):
+    def slow_run(uids, application_time, q, country_code="mx"):
         time.sleep(5)  # exceeds 1s timeout
         q.put(None)
 

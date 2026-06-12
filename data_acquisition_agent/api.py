@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 from app.auth.dependencies import require_permission
-from app.auth.permissions import normalize_country_scope_value, require_country_access
+from app.auth.permissions import normalize_country_scope_value, require_country_access, require_permissions
 from app.core.audit import record_runtime_audit_event
 from app.core.user_context import UserContext
 from .schemas import (GenerateRequest, GenerateResponse, ErrorType, ErrorResponse,
@@ -63,6 +63,7 @@ def generate(
     ctx: UserContext = Depends(require_permission("data:query:generate")),
 ):
     target_country = normalize_country_scope_value(getattr(request.target_country, "value", request.target_country))
+    require_permissions(ctx, ("data:query:generate", "data:query:view_sql"))
     require_country_access(ctx, target_country, project_id=ctx.project_id)
     try:
         response = _get_orchestrator().generate(request)

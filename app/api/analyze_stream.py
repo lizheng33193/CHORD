@@ -118,7 +118,7 @@ async def analyze_stream(
     thread.start()
 
     async def event_gen():
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         deadline = loop.time() + TOTAL_TIMEOUT_SEC
         while True:
             remaining = deadline - loop.time()
@@ -130,11 +130,8 @@ async def analyze_stream(
                 return
             wait_for = min(HEARTBEAT_INTERVAL_SEC, remaining)
             try:
-                evt = await asyncio.wait_for(
-                    loop.run_in_executor(None, q.get),
-                    timeout=wait_for,
-                )
-            except asyncio.TimeoutError:
+                evt = await asyncio.to_thread(q.get, True, wait_for)
+            except queue.Empty:
                 yield ": keepalive\n\n"
                 continue
             if evt is None:
