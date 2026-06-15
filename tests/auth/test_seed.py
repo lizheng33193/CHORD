@@ -89,6 +89,8 @@ def test_seed_role_permission_map_matches_m0_contract(auth_db) -> None:
 
         assert "data:query:execute" not in analyst_permissions
         assert "data:query:view_sql" in analyst_permissions
+        assert "data:knowledge:read" in analyst_permissions
+        assert "data:knowledge:write" not in analyst_permissions
         assert viewer_permissions == {"profile:view", "trace:view", "memory:read"}
         assert {
             "data:query:generate",
@@ -96,4 +98,7 @@ def test_seed_role_permission_map_matches_m0_contract(auth_db) -> None:
             "data:query:review",
             "data:query:execute",
             "data:bucket:writeback",
+            "data:knowledge:read",
+            "data:knowledge:write",
+            "data:knowledge:manage",
         }.issubset(data_admin_permissions)

@@ -35,6 +35,23 @@
 - [x] E1 单用户埋点深度解析 → docs/plans/trace-analyzer-plan.md（2026-05-01）
 
 ## 当前进行中的功能
+- [ ] M2A：Data Agent Knowledge RAG — 进行中（2026-06-15）
+  - design / plan：
+    - `docs/specs/m2a-data-agent-knowledge-rag-design.md`
+    - `docs/plans/m2a-data-agent-knowledge-rag-plan.md`
+  - 本阶段目标：
+    - 新增 `app/data_knowledge/`
+    - 新增 DB-backed catalog / glossary / SQL example / error case store
+    - 新增 seed importer 与最小管理 API
+    - 新增 deterministic retriever 与 prompt context assembler
+    - 接入 `DataAgentService.create_run()` / `revise_run()`
+    - approved + executed success -> draft SQL example
+    - execute failure -> open error case
+  - 固定边界：
+    - 不改 orchestrator `query_data`
+    - 不改 M1 SQL HITL 状态机
+    - 不改 M1.5 artifact contract
+    - 不开放 public `retrieved_context`
 - [x] M1.5：Orchestrator ↔ Data Agent Tool Bridge → 已完成首版 bridge（2026-06-12）
   - design / plan：
     - `docs/specs/m1-5-orchestrator-data-agent-bridge-design.md`
