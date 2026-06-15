@@ -9,6 +9,7 @@ from pydantic import ValidationError
 
 from app.core.user_context import ProjectAccessScope, UserContext
 from app.services.orchestrator_agent import agent_loop
+from app.services.orchestrator_agent.finalization.message_persistence import persist_final_message
 from app.services.orchestrator_agent.flows.base import FlowControlSignal
 from app.services.orchestrator_agent.flows.query_data_then_profile import QueryDataThenProfileFlow
 from app.services.orchestrator_agent.flows.select_known_flow import select_known_flow
@@ -400,6 +401,27 @@ def test_create_data_agent_run_tool_input_rejects_sql_text_and_manual_sql_fields
 def test_general_tool_registry_does_not_expose_create_data_agent_run_tool():
     registry = get_tool_registry()
     assert "create_data_agent_run_tool" not in registry
+
+
+def test_persist_final_message_allows_explicit_empty_artifacts_to_clear_turn_artifacts():
+    session = create_session(country="mx")
+    turn = session_lifecycle.create_turn(session, turn_id="t1", client_turn_id=None, prompt="帮我查一下数据")
+    session_lifecycle.create_turn_run(session, turn_id="t1", run_id="r1")
+    turn.artifacts = [{"type": "data_agent_run", "run_id": "old-run"}]
+
+    evt = persist_final_message(
+        session,
+        prompt="帮我查一下数据",
+        final_message="这次我先不创建 SQL 审核任务。",
+        confidence=0.8,
+        detected_country="mx",
+        artifacts=[],
+        turn_id="t1",
+        run_id="r1",
+    )
+
+    assert evt["artifacts"] == []
+    assert turn.artifacts == []
 
 
 @pytest.mark.timeout(3)

@@ -44,7 +44,7 @@ def persist_final_message(
         turn = find_turn(session, turn_id)
         if turn is not None:
             turn.assistant_message = assistant_message
-            turn.artifacts = list(artifacts or turn.artifacts or [])
+            turn.artifacts = list(artifacts) if artifacts is not None else list(turn.artifacts or [])
             turn.updated_at = assistant_message.timestamp
             turn.status = "completed"
             turn.collapsed = False
