@@ -5,8 +5,11 @@ import asyncio
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
 
+from app.core.user_context import ProjectAccessScope, UserContext
 from app.services.orchestrator_agent import agent_loop
+from app.services.orchestrator_agent.finalization.message_persistence import persist_final_message
 from app.services.orchestrator_agent.flows.base import FlowControlSignal
 from app.services.orchestrator_agent.flows.query_data_then_profile import QueryDataThenProfileFlow
 from app.services.orchestrator_agent.flows.select_known_flow import select_known_flow
@@ -24,6 +27,8 @@ from app.services.orchestrator_agent.schemas import (
     UidAvailability,
 )
 from app.services.orchestrator_agent.session_store import create_session
+from app.services.orchestrator_agent.tools.create_data_agent_run_tool import CreateDataAgentRunToolInput
+from app.services.orchestrator_agent.tools import get_tool_registry
 from app.core.data_acquisition_capability import DataAcquisitionCapability
 
 
@@ -131,6 +136,29 @@ def _flow_ctx(
         tools=object(),
         memory=None,
         deps=agent_loop.build_loop_dependencies(),
+    )
+
+
+def _user_context(*, permissions: tuple[str, ...], country: str = "mx") -> UserContext:
+    return UserContext(
+        user_id="42",
+        username="analyst",
+        email="analyst@example.com",
+        display_name="Analyst",
+        roles=("analyst",),
+        permissions=permissions,
+        project_id="7",
+        project_code="proj",
+        country=country,
+        project_scopes=(
+            ProjectAccessScope(
+                project_id="7",
+                project_code="proj",
+                access_level="member",
+                country=country,
+            ),
+        ),
+        is_superuser=False,
     )
 
 
@@ -321,6 +349,247 @@ def test_select_known_flow_returns_general_chat_flow_for_general_chat_intent():
 
     assert flow is not None
     assert type(flow).__name__ == "GeneralChatFlow"
+
+
+def test_select_known_flow_returns_data_agent_run_flow_for_create_data_agent_run_intent():
+    request = NormalizedRequest(
+        intent="create_data_agent_run",
+        country="mx",
+        uids=[],
+        uid_file_path=None,
+        modules=[],
+        request_summary="创建 Data Agent SQL 审核任务",
+        query_request="用 Data Agent 生成 SQL，查询最近 7 天高风险用户",
+    )
+
+    flow = select_known_flow(request)
+
+    assert flow is not None
+    assert type(flow).__name__ == "DataAgentRunFlow"
+
+
+def test_select_known_flow_returns_clarify_data_request_flow_for_ambiguous_data_intent():
+    request = NormalizedRequest(
+        intent="clarify_data_request",
+        country="mx",
+        uids=[],
+        uid_file_path=None,
+        modules=[],
+        request_summary="澄清数据请求",
+        query_request="帮我查一下数据",
+    )
+
+    flow = select_known_flow(request)
+
+    assert flow is not None
+    assert type(flow).__name__ == "ClarifyDataRequestFlow"
+
+
+def test_create_data_agent_run_tool_input_rejects_sql_text_and_manual_sql_fields():
+    with pytest.raises(ValidationError):
+        CreateDataAgentRunToolInput.model_validate(
+            {
+                "natural_language_request": "查询最近 7 天高风险用户",
+                "target_country": "mx",
+                "run_type": "cohort_query",
+                "sql_text": "SELECT * FROM users",
+                "manual_sql": "SELECT * FROM users",
+            }
+        )
+
+
+def test_general_tool_registry_does_not_expose_create_data_agent_run_tool():
+    registry = get_tool_registry()
+    assert "create_data_agent_run_tool" not in registry
+
+
+def test_persist_final_message_allows_explicit_empty_artifacts_to_clear_turn_artifacts():
+    session = create_session(country="mx")
+    turn = session_lifecycle.create_turn(session, turn_id="t1", client_turn_id=None, prompt="帮我查一下数据")
+    session_lifecycle.create_turn_run(session, turn_id="t1", run_id="r1")
+    turn.artifacts = [{"type": "data_agent_run", "run_id": "old-run"}]
+
+    evt = persist_final_message(
+        session,
+        prompt="帮我查一下数据",
+        final_message="这次我先不创建 SQL 审核任务。",
+        confidence=0.8,
+        detected_country="mx",
+        artifacts=[],
+        turn_id="t1",
+        run_id="r1",
+    )
+
+    assert evt["artifacts"] == []
+    assert turn.artifacts == []
+
+
+@pytest.mark.timeout(3)
+def test_data_agent_run_flow_creates_review_run_and_emits_artifact_without_approve_or_execute(monkeypatch):
+    session = create_session(country="mx")
+    session_lifecycle.create_turn(session, turn_id="t1", client_turn_id=None, prompt="用 Data Agent 生成 SQL，查询最近 7 天高风险用户")
+    session_lifecycle.create_turn_run(session, turn_id="t1", run_id="r1")
+    request = NormalizedRequest(
+        intent="create_data_agent_run",
+        country="mx",
+        uids=[],
+        modules=[],
+        request_summary="创建 Data Agent SQL 审核任务",
+        query_request="用 Data Agent 生成 SQL，查询最近 7 天高风险用户",
+        data_agent_run_type="cohort_query",
+    )
+    flow = select_known_flow(request)
+    assert flow is not None
+
+    called = {"approve": 0, "execute": 0, "tool_inputs": []}
+
+    async def _fake_create_run(*, user_context, request_context, payload):
+        del request_context
+        called["tool_inputs"].append((user_context.username, payload))
+        return {
+            "type": "data_agent_run",
+            "run_id": "da-run-1",
+            "status": "awaiting_review",
+        }
+
+    def _forbidden(*args, **kwargs):
+        del args, kwargs
+        raise AssertionError("DataAgentRunFlow must never approve or execute runs")
+
+    monkeypatch.setattr(
+        "app.services.orchestrator_agent.flows.data_agent_run.create_data_agent_run_tool",
+        _fake_create_run,
+    )
+    monkeypatch.setattr(
+        "app.services.orchestrator_agent.flows.data_agent_run.DataAgentService.approve_run",
+        _forbidden,
+    )
+    monkeypatch.setattr(
+        "app.services.orchestrator_agent.flows.data_agent_run.DataAgentService.execute_run",
+        _forbidden,
+    )
+
+    ctx = FlowContext(
+        session=session,
+        prompt="用 Data Agent 生成 SQL，查询最近 7 天高风险用户",
+        turn_id="t1",
+        run_id="r1",
+        detected_country="mx",
+        client=object(),
+        lifecycle=session_lifecycle.SessionLifecycle(session),
+        events=event_recorder.EventRecorder(session, turn_id="t1", run_id="r1"),
+        trace=trace_store.TraceStore(session),
+        human_input=object(),
+        tools=object(),
+        memory=None,
+        deps=agent_loop.build_loop_dependencies(),
+        user_context=_user_context(permissions=("data:query:generate", "data:query:view_sql")),
+        request_context=None,
+    )
+
+    async def _drive():
+        return [item async for item in flow.run(ctx, request)]
+
+    items = asyncio.run(_drive())
+
+    assert called["tool_inputs"] == [
+        (
+            "analyst",
+            {
+                "natural_language_request": "用 Data Agent 生成 SQL，查询最近 7 天高风险用户",
+                "target_country": "mx",
+                "run_type": "cohort_query",
+                "output_bucket": None,
+                "output_format": None,
+            },
+        )
+    ]
+    assert items[-1]["type"] == "final"
+    assert items[-1]["artifacts"] == [{"type": "data_agent_run", "run_id": "da-run-1"}]
+    assert session.turns[0].artifacts == [{"type": "data_agent_run", "run_id": "da-run-1"}]
+
+
+@pytest.mark.timeout(3)
+def test_clarify_data_request_flow_uses_original_prompt_when_user_chooses_sql_review_task(monkeypatch):
+    session = create_session(country="mx")
+    session_lifecycle.create_turn(session, turn_id="t1", client_turn_id=None, prompt="帮我查一下数据")
+    session_lifecycle.create_turn_run(session, turn_id="t1", run_id="r1")
+    request = NormalizedRequest(
+        intent="clarify_data_request",
+        country="mx",
+        uids=[],
+        modules=[],
+        request_summary="澄清数据任务类型",
+        query_request="帮我查一下数据",
+        request_understanding=RequestUnderstanding(
+            intent="clarify_data_request",
+            route_label="需要澄清数据任务类型",
+            rewritten_goal="先澄清是继续普通画像对话，还是创建 SQL 审核任务",
+            focus=["data_request"],
+            requires_tools=False,
+            route_reason="当前请求只表达了要查数据，但还没有说明是普通画像还是要创建 SQL 审核任务。",
+            answer_mode="tool_execution",
+            missing_slots=["task_type"],
+            clarification_prompt="你是想继续普通画像/对话，还是创建一个需要人工审核的 SQL 任务？",
+            candidate_defaults={"task_type": "profile_chat"},
+        ),
+    )
+    flow = select_known_flow(request)
+    assert flow is not None
+
+    captured = {"payloads": []}
+
+    async def _fake_create_run(*, user_context, request_context, payload):
+        del user_context, request_context
+        captured["payloads"].append(payload)
+        return {"type": "data_agent_run", "run_id": "da-run-clarify", "status": "awaiting_review"}
+
+    monkeypatch.setattr(
+        "app.services.orchestrator_agent.flows.data_agent_run.create_data_agent_run_tool",
+        _fake_create_run,
+    )
+
+    class _HumanInput:
+        async def request_resolution(self, **kwargs):
+            return HumanInputResult(status="resolved", action="resolution_requested")
+
+        async def wait_for_resolution(self, **kwargs):
+            return HumanInputResult(status="resolved", payload={"selected_option": "create_sql_review_task"})
+
+    ctx = FlowContext(
+        session=session,
+        prompt="帮我查一下数据",
+        turn_id="t1",
+        run_id="r1",
+        detected_country="mx",
+        client=object(),
+        lifecycle=session_lifecycle.SessionLifecycle(session),
+        events=event_recorder.EventRecorder(session, turn_id="t1", run_id="r1"),
+        trace=trace_store.TraceStore(session),
+        human_input=_HumanInput(),
+        tools=object(),
+        memory=None,
+        deps=agent_loop.build_loop_dependencies(),
+        user_context=_user_context(permissions=("data:query:generate", "data:query:view_sql")),
+        request_context=None,
+    )
+
+    async def _drive():
+        return [item async for item in flow.run(ctx, request)]
+
+    items = asyncio.run(_drive())
+
+    assert captured["payloads"] == [
+        {
+            "natural_language_request": "帮我查一下数据",
+            "target_country": "mx",
+            "run_type": "cohort_query",
+            "output_bucket": None,
+            "output_format": None,
+        }
+    ]
+    assert items[-1]["type"] == "final"
+    assert items[-1]["artifacts"] == [{"type": "data_agent_run", "run_id": "da-run-clarify"}]
 
 
 @pytest.mark.parametrize(

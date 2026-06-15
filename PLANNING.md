@@ -58,6 +58,27 @@
   - `build_table_script` 为 review-only artifact，不进入执行链路
   - `bucket_writeback` 新增独立权限 `data:bucket:writeback`
 
+## 2026-06-12 M1.5 Orchestrator ↔ Data Agent Tool Bridge
+
+- 已新增 M1.5 bridge 设计与执行文档：
+  - `docs/specs/m1-5-orchestrator-data-agent-bridge-design.md`
+  - `docs/plans/m1-5-orchestrator-data-agent-bridge-plan.md`
+- 当前 Orchestrator 已支持受控创建 `data_agent_run`：
+  - intent：`create_data_agent_run`
+  - clarify intent：`clarify_data_request`
+  - flow：`DataAgentRunFlow`
+  - resolution flow：`ClarifyDataRequestFlow`
+  - tool：`create_data_agent_run_tool`
+- M1.5 的硬边界已落地：
+  - Orchestrator 只 create run，不 approve / execute
+  - `create_data_agent_run_tool` 不进入 `GeneralChatFlow` 的 broad tool registry
+  - Orchestrator 不传 `sql_text / approved_sql / manual_sql`
+  - `bucket_writeback` 必须显式命中写回意图 + 明确 bucket
+- Chat turn artifact 契约已固定：
+  - `ConversationTurn.artifacts[] = { type: "data_agent_run", run_id }`
+  - assistant final turn 持久化 artifacts
+  - 普通 chat 已可复用 `SQLReviewCard`
+
 ## 2026-06-05 Data Agent Local MySQL Sandbox
 
 - `data_acquisition_agent` 新增本地 Docker MySQL 8 沙盒支持，用于验证 `generate -> execute -> write by_uid -> profile read` 的真实工程闭环。

@@ -273,6 +273,7 @@ def set_pending_resolution(
     message: str | None,
     options: list[str] | None = None,
     title: str | None = None,
+    payload: dict[str, object] | None = None,
 ) -> None:
     run = find_run(session, run_id)
     if run is None:
@@ -285,6 +286,7 @@ def set_pending_resolution(
         title=title,
         message=message,
         options=list(options or []),
+        payload=dict(payload or {}),
         created_at=now,
         updated_at=now,
     )

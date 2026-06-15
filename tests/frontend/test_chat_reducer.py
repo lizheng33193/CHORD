@@ -197,6 +197,65 @@ process.stdout.write(JSON.stringify(state));
     assert state["pendingResolution"]["run_id"] == "run-restore"
 
 
+def test_reducer_persists_final_artifacts_on_assistant_turn() -> None:
+    if not shutil.which("node"):
+        pytest.fail("Node.js is required for reducer dynamic test; do not skip this test.")
+    events = [
+        {"type": "user_input", "content": "用 Data Agent 生成 SQL", "client_turn_id": "client-turn-artifact"},
+        {"type": "turn_started", "turn_id": "turn-artifact", "client_turn_id": "client-turn-artifact", "run_id": "run-artifact", "event_id": "evt-1", "event_seq": 1, "timestamp": "2026-06-12T01:00:00Z"},
+        {"type": "run_started", "turn_id": "turn-artifact", "run_id": "run-artifact", "trace_id": "trace-artifact", "event_id": "evt-2", "event_seq": 2, "timestamp": "2026-06-12T01:00:01Z"},
+        {"type": "final", "turn_id": "turn-artifact", "run_id": "run-artifact", "final_message": "我已创建 SQL 审核任务。", "artifacts": [{"type": "data_agent_run", "run_id": "da-run-1"}], "total_rounds": 1, "total_tokens": 10, "confidence": 0.9, "event_id": "evt-3", "event_seq": 3, "timestamp": "2026-06-12T01:00:02Z"},
+    ]
+    js = f"""
+const fs = require('fs');
+const window = {{}};
+eval(fs.readFileSync({json.dumps(str(REDUCER))}, 'utf8'));
+let state = window.AppComponents.chatInitialState;
+for (const evt of {json.dumps(events)}) state = window.AppComponents.chatReducer(state, evt);
+process.stdout.write(JSON.stringify(state));
+"""
+    out = subprocess.check_output(["node", "-e", js], cwd=REPO)
+    state = json.loads(out)
+    assert state["turns"][0]["assistantMessage"]["content"] == "我已创建 SQL 审核任务。"
+    assert state["turns"][0]["artifacts"] == [{"type": "data_agent_run", "run_id": "da-run-1"}]
+
+
+def test_reducer_restore_session_keeps_turn_artifacts() -> None:
+    if not shutil.which("node"):
+        pytest.fail("Node.js is required for reducer dynamic test; do not skip this test.")
+    restore_evt = {
+        "type": "restore_session",
+        "session_id": "s-artifact",
+        "messages": [],
+        "tool_calls": [],
+        "execution_traces": [],
+        "turns": [
+            {
+                "turn_id": "turn-artifact",
+                "session_id": "s-artifact",
+                "user_message": {"role": "user", "content": "用 Data Agent 生成 SQL", "timestamp": "2026-06-12T01:00:00Z"},
+                "assistant_message": {"role": "assistant", "content": "我已创建 SQL 审核任务。", "timestamp": "2026-06-12T01:00:02Z"},
+                "artifacts": [{"type": "data_agent_run", "run_id": "da-run-1"}],
+                "status": "completed",
+                "created_at": "2026-06-12T01:00:00Z",
+                "updated_at": "2026-06-12T01:00:02Z",
+                "runs": [],
+            }
+        ],
+    }
+    js = f"""
+const fs = require('fs');
+const window = {{}};
+eval(fs.readFileSync({json.dumps(str(REDUCER))}, 'utf8'));
+let state = window.AppComponents.chatInitialState;
+state = window.AppComponents.chatReducer(state, {json.dumps(restore_evt)});
+process.stdout.write(JSON.stringify(state));
+"""
+    out = subprocess.check_output(["node", "-e", js], cwd=REPO)
+    state = json.loads(out)
+    assert state["turns"][0]["artifacts"] == [{"type": "data_agent_run", "run_id": "da-run-1"}]
+
+
 def test_reducer_dedupes_same_event_id_but_keeps_same_seq_different_type() -> None:
     if not shutil.which("node"):
         pytest.fail("Node.js is required for reducer dynamic test; do not skip this test.")

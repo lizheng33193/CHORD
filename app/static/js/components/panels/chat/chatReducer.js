@@ -761,6 +761,7 @@ function chatReducer(state, evt) {
           ? _mapTurns(state.turns, evt.turn_id, (turn) => ({
               ...turn,
               assistantMessage: { role: 'assistant', content: evt.final_message || '', finalized: true },
+              artifacts: Array.isArray(evt.artifacts) ? evt.artifacts : (Array.isArray(turn.artifacts) ? turn.artifacts : []),
               status: 'completed',
               collapsed: turn.collapsePinned ? turn.collapsed : true,
             }))

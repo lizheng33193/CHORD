@@ -35,6 +35,26 @@
 - [x] E1 单用户埋点深度解析 → docs/plans/trace-analyzer-plan.md（2026-05-01）
 
 ## 当前进行中的功能
+- [x] M1.5：Orchestrator ↔ Data Agent Tool Bridge → 已完成首版 bridge（2026-06-12）
+  - design / plan：
+    - `docs/specs/m1-5-orchestrator-data-agent-bridge-design.md`
+    - `docs/plans/m1-5-orchestrator-data-agent-bridge-plan.md`
+  - 后端已完成：
+    - `create_data_agent_run` / `clarify_data_request` intent
+    - deterministic keyword routing
+    - `create_data_agent_run_tool`
+    - `DataAgentRunFlow`
+    - `ClarifyDataRequestFlow`
+    - `orchestrator.data_agent_run.created` 审计
+  - 前端已完成：
+    - `final.artifacts` 持久化到 assistant turn
+    - 普通 chat 渲染 `data_agent_run -> SQLReviewCard`
+    - `fetchDataAgentRun(runId)` + shared run cache
+  - 保持不变：
+    - M1 SQL HITL 状态机
+    - 显式 Data Agent mode
+    - M1 approve / edit / revise / reject / execute API
+    - GeneralChatFlow broad tool autonomy
 - [ ] M1：Data Agent SQL HITL — 进行中（2026-06-12）
   - design / plan：
     - `docs/specs/m1-data-agent-sql-hitl-design.md`

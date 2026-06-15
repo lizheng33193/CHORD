@@ -23,6 +23,7 @@ def persist_final_message(
     final_message: str,
     confidence: float,
     detected_country: str | None,
+    artifacts: list[dict[str, object]] | None = None,
     turn_id: str | None = None,
     run_id: str | None = None,
 ) -> dict[str, object]:
@@ -43,6 +44,7 @@ def persist_final_message(
         turn = find_turn(session, turn_id)
         if turn is not None:
             turn.assistant_message = assistant_message
+            turn.artifacts = list(artifacts) if artifacts is not None else list(turn.artifacts or [])
             turn.updated_at = assistant_message.timestamp
             turn.status = "completed"
             turn.collapsed = False
@@ -68,6 +70,7 @@ def persist_final_message(
     return {
         "type": "final",
         "final_message": final_message,
+        "artifacts": list(artifacts or []),
         "total_rounds": 1,
         "total_tokens": session.total_tokens,
         "confidence": confidence,

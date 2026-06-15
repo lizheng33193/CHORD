@@ -526,6 +526,53 @@ def test_normalize_request_detects_cohort_request_from_pull_batch_phrase():
     assert request.intent == "query_data_then_profile"
 
 
+def test_normalize_request_routes_explicit_data_agent_sql_request_to_create_run():
+    from app.services.orchestrator_agent.request_router import normalize_request
+    from app.services.orchestrator_agent.session_store import create_session
+
+    session = create_session(country="mx")
+
+    request = normalize_request("用 Data Agent 生成 SQL，查询最近 7 天高风险用户", session)
+
+    assert request.intent == "create_data_agent_run"
+    assert request.query_request == "用 Data Agent 生成 SQL，查询最近 7 天高风险用户"
+
+
+def test_normalize_request_routes_explicit_writeback_with_bucket_to_create_run():
+    from app.services.orchestrator_agent.request_router import normalize_request
+    from app.services.orchestrator_agent.session_store import create_session
+
+    session = create_session(country="mx")
+
+    request = normalize_request("用 Data Agent 补齐这些用户的 behavior 数据并写回", session)
+
+    assert request.intent == "create_data_agent_run"
+    assert request.query_request == "用 Data Agent 补齐这些用户的 behavior 数据并写回"
+
+
+def test_normalize_request_routes_ambiguous_data_request_to_clarify_data_request():
+    from app.services.orchestrator_agent.request_router import normalize_request
+    from app.services.orchestrator_agent.session_store import create_session
+
+    session = create_session(country="mx")
+
+    request = normalize_request("帮我查一下数据", session)
+
+    assert request.intent == "clarify_data_request"
+    assert request.request_understanding is not None
+
+
+def test_normalize_request_prefers_explicit_data_agent_request_over_profile_keywords():
+    from app.services.orchestrator_agent.request_router import normalize_request
+    from app.services.orchestrator_agent.session_store import create_session
+
+    session = create_session(country="mx")
+
+    request = normalize_request("用 Data Agent 生成 SQL，查询这个用户的画像数据", session)
+
+    assert request.intent == "create_data_agent_run"
+
+
 def test_normalize_request_routes_ambiguous_cohort_to_need_clarification():
     from app.services.orchestrator_agent.request_router import normalize_request
     from app.services.orchestrator_agent.session_store import create_session

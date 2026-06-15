@@ -21,6 +21,8 @@ KnownIntent = Literal[
     "profile_uid",
     "profile_batch",
     "need_clarification",
+    "clarify_data_request",
+    "create_data_agent_run",
     "query_data_then_profile",
     "run_trace",
     "general_chat",
@@ -146,6 +148,9 @@ class NormalizedRequest(BaseModel):
     application_time_hint: str | None = None
     request_summary: str
     query_request: str | None = None
+    data_agent_run_type: Literal["cohort_query", "bucket_writeback"] | None = None
+    data_agent_output_bucket: Literal["app", "behavior", "credit"] | None = None
+    data_agent_output_format: Literal["csv", "json"] | None = None
     read_only: bool = False
     request_understanding: RequestUnderstanding | None = None
 
@@ -288,6 +293,7 @@ class PendingResolutionState(BaseModel):
     title: str | None = None
     message: str | None = None
     options: list[str] = Field(default_factory=list)
+    payload: dict[str, Any] = Field(default_factory=dict)
     created_at: datetime
     updated_at: datetime | None = None
 

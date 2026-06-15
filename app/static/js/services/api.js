@@ -284,6 +284,10 @@ async function fetchDataAgentRuns() {
   return await httpClient.json('/api/data-agent/runs', {}, '获取 Data Agent runs 失败。');
 }
 
+async function fetchDataAgentRun(runId) {
+  return await httpClient.json(`/api/data-agent/runs/${encodeURIComponent(runId)}`, {}, '获取 Data Agent run 详情失败。');
+}
+
 async function approveDataAgentRun(runId, payload) {
   return await httpClient.json(`/api/data-agent/runs/${encodeURIComponent(runId)}/approve`, {
     method: 'POST',
@@ -326,6 +330,6 @@ window.AppServices.api = {
   ackOrchestratorTool, cancelOrchestratorRun, resolveOrchestratorStep, fetchOrchestratorSession, fetchOrchestratorSessions, fetchMemoryStatus, queryMemory,
   listMemories, createMemory, updateMemory, archiveMemory, restoreMemory, deleteMemory,
   fetchCurrentAuthUser,
-  createDataAgentRun, fetchDataAgentRuns,
+  createDataAgentRun, fetchDataAgentRuns, fetchDataAgentRun,
   approveDataAgentRun, editDataAgentRun, reviseDataAgentRun, rejectDataAgentRun, executeDataAgentRun
 };
