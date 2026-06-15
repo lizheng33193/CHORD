@@ -53,8 +53,7 @@ def _generate_sql_response(
     natural_language_request: str,
     target_country: str,
     target_action: str = "extract",
-    retrieved_context=None,
-    prompt_context=None,
+    knowledge_prompt_context=None,
 ) -> dict[str, Any]:
     from data_acquisition_agent.orchestrator import DataAcquisitionOrchestrator
 
@@ -64,8 +63,10 @@ def _generate_sql_response(
         target_country=TargetCountry(full_country),
         target_action=TargetAction(target_action),
     )
-    del retrieved_context
-    response = DataAcquisitionOrchestrator().generate(request, retrieved_context=prompt_context)
+    response = DataAcquisitionOrchestrator().generate(
+        request,
+        retrieved_context=knowledge_prompt_context,
+    )
     return response.model_dump(mode="json")
 
 
@@ -156,7 +157,7 @@ class DataAgentService:
         require_permissions(ctx, ("data:query:generate", "data:query:view_sql"))
         target_country = normalize_country_scope_value(body.target_country) or body.target_country.lower()
         require_country_access(ctx, target_country, project_id=ctx.project_id)
-        retrieved_context, prompt_context, retrieval_snapshot = self._build_generation_context(
+        _retrieved_context, prompt_context, retrieval_snapshot = self._build_generation_context(
             natural_language_request=body.natural_language_request,
             target_country=target_country,
             run_type=body.run_type,
@@ -168,8 +169,7 @@ class DataAgentService:
             natural_language_request=body.natural_language_request,
             target_country=target_country,
             target_action=body.target_action,
-            retrieved_context=retrieved_context,
-            prompt_context=prompt_context,
+            knowledge_prompt_context=prompt_context,
         )
         sql_text = str(generated.get("sql") or "")
         sql_kind = str(generated.get("sql_kind") or "query_only")
@@ -299,7 +299,7 @@ class DataAgentService:
         run = self._get_scoped_run(ctx, run_id)
         current = self.repo.get_sql_version(run.current_sql_version_id)
         revised_request = run.natural_language_request if not body.comment else f"{run.natural_language_request}\n\nReviewer feedback:\n{body.comment}"
-        retrieved_context, prompt_context, retrieval_snapshot = self._build_generation_context(
+        _retrieved_context, prompt_context, retrieval_snapshot = self._build_generation_context(
             natural_language_request=revised_request,
             target_country=run.country,
             run_type=run.run_type,
@@ -310,8 +310,7 @@ class DataAgentService:
             natural_language_request=revised_request,
             target_country=run.country,
             target_action="extract",
-            retrieved_context=retrieved_context,
-            prompt_context=prompt_context,
+            knowledge_prompt_context=prompt_context,
         )
         sql_text = str(generated.get("sql") or "")
         sql_kind = str(generated.get("sql_kind") or run.sql_kind or "query_only")

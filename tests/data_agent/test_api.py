@@ -447,8 +447,7 @@ def test_data_agent_create_run_invokes_retrieval_and_keeps_snapshot_hidden(clien
     captured: dict[str, object] = {}
 
     def _fake_generate(**kwargs):
-        captured["retrieved_context"] = kwargs.get("retrieved_context")
-        captured["prompt_context"] = kwargs.get("prompt_context")
+        captured["knowledge_prompt_context"] = kwargs.get("knowledge_prompt_context")
         return _stub_generate_result("SELECT uid FROM users LIMIT 7")
 
     monkeypatch.setattr("app.data_agent.service._generate_sql_response", _fake_generate)
@@ -464,8 +463,7 @@ def test_data_agent_create_run_invokes_retrieval_and_keeps_snapshot_hidden(clien
     )
     assert create.status_code == 201
     body = create.json()
-    assert captured["retrieved_context"] is not None
-    assert captured["prompt_context"] is not None
+    assert captured["knowledge_prompt_context"] is not None
     assert "retrieval_snapshot_json" not in body["current_sql"]
 
 
@@ -500,8 +498,7 @@ def test_data_agent_revise_run_invokes_retrieval(client: TestClient, monkeypatch
     )
     assert revise.status_code == 200
     assert len(calls) == 2
-    assert calls[1]["retrieved_context"] is not None
-    assert calls[1]["prompt_context"] is not None
+    assert calls[1]["knowledge_prompt_context"] is not None
 
 
 def test_data_agent_successful_execute_persists_draft_sql_example(client: TestClient, monkeypatch) -> None:
