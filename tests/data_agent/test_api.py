@@ -431,7 +431,6 @@ def test_data_agent_bucket_writeback_records_real_target_dir_in_api_db_and_audit
         )
         assert writeback_event is not None
         assert writeback_event.target_dir == target_dir
-
         audit_event = db.scalar(
             select(AuditEvent)
             .where(AuditEvent.event_type == "data.bucket.writeback", AuditEvent.resource_id == run_id)
@@ -439,6 +438,191 @@ def test_data_agent_bucket_writeback_records_real_target_dir_in_api_db_and_audit
         )
         assert audit_event is not None
         assert audit_event.metadata_json["target_dir"] == target_dir
+
+
+def test_data_agent_create_run_invokes_retrieval_and_keeps_snapshot_hidden(client: TestClient, monkeypatch) -> None:
+    _register_privileged_user(username="da-knowledge", email="da-knowledge@example.com", role_codes=["data_admin"])
+    token, _ = _login(client, "da-knowledge", "passw0rd123")
+
+    captured: dict[str, object] = {}
+
+    def _fake_generate(**kwargs):
+        captured["knowledge_prompt_context"] = kwargs.get("knowledge_prompt_context")
+        return _stub_generate_result("SELECT uid FROM users LIMIT 7")
+
+    monkeypatch.setattr("app.data_agent.service._generate_sql_response", _fake_generate)
+
+    create = client.post(
+        "/api/data-agent/runs",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "natural_language_request": "查询首贷从未逾期用户",
+            "target_country": "mexico",
+            "run_type": "cohort_query",
+        },
+    )
+    assert create.status_code == 201
+    body = create.json()
+    assert captured["knowledge_prompt_context"] is not None
+    assert "retrieval_snapshot_json" not in body["current_sql"]
+
+
+def test_data_agent_revise_run_invokes_retrieval(client: TestClient, monkeypatch) -> None:
+    _register_privileged_user(username="da-revise-knowledge", email="da-revise-knowledge@example.com", role_codes=["data_admin"])
+    token, _ = _login(client, "da-revise-knowledge", "passw0rd123")
+
+    calls: list[dict[str, object]] = []
+
+    def _fake_generate(**kwargs):
+        calls.append(kwargs)
+        return _stub_generate_result("SELECT uid FROM users LIMIT 9")
+
+    monkeypatch.setattr("app.data_agent.service._generate_sql_response", _fake_generate)
+
+    create = client.post(
+        "/api/data-agent/runs",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "natural_language_request": "查询高风险用户",
+            "target_country": "mexico",
+            "run_type": "cohort_query",
+        },
+    )
+    assert create.status_code == 201
+    run_id = create.json()["run_id"]
+
+    revise = client.post(
+        f"/api/data-agent/runs/{run_id}/revise",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"comment": "请改成首贷用户"},
+    )
+    assert revise.status_code == 200
+    assert len(calls) == 2
+    assert calls[1]["knowledge_prompt_context"] is not None
+
+
+def test_data_agent_successful_execute_persists_draft_sql_example(client: TestClient, monkeypatch) -> None:
+    from app.auth.database import AuthSessionLocal
+    from app.data_knowledge.models import DataSqlExample
+
+    _register_privileged_user(username="da-memory", email="da-memory@example.com", role_codes=["data_admin"])
+    token, _ = _login(client, "da-memory", "passw0rd123")
+
+    monkeypatch.setattr(
+        "app.data_agent.service._generate_sql_response",
+        lambda *_args, **_kwargs: _stub_generate_result("SELECT uid FROM users LIMIT 11"),
+    )
+    monkeypatch.setattr(
+        "app.data_agent.service._execute_cohort_query",
+        lambda *, sql_text, target_country: {
+            "uids": ["u1", "u2"],
+            "rows_actual": 2,
+            "rows_estimated": 2,
+            "preview_rows": [{"uid": "u1"}],
+        },
+    )
+
+    create = client.post(
+        "/api/data-agent/runs",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "natural_language_request": "查询首贷用户",
+            "target_country": "mexico",
+            "run_type": "cohort_query",
+        },
+    )
+    assert create.status_code == 201
+    run_id = create.json()["run_id"]
+
+    approve = client.post(
+        f"/api/data-agent/runs/{run_id}/approve",
+        headers={"Authorization": f"Bearer {token}"},
+        json={},
+    )
+    assert approve.status_code == 200
+    current_hash = approve.json()["current_sql"]["sql_hash"]
+
+    execute = client.post(
+        f"/api/data-agent/runs/{run_id}/execute",
+        headers={"Authorization": f"Bearer {token}"},
+        json={},
+    )
+    assert execute.status_code == 200
+
+    with AuthSessionLocal() as db:
+        rows = list(db.scalars(select(DataSqlExample).where(DataSqlExample.source_type == "approved_sql")).all())
+        assert rows
+        example = rows[-1]
+        assert example.status == "draft"
+        assert example.sql_hash == current_hash
+        assert example.natural_language_request == "查询首贷用户"
+
+
+def test_data_agent_failed_execute_opens_error_case_and_revise_resolves_it(client: TestClient, monkeypatch) -> None:
+    from app.auth.database import AuthSessionLocal
+    from app.data_knowledge.models import DataSqlErrorCase
+
+    _register_privileged_user(username="da-error", email="da-error@example.com", role_codes=["data_admin"])
+    token, _ = _login(client, "da-error", "passw0rd123")
+
+    monkeypatch.setattr(
+        "app.data_agent.service._generate_sql_response",
+        lambda *_args, **_kwargs: _stub_generate_result("SELECT uid FROM users LIMIT 13"),
+    )
+    create = client.post(
+        "/api/data-agent/runs",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "natural_language_request": "查询高风险用户",
+            "target_country": "mexico",
+            "run_type": "cohort_query",
+        },
+    )
+    assert create.status_code == 201
+    run_id = create.json()["run_id"]
+
+    approve = client.post(
+        f"/api/data-agent/runs/{run_id}/approve",
+        headers={"Authorization": f"Bearer {token}"},
+        json={},
+    )
+    assert approve.status_code == 200
+
+    monkeypatch.setattr(
+        "app.data_agent.service._execute_cohort_query",
+        lambda *, sql_text, target_country: (_ for _ in ()).throw(RuntimeError("missing join key")),
+    )
+    with pytest.raises(RuntimeError, match="missing join key"):
+        client.post(
+            f"/api/data-agent/runs/{run_id}/execute",
+            headers={"Authorization": f"Bearer {token}"},
+            json={},
+        )
+
+    with AuthSessionLocal() as db:
+        rows = list(db.scalars(select(DataSqlErrorCase).where(DataSqlErrorCase.source_type == "error_case")).all())
+        assert rows
+        error_case = rows[-1]
+        assert error_case.status == "open"
+        assert error_case.error_message == "missing join key"
+
+    monkeypatch.setattr(
+        "app.data_agent.service._generate_sql_response",
+        lambda *_args, **_kwargs: _stub_generate_result("SELECT uid FROM users WHERE risk_level = 'high' LIMIT 13"),
+    )
+    revise = client.post(
+        f"/api/data-agent/runs/{run_id}/revise",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"comment": "修正 join key"},
+    )
+    assert revise.status_code == 200
+
+    with AuthSessionLocal() as db:
+        rows = list(db.scalars(select(DataSqlErrorCase).where(DataSqlErrorCase.source_type == "error_case")).all())
+        resolved = rows[-1]
+        assert resolved.status == "resolved"
+        assert resolved.fixed_sql_hash is not None
+        assert resolved.fixed_sql_text == "SELECT uid FROM users WHERE risk_level = 'high' LIMIT 13"
 
 
 def test_data_agent_review_without_view_sql_can_reject_but_cannot_approve_or_edit(client: TestClient, monkeypatch) -> None:

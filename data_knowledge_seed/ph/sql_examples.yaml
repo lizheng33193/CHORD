@@ -1,0 +1,11 @@
+- source_key: example:ph-first-loan-never-overdue
+  natural_language_request: 查询菲律宾首贷从未逾期用户
+  run_type: cohort_query
+  output_bucket:
+  sql_hash: ph-example-first-loan-never-overdue
+  sql_text: "SELECT uid FROM ph_apply_orders WHERE loan_count = 1 AND history_overdue_count = 0 LIMIT 100"
+  tables_used: ["ph_apply_orders"]
+  fields_used: ["uid", "loan_count", "history_overdue_count"]
+  pattern_summary: 菲律宾首贷从未逾期 cohort 示例
+  reviewer_username: seed
+  execution_status: executed

@@ -79,6 +79,7 @@ def create_auth_schema() -> None:
     ensure_auth_database()
     from app.auth import models  # noqa: F401
     from app.data_agent import models as data_agent_models  # noqa: F401
+    from app.data_knowledge import models as data_knowledge_models  # noqa: F401
 
     Base.metadata.create_all(bind=get_auth_engine())
 

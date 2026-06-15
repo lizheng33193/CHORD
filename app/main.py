@@ -98,8 +98,10 @@ app.include_router(analyze_stream_router, prefix="/api", tags=["analyze"])
 app.include_router(auth_router)
 app.include_router(trace_router)
 from app.data_agent.api import router as data_agent_router
+from app.data_knowledge.api import router as data_knowledge_router
 
 app.include_router(data_agent_router)
+app.include_router(data_knowledge_router)
 
 # Orchestrator Agent SSE chat (Plan #03)
 from app.api.orchestrator_routes import router as orchestrator_router

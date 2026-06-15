@@ -1,0 +1,21 @@
+- source_key: table:dwd_w_apply
+  table_name: dwd_w_apply
+  domain: loan
+  description: 申请订单表
+  purpose: 用于申请、放款、逾期相关 cohort 取数
+  grain: apply_id
+  time_field: apply_time
+  partition_field: dt
+  join_keys: ["uid", "apply_id"]
+  common_filters: ["country = 'mx'"]
+  fields:
+    - source_key: field:dwd_w_apply.uid
+      field_name: uid
+      field_type: string
+      description: 用户唯一标识
+      business_meaning: profile writeback 必须返回 uid
+    - source_key: field:dwd_w_apply.max_overdue_days
+      field_name: max_overdue_days
+      field_type: int
+      description: 历史最大逾期天数
+      business_meaning: 判断从未逾期的重要字段

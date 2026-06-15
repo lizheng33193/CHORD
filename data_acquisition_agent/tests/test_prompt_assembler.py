@@ -21,6 +21,7 @@ def test_empty_zero():
 from data_acquisition_agent.prompt_assembler import assemble_prompt, TOKEN_LIMIT
 from data_acquisition_agent.manifest import load_manifest
 from data_acquisition_agent.schemas import GenerateRequest
+from app.data_knowledge.prompt_context import AssembledPromptContext
 
 
 def test_assemble_mexico_includes_all_5_files():
@@ -89,3 +90,18 @@ def test_assemble_bans_python_db_clients():
     for banned in ("pymysql", "sqlalchemy", "mysql.connector", "starrocks connector"):
         assert banned in prompt
     assert "Do NOT generate Python code that connects to databases" in prompt
+
+
+def test_assemble_includes_retrieved_context_when_provided():
+    m = load_manifest("mexico")
+    req = GenerateRequest(natural_language_request="查询首贷用户", target_country="mexico")
+    retrieved = AssembledPromptContext(
+        rendered_text="# === retrieved_glossary_terms ===\n- term=首贷; definition=首次成功放款用户",
+        context_hash="ctx-hash",
+        section_counts={"glossary_terms": 1},
+        source_ids={"glossary_ids": [1]},
+        trimmed=False,
+    )
+    prompt, _, _, _ = assemble_prompt(req, m, retrieved_context=retrieved)
+    assert "# === retrieved_glossary_terms ===" in prompt
+    assert "term=首贷" in prompt

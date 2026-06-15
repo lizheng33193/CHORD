@@ -5,6 +5,35 @@
 - 整体架构：单体 FastAPI 后端，五层（API → 编排 → Skill 执行 → 数据访问 → 外部服务）
 - 入口文件：`app/main.py`
 
+## 2026-06-15 M2A Data Agent Knowledge RAG
+
+- 已确认下一阶段为 `M2A: Data Agent Knowledge RAG`，相关设计与执行文档：
+  - `docs/specs/m2a-data-agent-knowledge-rag-design.md`
+  - `docs/plans/m2a-data-agent-knowledge-rag-plan.md`
+- 本阶段只增强显式 Data Agent 的 SQL 生成质量，不改变 M1/M1.5 边界：
+  - 只接 `DataAgentService.create_run()` 与 `revise_run()`
+  - 不改 orchestrator `query_data`
+  - 不改 M1 SQL HITL 状态机
+  - 不改 M1.5 artifact contract
+- M2A 首版采用 DB-backed knowledge store：
+  - runtime truth = DB
+  - seed file = 初始化与回归基线
+  - deterministic retrieval = country/project-aware DB read + Python scoring
+- M2A 首版新增独立 knowledge 权限域：
+  - `data:knowledge:read`
+  - `data:knowledge:write`
+  - `data:knowledge:manage`
+- M2A 首版新增知识资产范围：
+  - Data Catalog
+  - Business Glossary
+  - SQL Example Memory
+  - SQL Error Case Memory
+- 继续保持不变：
+  - SQL Safety Gate
+  - Human Review
+  - approve / edit / revise / reject / execute 权限
+  - 不允许 public API 传入 `retrieved_context`
+
 ## 2026-06-11 M0 Identity & Permission Foundation
 
 - 已落地 `M0: Identity & Permission Foundation`，相关设计与执行文档：

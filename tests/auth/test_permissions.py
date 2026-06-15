@@ -165,3 +165,16 @@ def test_review_and_view_sql_permissions_are_independent(auth_db, client: TestCl
     permissions = set(response.json()["permissions"])
     assert "data:query:review" in permissions
     assert "data:query:view_sql" not in permissions
+
+
+def test_seeded_knowledge_permissions_are_split_from_sql_review(client: TestClient) -> None:
+    analyst_token = _login(client, "admin", "admin123456")
+    analyst_permissions = client.get(
+        "/api/auth/my-permissions",
+        headers={"Authorization": f"Bearer {analyst_token}"},
+    )
+    assert analyst_permissions.status_code == 200
+    admin_codes = set(analyst_permissions.json()["permissions"])
+    assert "data:knowledge:read" in admin_codes
+    assert "data:knowledge:write" in admin_codes
+    assert "data:knowledge:manage" in admin_codes
