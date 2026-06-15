@@ -1,0 +1,11 @@
+- source_key: example:first-loan-never-overdue
+  natural_language_request: 查询墨西哥首贷从未逾期用户
+  run_type: cohort_query
+  output_bucket:
+  sql_hash: mx-example-first-loan-never-overdue
+  sql_text: "SELECT uid FROM dwd_w_apply WHERE loan_count = 1 AND max_overdue_days = 0 LIMIT 100"
+  tables_used: ["dwd_w_apply"]
+  fields_used: ["uid", "loan_count", "max_overdue_days"]
+  pattern_summary: 首贷从未逾期 cohort 示例
+  reviewer_username: seed
+  execution_status: executed

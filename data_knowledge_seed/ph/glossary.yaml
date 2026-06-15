@@ -1,0 +1,14 @@
+- source_key: term:first_loan
+  term: 首贷
+  synonyms: ["first loan", "首次放款"]
+  definition: 菲律宾首贷用户
+  mapped_tables: ["ph_apply_orders"]
+  mapped_fields: ["loan_count"]
+  suggested_filters: ["loan_count = 1"]
+- source_key: term:never_overdue
+  term: 从未逾期
+  synonyms: ["never overdue"]
+  definition: 历史逾期次数为 0
+  mapped_tables: ["ph_apply_orders"]
+  mapped_fields: ["history_overdue_count"]
+  suggested_filters: ["history_overdue_count = 0"]

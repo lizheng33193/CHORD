@@ -1,0 +1,21 @@
+- source_key: table:ph_apply_orders
+  table_name: ph_apply_orders
+  domain: loan
+  description: 菲律宾申请订单表
+  purpose: 菲律宾申请、放款和逾期 cohort 取数
+  grain: apply_id
+  time_field: apply_time
+  partition_field: dt
+  join_keys: ["uid", "apply_id"]
+  common_filters: ["country = 'ph'"]
+  fields:
+    - source_key: field:ph_apply_orders.uid
+      field_name: uid
+      field_type: string
+      description: 用户唯一标识
+      business_meaning: cohort 与 writeback 通用 uid
+    - source_key: field:ph_apply_orders.history_overdue_count
+      field_name: history_overdue_count
+      field_type: int
+      description: 历史逾期次数
+      business_meaning: 判断从未逾期的重要字段

@@ -1,0 +1,7 @@
+- source_key: term:bucket_writeback
+  term: bucket 写回
+  synonyms: ["writeback", "回填"]
+  definition: 使用 query_only SQL 生成按 uid 写回的数据结果
+  mapped_tables: []
+  mapped_fields: ["uid"]
+  suggested_filters: ["query_only only", "must include uid"]

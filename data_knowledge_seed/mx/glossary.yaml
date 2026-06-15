@@ -1,0 +1,21 @@
+- source_key: term:first_loan
+  term: 首贷
+  synonyms: ["first loan", "首次放款"]
+  definition: 首次成功放款用户
+  mapped_tables: ["dwd_w_apply"]
+  mapped_fields: ["loan_count"]
+  suggested_filters: ["loan_count = 1"]
+- source_key: term:never_overdue
+  term: 从未逾期
+  synonyms: ["never overdue"]
+  definition: 历史最大逾期天数为 0
+  mapped_tables: ["dwd_w_apply"]
+  mapped_fields: ["max_overdue_days"]
+  suggested_filters: ["max_overdue_days = 0"]
+- source_key: term:writeback_behavior
+  term: 写回 behavior
+  synonyms: ["补齐 behavior", "writeback behavior"]
+  definition: 生成用于 behavior bucket 写回的 query_only SQL
+  mapped_tables: ["dwd_w_apply"]
+  mapped_fields: ["uid"]
+  suggested_filters: ["output_bucket = behavior"]
