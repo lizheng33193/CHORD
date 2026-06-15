@@ -1,0 +1,116 @@
+"""Prompt context assembly for retrieved data knowledge."""
+
+from __future__ import annotations
+
+import hashlib
+import json
+from dataclasses import dataclass
+
+from app.data_knowledge.retriever import RetrievedKnowledgeContext
+
+
+@dataclass(slots=True)
+class AssembledPromptContext:
+    rendered_text: str
+    context_hash: str
+    section_counts: dict[str, int]
+    source_ids: dict[str, list[int]]
+    trimmed: bool
+
+
+class PromptContextAssembler:
+    def assemble(
+        self,
+        *,
+        natural_language_request: str,
+        country: str,
+        run_type: str,
+        output_bucket: str | None,
+        context: RetrievedKnowledgeContext,
+    ) -> AssembledPromptContext:
+        sections: list[str] = []
+        if context.catalog_tables:
+            lines = ["# === retrieved_catalog_tables ==="]
+            for row in context.catalog_tables:
+                lines.append(
+                    f"- table={row.table_name}; purpose={row.purpose or ''}; grain={row.grain or ''}; "
+                    f"time_field={row.time_field or ''}; join_keys={','.join(row.join_keys_json or [])}"
+                )
+            sections.append("\n".join(lines))
+        if context.catalog_fields:
+            lines = ["# === retrieved_catalog_fields ==="]
+            for row in context.catalog_fields:
+                lines.append(
+                    f"- {row.table_name}.{row.field_name}; type={row.field_type or ''}; "
+                    f"meaning={row.business_meaning or row.description or ''}"
+                )
+            sections.append("\n".join(lines))
+        if context.glossary_terms:
+            lines = ["# === retrieved_glossary_terms ==="]
+            for row in context.glossary_terms:
+                lines.append(
+                    f"- term={row.term}; definition={row.definition or ''}; "
+                    f"tables={','.join(row.mapped_tables_json or [])}; fields={','.join(row.mapped_fields_json or [])}; "
+                    f"filters={'; '.join(row.suggested_filters_json or [])}"
+                )
+            sections.append("\n".join(lines))
+        if context.sql_examples:
+            lines = ["# === retrieved_sql_examples ==="]
+            for row in context.sql_examples:
+                lines.append(
+                    f"- request={row.natural_language_request}; summary={row.pattern_summary or ''}; "
+                    f"tables={','.join(row.tables_used_json or [])}; fields={','.join(row.fields_used_json or [])}"
+                )
+            sections.append("\n".join(lines))
+        if context.error_cases:
+            lines = ["# === retrieved_error_cases ==="]
+            for row in context.error_cases:
+                lines.append(
+                    f"- error_type={row.error_type}; message={row.error_message or ''}; "
+                    f"tables={','.join(row.detected_tables_json or [])}; fields={','.join(row.detected_fields_json or [])}; "
+                    f"fix_summary={row.fix_summary or ''}"
+                )
+            sections.append("\n".join(lines))
+
+        if run_type == "bucket_writeback":
+            sections.append(
+                "\n".join(
+                    [
+                        "# === writeback_constraints ===",
+                        f"- output_bucket={output_bucket or ''}",
+                        "- query_only SQL only",
+                        "- result must include uid",
+                    ]
+                )
+            )
+
+        rendered_text = "\n\n".join(section for section in sections if section).strip()
+        context_hash = hashlib.sha256(rendered_text.encode("utf-8")).hexdigest() if rendered_text else ""
+        return AssembledPromptContext(
+            rendered_text=rendered_text,
+            context_hash=context_hash,
+            section_counts=context.section_counts,
+            source_ids=context.source_ids,
+            trimmed=context.trimmed,
+        )
+
+    @staticmethod
+    def build_snapshot(
+        *,
+        country: str,
+        project_id: int | None,
+        context: RetrievedKnowledgeContext,
+        assembled: AssembledPromptContext,
+    ) -> dict[str, object]:
+        return {
+            "context_hash": assembled.context_hash,
+            "table_ids": context.source_ids["table_ids"],
+            "field_ids": context.source_ids["field_ids"],
+            "glossary_ids": context.source_ids["glossary_ids"],
+            "example_ids": context.source_ids["example_ids"],
+            "error_case_ids": context.source_ids["error_case_ids"],
+            "section_counts": context.section_counts,
+            "trimmed": context.trimmed,
+            "country": country,
+            "project_id": project_id,
+        }
