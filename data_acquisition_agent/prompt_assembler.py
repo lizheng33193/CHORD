@@ -112,7 +112,7 @@ def estimate_tokens(text: str) -> int:
     return int(cjk * 1.5 + other / 4)
 
 
-def assemble_prompt(request, manifest):
+def assemble_prompt(request, manifest, *, retrieved_context=None):
     """V2：用 router 选 md，再走原有 redact + TOKEN_LIMIT 流程。
 
     Zero Tolerance：
@@ -237,6 +237,8 @@ def assemble_prompt(request, manifest):
         "5. Do NOT wrap the JSON in markdown code fences.\n"
         "6. Example of correctly escaped SQL: \"sql\": \"SELECT uid\\nFROM dwb.t\\nWHERE channel='MEX017'\\nLIMIT 100\""
     )
+    if retrieved_context is not None and getattr(retrieved_context, "rendered_text", ""):
+        sections.append(retrieved_context.rendered_text)
     sections.append(user_block)
     prompt = "\n\n".join(sections)
     tokens = estimate_tokens(prompt)

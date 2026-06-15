@@ -44,14 +44,18 @@ class DataAcquisitionOrchestrator:
     def __init__(self, model_client=None):
         self.model_client = model_client or ModelClient()
 
-    def generate(self, request: GenerateRequest) -> GenerateResponse:
+    def generate(self, request: GenerateRequest, *, retrieved_context=None) -> GenerateResponse:
         rid = str(uuid.uuid4())
         try:
             manifest = load_manifest(request.target_country.value)
         except ManifestNotImplemented as e:
             raise OrchestratorError(ErrorType.BAD_REQUEST, str(e), request_id=rid)
         try:
-            prompt, token_estimate, files, redaction_hits = assemble_prompt(request, manifest)
+            prompt, token_estimate, files, redaction_hits = assemble_prompt(
+                request,
+                manifest,
+                retrieved_context=retrieved_context,
+            )
         except ValueError:
             raise OrchestratorError(ErrorType.PROMPT_TOO_LARGE,
                                     "prompt exceeds token budget", request_id=rid)

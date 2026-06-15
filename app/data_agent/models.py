@@ -50,6 +50,7 @@ class DataAgentSqlVersion(Base):
     sql_kind: Mapped[str] = mapped_column(String(32), nullable=False)
     safety_status: Mapped[str] = mapped_column(String(32), nullable=False)
     safety_result_json: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    retrieval_snapshot_json: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     created_by: Mapped[str] = mapped_column(String(128), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), nullable=False, server_default=func.current_timestamp())
 
@@ -101,4 +102,3 @@ class DataAgentWritebackEvent(Base):
     status: Mapped[str] = mapped_column(String(32), nullable=False)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), nullable=False, server_default=func.current_timestamp())
-

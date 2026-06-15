@@ -8,6 +8,7 @@ from datetime import datetime
 from typing import Any
 
 from fastapi import HTTPException, status
+from sqlalchemy import desc, select
 from sqlalchemy.orm import Session
 
 from app.auth.permissions import normalize_country_scope_value, require_country_access, require_permissions
@@ -27,6 +28,9 @@ from app.data_agent.schemas import (
     SQLVersionView,
     WritebackView,
 )
+from app.data_knowledge.prompt_context import PromptContextAssembler
+from app.data_knowledge.retriever import DataKnowledgeRetriever
+from app.data_knowledge.models import DataSqlErrorCase, DataSqlExample
 from data_acquisition_agent.executor import (
     enforce_pre_execution_gates,
     execute_query,
@@ -44,7 +48,14 @@ def _normalize_column_name(name: Any) -> str:
     return re.sub(r"[^a-z0-9]+", "", str(name or "").strip().lower())
 
 
-def _generate_sql_response(*, natural_language_request: str, target_country: str, target_action: str = "extract") -> dict[str, Any]:
+def _generate_sql_response(
+    *,
+    natural_language_request: str,
+    target_country: str,
+    target_action: str = "extract",
+    retrieved_context=None,
+    prompt_context=None,
+) -> dict[str, Any]:
     from data_acquisition_agent.orchestrator import DataAcquisitionOrchestrator
 
     _normalized_country, full_country = resolve_country_names(target_country)
@@ -53,7 +64,8 @@ def _generate_sql_response(*, natural_language_request: str, target_country: str
         target_country=TargetCountry(full_country),
         target_action=TargetAction(target_action),
     )
-    response = DataAcquisitionOrchestrator().generate(request)
+    del retrieved_context
+    response = DataAcquisitionOrchestrator().generate(request, retrieved_context=prompt_context)
     return response.model_dump(mode="json")
 
 
@@ -144,11 +156,20 @@ class DataAgentService:
         require_permissions(ctx, ("data:query:generate", "data:query:view_sql"))
         target_country = normalize_country_scope_value(body.target_country) or body.target_country.lower()
         require_country_access(ctx, target_country, project_id=ctx.project_id)
+        retrieved_context, prompt_context, retrieval_snapshot = self._build_generation_context(
+            natural_language_request=body.natural_language_request,
+            target_country=target_country,
+            run_type=body.run_type,
+            output_bucket=body.output_bucket,
+            ctx=ctx,
+        )
 
         generated = _generate_sql_response(
             natural_language_request=body.natural_language_request,
             target_country=target_country,
             target_action=body.target_action,
+            retrieved_context=retrieved_context,
+            prompt_context=prompt_context,
         )
         sql_text = str(generated.get("sql") or "")
         sql_kind = str(generated.get("sql_kind") or "query_only")
@@ -177,6 +198,7 @@ class DataAgentService:
             sql_kind=sql_kind,
             safety_status=safety_result["status"],
             safety_result_json=safety_result,
+            retrieval_snapshot_json=retrieval_snapshot,
             created_by=ctx.username,
         )
         run.current_sql_version_id = version.id
@@ -277,10 +299,19 @@ class DataAgentService:
         run = self._get_scoped_run(ctx, run_id)
         current = self.repo.get_sql_version(run.current_sql_version_id)
         revised_request = run.natural_language_request if not body.comment else f"{run.natural_language_request}\n\nReviewer feedback:\n{body.comment}"
+        retrieved_context, prompt_context, retrieval_snapshot = self._build_generation_context(
+            natural_language_request=revised_request,
+            target_country=run.country,
+            run_type=run.run_type,
+            output_bucket=run.output_bucket,
+            ctx=ctx,
+        )
         generated = _generate_sql_response(
             natural_language_request=revised_request,
             target_country=run.country,
             target_action="extract",
+            retrieved_context=retrieved_context,
+            prompt_context=prompt_context,
         )
         sql_text = str(generated.get("sql") or "")
         sql_kind = str(generated.get("sql_kind") or run.sql_kind or "query_only")
@@ -294,6 +325,7 @@ class DataAgentService:
             sql_kind=sql_kind,
             safety_status=safety_result["status"],
             safety_result_json=safety_result,
+            retrieval_snapshot_json=retrieval_snapshot,
             created_by=ctx.username,
         )
         run.current_sql_version_id = version.id
@@ -311,6 +343,7 @@ class DataAgentService:
             from_sql_hash=(current.sql_hash if current is not None else None),
             to_sql_hash=version.sql_hash,
         )
+        self._resolve_latest_open_error_case(run=run, current=version, comment=body.comment, ctx=ctx)
         self.db.commit()
         self._audit(ctx=ctx, event_type="data.query.sql_revised", action="revise", run=run, sql_hash=version.sql_hash)
         return self._to_detail(run, can_view_sql="data:query:view_sql" in ctx.permissions)
@@ -372,6 +405,7 @@ class DataAgentService:
                 )
                 run.status = "executed"
                 run.updated_at = datetime.utcnow()
+                self._persist_sql_example(run=run, current=current, ctx=ctx)
                 self.db.commit()
                 self._audit(ctx=ctx, event_type="data.query.executed", action="execute", run=run, sql_hash=current.sql_hash)
             else:
@@ -401,6 +435,7 @@ class DataAgentService:
                 )
                 run.status = "executed"
                 run.updated_at = datetime.utcnow()
+                self._persist_sql_example(run=run, current=current, ctx=ctx)
                 self.db.commit()
                 self._audit(
                     ctx=ctx,
@@ -421,6 +456,7 @@ class DataAgentService:
         except HTTPException:
             run.status = "failed"
             run.updated_at = datetime.utcnow()
+            self._open_error_case(run=run, current=current, ctx=ctx, error_message="execute_http_error")
             self.db.commit()
             self._audit(ctx=ctx, event_type="data.query.failed", action="execute", run=run, sql_hash=current.sql_hash, status="error")
             raise
@@ -439,6 +475,7 @@ class DataAgentService:
             )
             run.status = "failed"
             run.updated_at = datetime.utcnow()
+            self._open_error_case(run=run, current=current, ctx=ctx, error_message=str(exc))
             self.db.commit()
             self._audit(ctx=ctx, event_type="data.query.failed", action="execute", run=run, sql_hash=current.sql_hash, status="error")
             raise
@@ -506,6 +543,40 @@ class DataAgentService:
             created_at=version.created_at.isoformat(),
         )
 
+    def _build_generation_context(
+        self,
+        *,
+        natural_language_request: str,
+        target_country: str,
+        run_type: str,
+        output_bucket: str | None,
+        ctx: UserContext,
+    ):
+        project_id = int(ctx.project_id) if ctx.project_id and str(ctx.project_id).isdigit() else None
+        retriever = DataKnowledgeRetriever(self.db)
+        retrieved_context = retriever.retrieve(
+            natural_language_request=natural_language_request,
+            project_id=project_id,
+            country=target_country,
+            run_type=run_type,
+            output_bucket=output_bucket,
+        )
+        assembler = PromptContextAssembler()
+        prompt_context = assembler.assemble(
+            natural_language_request=natural_language_request,
+            country=target_country,
+            run_type=run_type,
+            output_bucket=output_bucket,
+            context=retrieved_context,
+        )
+        snapshot = assembler.build_snapshot(
+            country=target_country,
+            project_id=project_id,
+            context=retrieved_context,
+            assembled=prompt_context,
+        )
+        return retrieved_context, prompt_context, snapshot
+
     @staticmethod
     def _serialize_review_event(event) -> ReviewEventView:
         return ReviewEventView(
@@ -517,6 +588,102 @@ class DataAgentService:
             to_sql_hash=event.to_sql_hash,
             created_at=event.created_at.isoformat(),
         )
+
+    def _persist_sql_example(self, *, run, current, ctx: UserContext) -> None:
+        project_id = int(ctx.project_id) if ctx.project_id and str(ctx.project_id).isdigit() else None
+        source_namespace = f"approved_sql/{run.country}"
+        source_key = f"run:{run.run_id}:sql:{current.sql_hash}"
+        existing = self.db.scalar(
+            select(DataSqlExample).where(
+                DataSqlExample.project_id == project_id,
+                DataSqlExample.country == run.country,
+                DataSqlExample.source_namespace == source_namespace,
+                DataSqlExample.source_key == source_key,
+            )
+        )
+        if existing is not None:
+            return
+        self.db.add(
+            DataSqlExample(
+                project_id=project_id,
+                country=run.country,
+                status="draft",
+                source_type="approved_sql",
+                source_namespace=source_namespace,
+                source_key=source_key,
+                source_hash=current.sql_hash,
+                created_by=ctx.username,
+                updated_by=ctx.username,
+                natural_language_request=run.natural_language_request,
+                run_type=run.run_type,
+                output_bucket=run.output_bucket,
+                sql_hash=current.sql_hash,
+                sql_text=current.sql_text,
+                tables_used_json=[],
+                fields_used_json=[],
+                pattern_summary=f"approved sql example from run {run.run_id}",
+                reviewer_username=ctx.username,
+                execution_status="executed",
+            )
+        )
+
+    def _open_error_case(self, *, run, current, ctx: UserContext, error_message: str) -> None:
+        project_id = int(ctx.project_id) if ctx.project_id and str(ctx.project_id).isdigit() else None
+        source_namespace = f"error_case/{run.country}"
+        source_key = f"run:{run.run_id}"
+        existing = self.db.scalar(
+            select(DataSqlErrorCase).where(
+                DataSqlErrorCase.project_id == project_id,
+                DataSqlErrorCase.country == run.country,
+                DataSqlErrorCase.source_namespace == source_namespace,
+                DataSqlErrorCase.source_key == source_key,
+            )
+        )
+        if existing is None:
+            existing = DataSqlErrorCase(
+                project_id=project_id,
+                country=run.country,
+                status="open",
+                source_type="error_case",
+                source_namespace=source_namespace,
+                source_key=source_key,
+                source_hash=current.sql_hash,
+                created_by=ctx.username,
+                updated_by=ctx.username,
+                run_id=run.run_id,
+                natural_language_request=run.natural_language_request,
+                run_type=run.run_type,
+                output_bucket=run.output_bucket,
+                error_type="execute_failed",
+                error_message=error_message,
+                failed_sql_hash=current.sql_hash,
+                failed_sql_text=current.sql_text,
+                detected_tables_json=[],
+                detected_fields_json=[],
+            )
+            self.db.add(existing)
+            return
+        existing.status = "open"
+        existing.updated_by = ctx.username
+        existing.error_type = "execute_failed"
+        existing.error_message = error_message
+        existing.failed_sql_hash = current.sql_hash
+        existing.failed_sql_text = current.sql_text
+        existing.source_hash = current.sql_hash
+
+    def _resolve_latest_open_error_case(self, *, run, current, comment: str | None, ctx: UserContext) -> None:
+        row = self.db.scalar(
+            select(DataSqlErrorCase)
+            .where(DataSqlErrorCase.run_id == run.run_id, DataSqlErrorCase.status == "open")
+            .order_by(desc(DataSqlErrorCase.id))
+        )
+        if row is None:
+            return
+        row.status = "resolved"
+        row.updated_by = ctx.username
+        row.fixed_sql_hash = current.sql_hash
+        row.fixed_sql_text = current.sql_text
+        row.fix_summary = comment or "revised sql after failed execution"
 
     @staticmethod
     def _serialize_execution(event) -> ExecutionView:
