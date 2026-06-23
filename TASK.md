@@ -41,6 +41,7 @@
     - `docs/reviews/m2a-verify-runbook-template.md`
     - `docs/reviews/m2a-verify-sample-set-round1.md`
     - `docs/reviews/m2a-verify-seed-gap-round1.md`
+    - `docs/reviews/m2a-verify-round1-results.md`
   - 首轮固定样例：
     - `mx` 高风险 cohort query
     - `mx` behavior bucket_writeback
@@ -50,6 +51,10 @@
   - 首轮目标：
     - 记录 retrieval / assembled context / generated SQL / Safety Gate / review 结论
     - 识别 seed 缺口并形成下一轮补齐 backlog
+  - Round 1 当前状态：
+    - 已完成 5 条样例的首轮真实执行记录
+    - 本轮未改 seed，只记录动态结果
+    - 下一步进入 `M2A-Verify Seed Patch 1`
 - [x] M2A：Data Agent Knowledge RAG — 首版实现完成并完成本地定向验证（2026-06-23）
   - design / plan：
     - `docs/specs/m2a-data-agent-knowledge-rag-design.md`
