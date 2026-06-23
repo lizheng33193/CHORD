@@ -35,23 +35,38 @@
 - [x] E1 单用户埋点深度解析 → docs/plans/trace-analyzer-plan.md（2026-05-01）
 
 ## 当前进行中的功能
-- [ ] M2A：Data Agent Knowledge RAG — 进行中（2026-06-15）
+- [ ] M2A-Verify：真实业务样例验证 + Seed 质量补齐 — 进行中（2026-06-23）
+  - plan / runbook / sample set / gap list：
+    - `docs/plans/m2a-verify-knowledge-quality-plan.md`
+    - `docs/reviews/m2a-verify-runbook-template.md`
+    - `docs/reviews/m2a-verify-sample-set-round1.md`
+    - `docs/reviews/m2a-verify-seed-gap-round1.md`
+  - 首轮固定样例：
+    - `mx` 高风险 cohort query
+    - `mx` behavior bucket_writeback
+    - `ph` 首贷从未逾期 cohort query
+    - glossary 组合命中请求
+    - error case 修复型请求
+  - 首轮目标：
+    - 记录 retrieval / assembled context / generated SQL / Safety Gate / review 结论
+    - 识别 seed 缺口并形成下一轮补齐 backlog
+- [x] M2A：Data Agent Knowledge RAG — 首版实现完成并完成本地定向验证（2026-06-23）
   - design / plan：
     - `docs/specs/m2a-data-agent-knowledge-rag-design.md`
     - `docs/plans/m2a-data-agent-knowledge-rag-plan.md`
-  - 本阶段目标：
-    - 新增 `app/data_knowledge/`
-    - 新增 DB-backed catalog / glossary / SQL example / error case store
-    - 新增 seed importer 与最小管理 API
-    - 新增 deterministic retriever 与 prompt context assembler
-    - 接入 `DataAgentService.create_run()` / `revise_run()`
+  - 已完成：
+    - `app/data_knowledge/` 领域模块
+    - DB-backed catalog / glossary / SQL example / error case store
+    - seed importer 与最小管理 API
+    - deterministic retriever 与 prompt context assembler
+    - `DataAgentService.create_run()` / `revise_run()` 接入
     - approved + executed success -> draft SQL example
     - execute failure -> open error case
-  - 固定边界：
-    - 不改 orchestrator `query_data`
-    - 不改 M1 SQL HITL 状态机
-    - 不改 M1.5 artifact contract
-    - 不开放 public `retrieved_context`
+  - 本地验证：
+    - `python -m compileall -q app data_acquisition_agent tests`
+    - M2A 定向测试 `47 passed`
+  - 下一步：
+    - 进入 `M2A-Verify`
 - [x] M1.5：Orchestrator ↔ Data Agent Tool Bridge → 已完成首版 bridge（2026-06-12）
   - design / plan：
     - `docs/specs/m1-5-orchestrator-data-agent-bridge-design.md`

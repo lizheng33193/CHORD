@@ -5,6 +5,23 @@
 - 整体架构：单体 FastAPI 后端，五层（API → 编排 → Skill 执行 → 数据访问 → 外部服务）
 - 入口文件：`app/main.py`
 
+## 2026-06-23 M2A-Verify Knowledge Quality Validation
+
+- M2A 首版代码实现与本地定向验证已完成，当前进入 `M2A-Verify`：
+  - `docs/plans/m2a-verify-knowledge-quality-plan.md`
+  - `docs/reviews/m2a-verify-runbook-template.md`
+  - `docs/reviews/m2a-verify-sample-set-round1.md`
+  - `docs/reviews/m2a-verify-seed-gap-round1.md`
+- 本阶段只验证知识质量，不新增架构能力：
+  - 使用固定样例验证 retrieval / prompt context / SQL 生成质量
+  - 识别 catalog / glossary / SQL examples / error cases 的 seed 缺口
+  - 为后续 seed 补齐与 M2B 优先级提供依据
+- 继续保持不变：
+  - orchestrator `query_data`
+  - M1 SQL HITL 状态机
+  - M1.5 artifact contract
+  - public `retrieved_context` 边界
+
 ## 2026-06-15 M2A Data Agent Knowledge RAG
 
 - 已确认下一阶段为 `M2A: Data Agent Knowledge RAG`，相关设计与执行文档：
