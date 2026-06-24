@@ -53,6 +53,11 @@
   - 显式标出 fixed historical date drift、source filter drift、canonical field drift
   - 在 `behavior` writeback 上标出 required-field missing 与 broad-scan risk
   - 继续保持 pure warning-only，不改变 `safety_status` 或 SQL HITL 状态机
+- FU5 第一轮结果：
+  - combo writeback 中的 fixed historical dates 与 fixed source filters 已能以后验 `PLAN_*` warnings 稳定暴露给 reviewer
+  - under-specified `bucket_writeback` 继续保持 stable refusal
+  - high-risk cohort 仍主要受 retrieval grounding gap 影响
+  - 当前仍不进入 `M2B`，下一步应为 `FU6: Plan-guided Regeneration / Repair`
 - 本阶段继续保持不变：
   - orchestrator `query_data`
   - `M1` SQL HITL 状态机
