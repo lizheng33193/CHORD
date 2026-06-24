@@ -199,6 +199,7 @@ def test_assemble_lifts_canonical_guidance_and_sql_intent_plan_priority_rules():
     prompt, _, _, _ = assemble_prompt(req, m, retrieved_context=retrieved)
     lowered = prompt.lower()
     assert "follow sql_intent_plan before generating sql for bucket_writeback requests" in lowered
+    assert "do not bypass sql_intent_plan with historical template sql" in lowered
     assert "prefer preferred fields from canonical_field_guidance" in lowered
     assert "alternatives are allowed only when the current request or retrieved context explicitly requires them" in lowered
 

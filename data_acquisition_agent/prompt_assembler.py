@@ -284,7 +284,12 @@ def assemble_prompt(request, manifest, *, retrieved_context=None):
                 ]
             )
         if "# === sql_intent_plan ===" in retrieved_context.rendered_text:
-            priority_lines.append("- follow sql_intent_plan before generating SQL for bucket_writeback requests")
+            priority_lines.extend(
+                [
+                    "- follow sql_intent_plan before generating SQL for bucket_writeback requests",
+                    "- do not bypass sql_intent_plan with historical template SQL",
+                ]
+            )
         if "# === writeback_constraints ===" in retrieved_context.rendered_text and _is_under_specified_writeback_request(request.natural_language_request):
             priority_lines.append("- for under-specified Data Agent bucket_writeback requests, return sql=null and sql_kind=query_only instead of inventing placeholders or broad-scan SQL")
         sections.append("\n".join(priority_lines))
