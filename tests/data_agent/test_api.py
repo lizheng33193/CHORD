@@ -752,6 +752,232 @@ def test_data_agent_revise_run_rejects_non_sql_generation_results_without_creati
     assert detail_payload["status"] == "approved"
 
 
+def test_data_agent_bucket_writeback_create_returns_specific_422_for_under_specified_request(
+    client: TestClient,
+    monkeypatch,
+) -> None:
+    from app.auth.database import AuthSessionLocal
+    from app.data_agent.models import DataAgentRun, DataAgentSqlVersion
+
+    _register_privileged_user(username="da-writeback-422", email="da-writeback-422@example.com", role_codes=["data_admin"])
+    token, _ = _login(client, "da-writeback-422", "passw0rd123")
+
+    with AuthSessionLocal() as db:
+        before_runs = db.scalar(select(func.count()).select_from(DataAgentRun))
+        before_versions = db.scalar(select(func.count()).select_from(DataAgentSqlVersion))
+
+    monkeypatch.setattr(
+        "app.data_agent.service._generate_sql_response",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            OrchestratorError(ErrorType.SCHEMA_VALIDATION_FAILED, "model output failed schema validation", request_id="rid-writeback-create")
+        ),
+    )
+    create = client.post(
+        "/api/data-agent/runs",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "natural_language_request": "用 Data Agent 补齐这些用户的 behavior 数据并写回 behavior",
+            "target_country": "mexico",
+            "run_type": "bucket_writeback",
+            "output_bucket": "behavior",
+            "output_format": "json",
+        },
+    )
+    assert create.status_code == 422
+    body = create.json()
+    assert body["detail"]["code"] == "DATA_AGENT_WRITEBACK_REQUIRES_COHORT"
+    assert body["detail"]["stage"] == "data_agent_sql_generation"
+    assert body["detail"]["retriable"] is True
+
+    with AuthSessionLocal() as db:
+        after_runs = db.scalar(select(func.count()).select_from(DataAgentRun))
+        after_versions = db.scalar(select(func.count()).select_from(DataAgentSqlVersion))
+        assert after_runs == before_runs
+        assert after_versions == before_versions
+
+
+def test_data_agent_bucket_writeback_revise_returns_specific_422_without_mutating_current_sql(
+    client: TestClient,
+    monkeypatch,
+) -> None:
+    from datetime import datetime
+
+    from app.auth.database import AuthSessionLocal
+    from app.data_agent.models import DataAgentRun, DataAgentSqlVersion
+
+    _register_privileged_user(username="da-writeback-revise", email="da-writeback-revise@example.com", role_codes=["data_admin"])
+    token, _ = _login(client, "da-writeback-revise", "passw0rd123")
+
+    run_id = "writeback-fu3-revise"
+    with AuthSessionLocal() as db:
+        run = DataAgentRun(
+            run_id=run_id,
+            user_id=1,
+            project_id=1,
+            country="mx",
+            run_type="bucket_writeback",
+            natural_language_request="用 Data Agent 补齐这些用户的 behavior 数据并写回 behavior",
+            status="approved",
+            sql_kind="query_only",
+            approved_sql_hash="orig-hash",
+            output_bucket="behavior",
+            output_format="json",
+            uid_column="uid",
+            overwrite=True,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+        )
+        db.add(run)
+        db.flush()
+        version = DataAgentSqlVersion(
+            run_id=run_id,
+            version_no=1,
+            sql_text="SELECT uid, eventname FROM dwb_b1_data_burying_point WHERE uid IN ('u1')",
+            sql_hash="orig-hash",
+            source="agent_generated",
+            sql_kind="query_only",
+            safety_status="passed",
+            safety_result_json={
+                "status": "passed",
+                "risk_level": "low",
+                "blocked_reasons": [],
+                "warnings": [],
+                "normalized_sql": "SELECT uid, eventname FROM dwb_b1_data_burying_point WHERE uid IN ('u1')",
+                "sql_hash": "orig-hash",
+                "target_country": "mx",
+            },
+            retrieval_snapshot_json=None,
+            created_by="da-writeback-revise",
+        )
+        db.add(version)
+        db.flush()
+        run.current_sql_version_id = version.id
+        run.approved_sql_version_id = version.id
+        db.commit()
+        before_versions = db.scalar(select(func.count()).select_from(DataAgentSqlVersion))
+
+    monkeypatch.setattr(
+        "app.data_agent.service._generate_sql_response",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            OrchestratorError(ErrorType.SCHEMA_VALIDATION_FAILED, "model output failed schema validation", request_id="rid-writeback-revise")
+        ),
+    )
+    revise = client.post(
+        f"/api/data-agent/runs/{run_id}/revise",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"comment": "请调整写回逻辑"},
+    )
+    assert revise.status_code == 422
+    body = revise.json()
+    assert body["detail"]["code"] == "DATA_AGENT_WRITEBACK_REQUIRES_COHORT"
+    assert body["detail"]["stage"] == "data_agent_sql_generation"
+    assert body["detail"]["run_id"] == run_id
+    assert body["detail"]["retriable"] is True
+
+    with AuthSessionLocal() as db:
+        after_versions = db.scalar(select(func.count()).select_from(DataAgentSqlVersion))
+        assert after_versions == before_versions
+
+    detail = client.get(
+        f"/api/data-agent/runs/{run_id}",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert detail.status_code == 200
+    detail_payload = detail.json()
+    assert detail_payload["current_sql"]["sql_hash"] == "orig-hash"
+    assert detail_payload["approved_sql_hash"] == "orig-hash"
+    assert detail_payload["status"] == "approved"
+
+
+def test_data_agent_adds_unsupported_field_warning_without_blocking_run(
+    client: TestClient,
+    monkeypatch,
+) -> None:
+    _register_privileged_user(username="da-field-risk", email="da-field-risk@example.com", role_codes=["data_admin"])
+    token, _ = _login(client, "da-field-risk", "passw0rd123")
+
+    monkeypatch.setattr(
+        "app.data_agent.service.DataAgentService._build_generation_context",
+        lambda self, **_kwargs: (
+            None,
+            None,
+            {
+                "country": "mx",
+                "project_id": 1,
+                "grounded_fields_by_table": {
+                    "dwd_w_apply": ["uid", "risk_level", "apply_time"],
+                },
+            },
+        ),
+    )
+    monkeypatch.setattr(
+        "app.data_agent.service._generate_sql_response",
+        lambda *_args, **_kwargs: _stub_generate_result(
+            "SELECT user_uuid FROM dwd_w_apply WHERE risk_level = 'high' AND apply_time >= date_sub(current_date, 7)"
+        ),
+    )
+    create = client.post(
+        "/api/data-agent/runs",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "natural_language_request": "查询最近 7 天高风险用户",
+            "target_country": "mexico",
+            "run_type": "cohort_query",
+        },
+    )
+    assert create.status_code == 201
+    body = create.json()
+    assert body["current_sql"]["safety_status"] == "passed"
+    warnings = body["current_sql"]["safety_result"]["warnings"]
+    assert any(item["category"] == "UNSUPPORTED_FIELD" for item in warnings)
+    assert any(item["field"] == "user_uuid" and item["table"] == "dwd_w_apply" for item in warnings)
+
+
+def test_data_agent_does_not_flag_cte_alias_as_unsupported_field(
+    client: TestClient,
+    monkeypatch,
+) -> None:
+    _register_privileged_user(username="da-cte-safe", email="da-cte-safe@example.com", role_codes=["data_admin"])
+    token, _ = _login(client, "da-cte-safe", "passw0rd123")
+
+    monkeypatch.setattr(
+        "app.data_agent.service.DataAgentService._build_generation_context",
+        lambda self, **_kwargs: (
+            None,
+            None,
+            {
+                "country": "mx",
+                "project_id": 1,
+                "grounded_fields_by_table": {
+                    "dwd_w_apply": ["uid", "apply_time"],
+                },
+            },
+        ),
+    )
+    monkeypatch.setattr(
+        "app.data_agent.service._generate_sql_response",
+        lambda *_args, **_kwargs: _stub_generate_result(
+            "WITH target_users AS ("
+            " SELECT uid, MIN(apply_time) AS first_apply_time"
+            " FROM dwd_w_apply GROUP BY uid"
+            ") "
+            "SELECT uid, first_apply_time FROM target_users"
+        ),
+    )
+    create = client.post(
+        "/api/data-agent/runs",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "natural_language_request": "查询首贷用户首次申请时间",
+            "target_country": "mexico",
+            "run_type": "cohort_query",
+        },
+    )
+    assert create.status_code == 201
+    warnings = create.json()["current_sql"]["safety_result"]["warnings"]
+    assert not any(item["category"] == "UNSUPPORTED_FIELD" for item in warnings)
+
+
 def test_data_agent_successful_execute_persists_draft_sql_example(client: TestClient, monkeypatch) -> None:
     from app.auth.database import AuthSessionLocal
     from app.data_knowledge.models import DataSqlExample

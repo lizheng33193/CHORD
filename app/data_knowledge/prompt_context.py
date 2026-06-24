@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import hashlib
-import json
 import re
 from dataclasses import dataclass
 
@@ -46,6 +45,22 @@ class PromptContextAssembler:
                     f"meaning={row.business_meaning or row.description or ''}"
                 )
             sections.append("\n".join(lines))
+            grounded_fields: dict[str, list[str]] = {}
+            for row in context.catalog_fields:
+                bucket = grounded_fields.setdefault(row.table_name, [])
+                if row.field_name not in bucket:
+                    bucket.append(row.field_name)
+            grounding_lines = ["# === retrieved_field_grounding ==="]
+            for table_name, field_names in grounded_fields.items():
+                grounding_lines.append(f"- table={table_name}; allowed_fields={','.join(field_names)}")
+            grounding_lines.extend(
+                [
+                    "- Selected table fields must come from retrieved catalog/glossary for that table and country.",
+                    "- Do not switch to a historical alias family unless explicitly grounded by retrieved catalog/glossary.",
+                    "- Do not invent new base-table fields from historical examples.",
+                ]
+            )
+            sections.append("\n".join(grounding_lines))
         if context.glossary_terms:
             lines = ["# === retrieved_glossary_terms ==="]
             for row in context.glossary_terms:
@@ -136,6 +151,7 @@ class PromptContextAssembler:
             "trimmed": context.trimmed,
             "country": country,
             "project_id": project_id,
+            "grounded_fields_by_table": PromptContextAssembler._build_grounded_fields_by_table(context),
         }
 
     @staticmethod
@@ -164,3 +180,20 @@ class PromptContextAssembler:
             )
         )
         return not explicit_uid and not has_cohort_condition
+
+    @staticmethod
+    def _build_grounded_fields_by_table(context: RetrievedKnowledgeContext) -> dict[str, list[str]]:
+        grounded_fields: dict[str, list[str]] = {}
+        for row in context.catalog_fields:
+            bucket = grounded_fields.setdefault(row.table_name, [])
+            if row.field_name not in bucket:
+                bucket.append(row.field_name)
+        for row in context.glossary_terms:
+            mapped_tables = [table for table in (row.mapped_tables_json or []) if table]
+            mapped_fields = [field for field in (row.mapped_fields_json or []) if field]
+            for table_name in mapped_tables:
+                bucket = grounded_fields.setdefault(table_name, [])
+                for field_name in mapped_fields:
+                    if field_name not in bucket:
+                        bucket.append(field_name)
+        return grounded_fields

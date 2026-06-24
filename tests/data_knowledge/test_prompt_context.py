@@ -66,6 +66,9 @@ def test_prompt_context_adds_current_request_and_anti_copy_guidance(auth_db) -> 
     assert "do not substitute to a historical alias family" in assembled.rendered_text.lower()
     assert "if the current request does not mention a source or channel filter, do not add one from examples" in assembled.rendered_text.lower()
     assert "if the current request uses a relative time window, keep it relative" in assembled.rendered_text.lower()
+    assert "# === retrieved_field_grounding ===" in assembled.rendered_text
+    assert "selected table fields must come from retrieved catalog/glossary" in assembled.rendered_text.lower()
+    assert "dwd_w_apply" in assembled.rendered_text
 
 
 def test_prompt_context_adds_under_specified_writeback_safe_refusal_guidance(auth_db) -> None:
