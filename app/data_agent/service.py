@@ -59,6 +59,7 @@ _FROM_JOIN_RE = re.compile(
 )
 _WITH_CTE_RE = re.compile(r"\bwith\s+([A-Za-z_][A-Za-z0-9_]*)\s+as\s*\(", re.IGNORECASE)
 _FUNCTION_RE = re.compile(r"\b([A-Za-z_][A-Za-z0-9_]*)\s*\(", re.IGNORECASE)
+_AS_ALIAS_RE = re.compile(r"\bas\s+([A-Za-z_][A-Za-z0-9_]*)\b", re.IGNORECASE)
 
 
 def _normalize_column_name(name: Any) -> str:
@@ -180,21 +181,16 @@ def _is_under_specified_writeback_request(
     has_cohort_condition = any(
         token in request
         for token in (
-            "查询",
-            "找出",
-            "筛选",
             "最近",
             "首贷",
             "逾期",
             "高风险",
             "cohort",
-            "where",
-            "过滤",
-            "满足",
             "从未",
             "7 天",
             "7天",
             "注册用户",
+            "逾期用户",
             "first-loan",
             "never-overdue",
         )
@@ -267,11 +263,12 @@ def _append_unsupported_field_warnings(
         return safety_result
 
     functions = {match.group(1).lower() for match in _FUNCTION_RE.finditer(sql_wo_strings)}
+    select_aliases = {match.group(1).lower() for match in _AS_ALIAS_RE.finditer(sql_wo_strings)}
     only_table = base_tables[0]
     table_tokens = set(alias_to_table.keys()) | {only_table}
     for token in _FIELD_TOKEN_RE.findall(sql_wo_strings):
         token_key = token.lower()
-        if token_key in _SQL_KEYWORDS or token_key in functions or token_key in table_tokens:
+        if token_key in _SQL_KEYWORDS or token_key in functions or token_key in table_tokens or token_key in select_aliases:
             continue
         if token_key in grounded.get(only_table, set()):
             continue

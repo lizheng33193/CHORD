@@ -796,6 +796,45 @@ def test_data_agent_bucket_writeback_create_returns_specific_422_for_under_speci
         assert after_versions == before_versions
 
 
+@pytest.mark.parametrize(
+    "request_text",
+    [
+        "帮我查询并写回 behavior",
+        "找一下行为数据并写回",
+    ],
+)
+def test_data_agent_bucket_writeback_generic_verbs_still_require_explicit_cohort(
+    client: TestClient,
+    monkeypatch,
+    request_text: str,
+) -> None:
+    _register_privileged_user(username="da-writeback-generic", email="da-writeback-generic@example.com", role_codes=["data_admin"])
+    token, _ = _login(client, "da-writeback-generic", "passw0rd123")
+
+    monkeypatch.setattr(
+        "app.data_agent.service._generate_sql_response",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            OrchestratorError(ErrorType.SCHEMA_VALIDATION_FAILED, "model output failed schema validation", request_id="rid-writeback-generic")
+        ),
+    )
+    create = client.post(
+        "/api/data-agent/runs",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "natural_language_request": request_text,
+            "target_country": "mexico",
+            "run_type": "bucket_writeback",
+            "output_bucket": "behavior",
+            "output_format": "json",
+        },
+    )
+    assert create.status_code == 422
+    body = create.json()
+    assert body["detail"]["code"] == "DATA_AGENT_WRITEBACK_REQUIRES_COHORT"
+    assert body["detail"]["stage"] == "data_agent_sql_generation"
+    assert body["detail"]["retriable"] is True
+
+
 def test_data_agent_bucket_writeback_revise_returns_specific_422_without_mutating_current_sql(
     client: TestClient,
     monkeypatch,
@@ -962,6 +1001,48 @@ def test_data_agent_does_not_flag_cte_alias_as_unsupported_field(
             " FROM dwd_w_apply GROUP BY uid"
             ") "
             "SELECT uid, first_apply_time FROM target_users"
+        ),
+    )
+    create = client.post(
+        "/api/data-agent/runs",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "natural_language_request": "查询首贷用户首次申请时间",
+            "target_country": "mexico",
+            "run_type": "cohort_query",
+        },
+    )
+    assert create.status_code == 201
+    warnings = create.json()["current_sql"]["safety_result"]["warnings"]
+    assert not any(item["category"] == "UNSUPPORTED_FIELD" for item in warnings)
+
+
+def test_data_agent_does_not_flag_select_or_aggregate_alias_as_unsupported_field(
+    client: TestClient,
+    monkeypatch,
+) -> None:
+    _register_privileged_user(username="da-alias-safe", email="da-alias-safe@example.com", role_codes=["data_admin"])
+    token, _ = _login(client, "da-alias-safe", "passw0rd123")
+
+    monkeypatch.setattr(
+        "app.data_agent.service.DataAgentService._build_generation_context",
+        lambda self, **_kwargs: (
+            None,
+            None,
+            {
+                "country": "mx",
+                "project_id": 1,
+                "grounded_fields_by_table": {
+                    "dwd_w_apply": ["uid", "apply_time"],
+                },
+            },
+        ),
+    )
+    monkeypatch.setattr(
+        "app.data_agent.service._generate_sql_response",
+        lambda *_args, **_kwargs: _stub_generate_result(
+            "SELECT uid AS user_id, MIN(apply_time) AS first_apply_time "
+            "FROM dwd_w_apply GROUP BY uid"
         ),
     )
     create = client.post(
