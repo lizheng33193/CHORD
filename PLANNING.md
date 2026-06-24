@@ -11,16 +11,20 @@
   - `docs/plans/m2a-runtime-quality-plan.md`
   - `docs/reviews/m2a-runtime-quality-baseline.md`
   - `docs/reviews/m2a-runtime-quality-results.md`
+  - `docs/specs/m2a-rq-fu2-generation-style-design.md`
+  - `docs/plans/m2a-rq-fu2-generation-style-plan.md`
 - 本阶段只做 runtime quality 收敛，不做 `M2B`，也不继续把 runtime 问题伪装成 seed patch：
   - unresolved placeholder safety check
   - deterministic retriever false positive 收敛
   - SQL example / few-shot 风格控制
   - structured output fallback
+  - generation style drift control
 - 当前第一轮收口结果：
   - placeholder SQL 现会被 Safety Gate blocked
   - `mx high-risk cohort` 的 behavior false positive 已被压下
   - prompt context 已改为更强的 pattern guidance
   - structured output unrecoverable 已明确为 pre-HITL `HTTP 422`
+  - FU2 已明显压下 historical date / source-filter drift，但 combo writeback 与 field-family drift 仍需后续 runtime follow-up
 - 本阶段继续保持不变：
   - orchestrator `query_data`
   - `M1` SQL HITL 状态机
