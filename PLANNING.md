@@ -25,6 +25,9 @@
   - prompt context 已改为更强的 pattern guidance
   - structured output unrecoverable 已明确为 pre-HITL `HTTP 422`
   - FU2 已明显压下 historical date / source-filter drift，但 combo writeback 与 field-family drift 仍需后续 runtime follow-up
+- 下一轮 runtime follow-up 固定为 `M2A-RQ-FU3`：
+  - stronger field grounding with warning-only unsupported-field risk
+  - normalize under-specified `bucket_writeback` refusal into a Data Agent specific `422`
 - 本阶段继续保持不变：
   - orchestrator `query_data`
   - `M1` SQL HITL 状态机

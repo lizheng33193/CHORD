@@ -88,6 +88,18 @@
     - 继续 runtime follow-up，优先处理 historical field-family drift
     - 协调 under-specified writeback safe-refusal 与 structured output schema
     - 在 combo writeback 上继续压低 template-style drift
+- [ ] M2A-RQ-FU3：Field Grounding & Safe Refusal Contract — 进行中（2026-06-24）
+  - design / plan：
+    - `docs/specs/m2a-rq-fu3-field-grounding-safe-refusal-design.md`
+    - `docs/plans/m2a-rq-fu3-field-grounding-safe-refusal-plan.md`
+  - 本阶段目标：
+    - field grounding 提升到 prompt + risk
+    - unsupported base-table field warning 可观测
+    - under-specified `bucket_writeback` 返回专属 `422`
+  - 保持不变：
+    - 不改 `GenerateRequest` / `GenerateResponse` schema
+    - 不改 `M1` / `M1.5` / `query_data`
+    - 不改 retriever scoring / seed assets / vector retrieval
 - [ ] M2A-Verify：真实业务样例验证 + Seed 质量补齐 — 进行中（2026-06-23）
   - plan / runbook / sample set / gap list：
     - `docs/plans/m2a-verify-knowledge-quality-plan.md`
