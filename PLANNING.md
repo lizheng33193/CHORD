@@ -11,11 +11,14 @@
   - `docs/plans/m2a-runtime-quality-plan.md`
   - `docs/reviews/m2a-runtime-quality-baseline.md`
   - `docs/reviews/m2a-runtime-quality-results.md`
+  - `docs/specs/m2a-rq-fu2-generation-style-design.md`
+  - `docs/plans/m2a-rq-fu2-generation-style-plan.md`
 - 本阶段只做 runtime quality 收敛，不做 `M2B`，也不继续把 runtime 问题伪装成 seed patch：
   - unresolved placeholder safety check
   - deterministic retriever false positive 收敛
   - SQL example / few-shot 风格控制
   - structured output fallback
+  - generation style drift control
 - 当前第一轮收口结果：
   - placeholder SQL 现会被 Safety Gate blocked
   - `mx high-risk cohort` 的 behavior false positive 已被压下

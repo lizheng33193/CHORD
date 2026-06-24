@@ -63,6 +63,21 @@
     - 合并 `codex/m2a-runtime-quality`
     - 执行 `M2A-Runtime Quality Round 1` 复测
     - 根据复测结果决定进入 `M2B` 还是继续 `M2A-RQ-FU2`
+- [ ] M2A-RQ-FU2：Generation Style Drift Control — 进行中（2026-06-24）
+  - design / plan：
+    - `docs/specs/m2a-rq-fu2-generation-style-design.md`
+    - `docs/plans/m2a-rq-fu2-generation-style-plan.md`
+  - 本阶段目标：
+    - historical field-family drift 收敛
+    - historical date / source-filter drift 收敛
+    - unresolved placeholder drift 进一步压低
+    - few-shot literal-copy / broad-scan drift 收敛
+  - 保持不变：
+    - 不改 retriever scoring 大结构
+    - 不改 seed assets
+    - 不改 Safety Gate 主逻辑
+    - 不改 `M1` / `M1.5` / `query_data`
+    - 不进 `M2B`
 - [ ] M2A-Verify：真实业务样例验证 + Seed 质量补齐 — 进行中（2026-06-23）
   - plan / runbook / sample set / gap list：
     - `docs/plans/m2a-verify-knowledge-quality-plan.md`
