@@ -146,3 +146,31 @@ def test_response_schema_failed_message_does_not_leak_payload():
     assert _LEAK_SQL_BODY not in ei.value.message
     assert "PAYLOAD_LEAK" not in ei.value.message
     assert len(ei.value.message) < 200
+
+
+def test_fenced_json_string_payload_is_repaired():
+    payload = """```json
+{"reasoning_summary":"ok","sql":"SELECT 1","sql_kind":"query_only","python":null,"audit_report":{"high_risk_ddl":false,"final_verdict":"ok"}}
+```"""
+    orch = DataAcquisitionOrchestrator(model_client=StubModelClient(payload))
+    resp = orch.generate(GenerateRequest(natural_language_request="x", target_country="mexico"))
+    assert resp.sql == "SELECT 1"
+    assert resp.audit_report.final_verdict == "ok"
+
+
+def test_json_embedded_in_explanatory_text_is_repaired():
+    payload = """Here is the final structured result:
+{"reasoning_summary":"ok","sql":"SELECT 2","sql_kind":"query_only","python":null,"audit_report":{"high_risk_ddl":false,"final_verdict":"ok"}}
+Please use it carefully.
+"""
+    orch = DataAcquisitionOrchestrator(model_client=StubModelClient(payload))
+    resp = orch.generate(GenerateRequest(natural_language_request="x", target_country="mexico"))
+    assert resp.sql == "SELECT 2"
+
+
+def test_non_json_payload_returns_controlled_schema_failure():
+    orch = DataAcquisitionOrchestrator(model_client=StubModelClient("not json at all"))
+    with pytest.raises(OrchestratorError) as ei:
+        orch.generate(GenerateRequest(natural_language_request="x", target_country="mexico"))
+    assert ei.value.error_type == ErrorType.SCHEMA_VALIDATION_FAILED
+    assert "raw" not in ei.value.message.lower()

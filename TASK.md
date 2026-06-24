@@ -35,6 +35,28 @@
 - [x] E1 单用户埋点深度解析 → docs/plans/trace-analyzer-plan.md（2026-05-01）
 
 ## 当前进行中的功能
+- [x] M2A-Runtime Quality：Data Agent 运行时质量收敛 — 第一轮完成（2026-06-24）
+  - plan / baseline：
+    - `docs/plans/m2a-runtime-quality-plan.md`
+    - `docs/reviews/m2a-runtime-quality-baseline.md`
+    - `docs/reviews/m2a-runtime-quality-results.md`
+  - 本阶段目标：
+    - unresolved placeholder Safety Gate 拦截
+    - retriever table-level false positive 收敛
+    - SQL example / few-shot pattern guidance
+    - structured output fallback 与可解释失败
+  - 本轮结果：
+    - placeholder SQL 现会被 `safety_status=blocked`
+    - `mx high-risk cohort` 不再误召回 behavior writeback glossary/table/example
+    - prompt context 已加入 pattern guidance 与 cohort-first writeback 约束
+    - structured output unrecoverable 现返回 `HTTP 422`，且 `create_run` / `revise_run` 边界已固定
+    - 中等范围回归：`58 passed`
+  - 保持不变：
+    - 不做 `M2B`
+    - 不接 vector DB / embedding / reranker
+    - 不改 `M1` SQL HITL 状态机
+    - 不改 `M1.5` Orchestrator Bridge
+    - 不让 `query_data` 接入 `M2A`
 - [ ] M2A-Verify：真实业务样例验证 + Seed 质量补齐 — 进行中（2026-06-23）
   - plan / runbook / sample set / gap list：
     - `docs/plans/m2a-verify-knowledge-quality-plan.md`
@@ -59,6 +81,9 @@
     - 已补第一批 catalog / glossary / example / error case seed
     - 已完成 patch 后 5 条样例的再次验证
     - 下一步应把剩余问题拆到 runtime quality follow-up，而不是继续混入 seed patch
+  - 当前收口结论：
+    - runtime quality follow-up 已独立拆分到 `M2A-Runtime Quality`
+    - runtime quality 第一轮收口已完成，可作为后续 `M2B` 前置基线
 - [x] M2A：Data Agent Knowledge RAG — 首版实现完成并完成本地定向验证（2026-06-23）
   - design / plan：
     - `docs/specs/m2a-data-agent-knowledge-rag-design.md`

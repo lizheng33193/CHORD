@@ -160,6 +160,9 @@ def test_prompt_context_assembler_includes_writeback_constraints(auth_db) -> Non
         assert assembled.section_counts["glossary_terms"] >= 1
         assert "dwb_b1_data_burying_point" in assembled.rendered_text
         assert any(item.source_key == "example:behavior-writeback" for item in context.sql_examples)
+        assert "pattern guidance" in assembled.rendered_text
+        assert "Do not copy example WHERE clauses" in assembled.rendered_text
+        assert "Do not scan the behavior table without a cohort/uid constraint" in assembled.rendered_text
 
 
 def test_retriever_surfaces_mx_high_risk_knowledge(auth_db) -> None:
@@ -185,12 +188,46 @@ def test_retriever_surfaces_mx_high_risk_knowledge(auth_db) -> None:
 
         glossary_keys = {item.source_key for item in context.glossary_terms}
         field_names = {f"{item.table_name}.{item.field_name}" for item in context.catalog_fields}
+        table_names = {item.table_name for item in context.catalog_tables}
 
         assert "term:high_risk_user" in glossary_keys
         assert "term:last_7_days" in glossary_keys
         assert "term:writeback_behavior" not in glossary_keys
         assert "dwd_w_apply.risk_level" in field_names
         assert "dwd_w_apply.apply_time" in field_names
+        assert "dwb_b1_data_burying_point" not in table_names
+
+
+def test_retriever_keeps_behavior_assets_for_combo_writeback_requests(auth_db) -> None:
+    from app.auth.database import AuthSessionLocal
+    from app.auth.models import Project
+    from app.data_knowledge.retriever import DataKnowledgeRetriever
+    from app.data_knowledge.service import DataKnowledgeService
+
+    with AuthSessionLocal() as db:
+        project = db.scalar(select(Project).where(Project.code == "maps_lz"))
+        assert project is not None
+        service = DataKnowledgeService(db)
+        service.import_seed_bundle(bundle="mx", project_id=project.id, actor_username="admin")
+        service.import_seed_bundle(bundle="common", project_id=project.id, actor_username="admin")
+
+        retriever = DataKnowledgeRetriever(db)
+        context = retriever.retrieve(
+            natural_language_request="先找最近 7 天高风险用户，再补齐这些用户的 behavior 数据并写回 behavior",
+            project_id=project.id,
+            country="mx",
+            run_type="bucket_writeback",
+            output_bucket="behavior",
+        )
+
+        glossary_keys = {item.source_key for item in context.glossary_terms}
+        table_names = {item.table_name for item in context.catalog_tables}
+        example_keys = {item.source_key for item in context.sql_examples}
+
+        assert "term:high_risk_user" in glossary_keys
+        assert "term:writeback_behavior" in glossary_keys
+        assert "dwb_b1_data_burying_point" in table_names
+        assert "example:behavior-writeback" in example_keys
 
 
 def test_retriever_recalls_seeded_ph_error_case(auth_db) -> None:

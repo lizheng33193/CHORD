@@ -5,6 +5,29 @@
 - 整体架构：单体 FastAPI 后端，五层（API → 编排 → Skill 执行 → 数据访问 → 外部服务）
 - 入口文件：`app/main.py`
 
+## 2026-06-24 M2A-Runtime Quality
+
+- `M2A` 与 `M2A-Verify Seed Patch 1/1.1` 已完成，当前进入独立 follow-up 阶段 `M2A-Runtime Quality`：
+  - `docs/plans/m2a-runtime-quality-plan.md`
+  - `docs/reviews/m2a-runtime-quality-baseline.md`
+  - `docs/reviews/m2a-runtime-quality-results.md`
+- 本阶段只做 runtime quality 收敛，不做 `M2B`，也不继续把 runtime 问题伪装成 seed patch：
+  - unresolved placeholder safety check
+  - deterministic retriever false positive 收敛
+  - SQL example / few-shot 风格控制
+  - structured output fallback
+- 当前第一轮收口结果：
+  - placeholder SQL 现会被 Safety Gate blocked
+  - `mx high-risk cohort` 的 behavior false positive 已被压下
+  - prompt context 已改为更强的 pattern guidance
+  - structured output unrecoverable 已明确为 pre-HITL `HTTP 422`
+- 本阶段继续保持不变：
+  - orchestrator `query_data`
+  - `M1` SQL HITL 状态机
+  - `M1.5` artifact contract
+  - public `GenerateRequest` / `retrieved_context` 边界
+  - vector DB / embedding / reranker 仍不进入本阶段
+
 ## 2026-06-23 M2A-Verify Knowledge Quality Validation
 
 - M2A 首版代码实现与本地定向验证已完成，当前进入 `M2A-Verify`：

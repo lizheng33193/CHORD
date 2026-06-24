@@ -59,8 +59,16 @@ class PromptContextAssembler:
             for row in context.sql_examples:
                 lines.append(
                     f"- request={row.natural_language_request}; summary={row.pattern_summary or ''}; "
-                    f"tables={','.join(row.tables_used_json or [])}; fields={','.join(row.fields_used_json or [])}"
+                    f"tables={','.join(row.tables_used_json or [])}; fields={','.join(row.fields_used_json or [])}; "
+                    f"run_type={row.run_type}; output_bucket={row.output_bucket or ''}"
                 )
+            lines.extend(
+                [
+                    "- Use these examples as pattern guidance, not literal SQL.",
+                    "- Adapt tables, fields, filters, and dates to the current request.",
+                    "- Do not copy example WHERE clauses unless they semantically match the current request.",
+                ]
+            )
             sections.append("\n".join(lines))
         if context.error_cases:
             lines = ["# === retrieved_error_cases ==="]
@@ -80,6 +88,10 @@ class PromptContextAssembler:
                         f"- output_bucket={output_bucket or ''}",
                         "- query_only SQL only",
                         "- result must include uid",
+                        "- Define the target cohort first.",
+                        "- Join the behavior source table by uid.",
+                        "- Return uid together with the requested behavior fields.",
+                        "- Do not scan the behavior table without a cohort/uid constraint.",
                     ]
                 )
             )

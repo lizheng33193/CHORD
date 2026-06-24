@@ -38,7 +38,9 @@ from data_acquisition_agent.executor import (
     run_execute_pipeline,
 )
 from data_acquisition_agent.manifest import load_manifest
+from data_acquisition_agent.orchestrator import OrchestratorError
 from data_acquisition_agent.schemas import ExecuteRequest, GenerateRequest, TargetAction, TargetCountry
+from data_acquisition_agent.schemas import ErrorType as DataAcquisitionErrorType
 
 
 _UID_FIELD_CANDIDATES = {"uid", "userid", "useruuid", "customerid"}
@@ -165,12 +167,15 @@ class DataAgentService:
             ctx=ctx,
         )
 
-        generated = _generate_sql_response(
-            natural_language_request=body.natural_language_request,
-            target_country=target_country,
-            target_action=body.target_action,
-            knowledge_prompt_context=prompt_context,
-        )
+        try:
+            generated = _generate_sql_response(
+                natural_language_request=body.natural_language_request,
+                target_country=target_country,
+                target_action=body.target_action,
+                knowledge_prompt_context=prompt_context,
+            )
+        except OrchestratorError as exc:
+            self._raise_generation_http_error(exc)
         sql_text = str(generated.get("sql") or "")
         sql_kind = str(generated.get("sql_kind") or "query_only")
         safety_result = run_sql_safety_gate(sql_text, sql_kind, target_country)
@@ -306,12 +311,15 @@ class DataAgentService:
             output_bucket=run.output_bucket,
             ctx=ctx,
         )
-        generated = _generate_sql_response(
-            natural_language_request=revised_request,
-            target_country=run.country,
-            target_action="extract",
-            knowledge_prompt_context=prompt_context,
-        )
+        try:
+            generated = _generate_sql_response(
+                natural_language_request=revised_request,
+                target_country=run.country,
+                target_action="extract",
+                knowledge_prompt_context=prompt_context,
+            )
+        except OrchestratorError as exc:
+            self._raise_generation_http_error(exc, run_id=run.run_id)
         sql_text = str(generated.get("sql") or "")
         sql_kind = str(generated.get("sql_kind") or run.sql_kind or "query_only")
         safety_result = run_sql_safety_gate(sql_text, sql_kind, run.country)
@@ -490,6 +498,37 @@ class DataAgentService:
         if run is None:
             raise HTTPException(status_code=404, detail="data agent run not found")
         return run
+
+    @staticmethod
+    def _raise_generation_http_error(exc: OrchestratorError, *, run_id: str | None = None) -> None:
+        if exc.error_type == DataAcquisitionErrorType.SCHEMA_VALIDATION_FAILED:
+            detail = {
+                "code": "SCHEMA_VALIDATION_FAILED",
+                "stage": "structured_output",
+                "reason": "model output failed schema validation",
+                "request_id": exc.request_id,
+                "parse_failure_type": "schema_validation_failed",
+            }
+            if run_id is not None:
+                detail["run_id"] = run_id
+            raise HTTPException(status_code=422, detail=detail) from exc
+
+        status_code = 422 if exc.error_type in {
+            DataAcquisitionErrorType.CREDENTIAL_LEAK,
+            DataAcquisitionErrorType.DANGEROUS_CODE,
+            DataAcquisitionErrorType.DDL_POLICY_VIOLATION,
+        } else 400
+        if exc.error_type == DataAcquisitionErrorType.UPSTREAM_LLM_ERROR:
+            status_code = 502
+        raise HTTPException(
+            status_code=status_code,
+            detail={
+                "code": str(getattr(exc.error_type, "value", exc.error_type)).upper(),
+                "stage": "generation",
+                "reason": exc.message,
+                "request_id": exc.request_id,
+            },
+        ) from exc
 
     def _to_summary(self, run, *, can_view_sql: bool) -> DataAgentRunSummary:
         current = self.repo.get_sql_version(run.current_sql_version_id)

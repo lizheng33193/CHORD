@@ -45,6 +45,7 @@ class DataKnowledgeRetriever:
     ) -> RetrievedKnowledgeContext:
         query = str(natural_language_request or "").strip().lower()
         target_country = str(country or "").strip().lower() or None
+        has_behavior_intent = self._has_behavior_intent(query)
 
         tables = self._rank(
             self.repo.list_by_scope(DataCatalogTable, project_id=project_id, country=target_country),
@@ -52,6 +53,13 @@ class DataKnowledgeRetriever:
             project_id=project_id,
             country=target_country,
             top_k=3,
+            score_fn=lambda row, base_score: self._table_score(
+                row,
+                base_score=base_score,
+                run_type=run_type,
+                output_bucket=output_bucket,
+                has_behavior_intent=has_behavior_intent,
+            ),
             text_fn=lambda row: " ".join(
                 filter(
                     None,
@@ -73,6 +81,11 @@ class DataKnowledgeRetriever:
             project_id=project_id,
             country=target_country,
             top_k=5,
+            score_fn=lambda row, base_score: self._field_score(
+                row,
+                base_score=base_score,
+                has_behavior_intent=has_behavior_intent,
+            ),
             text_fn=lambda row: " ".join(
                 filter(
                     None,
@@ -94,6 +107,12 @@ class DataKnowledgeRetriever:
             project_id=project_id,
             country=target_country,
             top_k=5,
+            score_fn=lambda row, base_score: self._glossary_score(
+                row,
+                base_score=base_score,
+                run_type=run_type,
+                has_behavior_intent=has_behavior_intent,
+            ),
             text_fn=lambda row: " ".join(
                 filter(
                     None,
@@ -110,11 +129,22 @@ class DataKnowledgeRetriever:
             status_filter={"active"},
         )
         examples = self._rank(
-            self.repo.list_by_scope(DataSqlExample, project_id=project_id, country=target_country),
+            self._filter_examples(
+                self.repo.list_by_scope(DataSqlExample, project_id=project_id, country=target_country),
+                run_type=run_type,
+                output_bucket=output_bucket,
+                has_behavior_intent=has_behavior_intent,
+            ),
             query=query,
             project_id=project_id,
             country=target_country,
             top_k=3,
+            score_fn=lambda row, base_score: self._example_score(
+                row,
+                base_score=base_score,
+                run_type=run_type,
+                output_bucket=output_bucket,
+            ),
             text_fn=lambda row: " ".join(
                 filter(
                     None,
@@ -131,11 +161,21 @@ class DataKnowledgeRetriever:
             status_filter={"active"},
         )
         error_cases = self._rank(
-            self.repo.list_by_scope(DataSqlErrorCase, project_id=project_id, country=target_country),
+            self._filter_error_cases(
+                self.repo.list_by_scope(DataSqlErrorCase, project_id=project_id, country=target_country),
+                run_type=run_type,
+                output_bucket=output_bucket,
+            ),
             query=query,
             project_id=project_id,
             country=target_country,
             top_k=3,
+            score_fn=lambda row, base_score: self._error_case_score(
+                row,
+                base_score=base_score,
+                run_type=run_type,
+                output_bucket=output_bucket,
+            ),
             text_fn=lambda row: " ".join(
                 filter(
                     None,
@@ -152,14 +192,6 @@ class DataKnowledgeRetriever:
             ),
             status_filter={"open"},
         )
-
-        if output_bucket:
-            examples = [row for row in examples if row.output_bucket in {None, output_bucket}]
-            error_cases = [row for row in error_cases if row.output_bucket in {None, output_bucket}]
-
-        if run_type:
-            examples = [row for row in examples if row.run_type == run_type]
-            error_cases = [row for row in error_cases if row.run_type in {None, run_type}]
 
         tables = self._expand_tables_from_glossary(
             tables=tables,
@@ -231,6 +263,7 @@ class DataKnowledgeRetriever:
         project_id: int | None,
         country: str | None,
         top_k: int,
+        score_fn,
         text_fn,
         status_filter: set[str],
     ):
@@ -240,12 +273,111 @@ class DataKnowledgeRetriever:
                 continue
             if country is not None and row.country not in {country, None}:
                 continue
-            score = self._score(text_fn(row), query)
+            score = score_fn(row, self._score(text_fn(row), query))
             if score <= 0:
                 continue
             ranked.append((self._scope_rank(row, project_id=project_id, country=country), -score, row.id, row))
         ranked.sort()
         return [row for *_meta, row in ranked[:top_k]]
+
+    @staticmethod
+    def _has_behavior_intent(query: str) -> bool:
+        if not query:
+            return False
+        markers = (
+            "behavior",
+            "writeback",
+            "写回",
+            "补齐",
+            "埋点",
+            "event",
+            "bucket",
+        )
+        return any(marker in query for marker in markers)
+
+    @staticmethod
+    def _table_score(row, *, base_score: int, run_type: str, output_bucket: str | None, has_behavior_intent: bool) -> int:
+        score = base_score
+        domain = str(getattr(row, "domain", "") or "").lower()
+        if domain == "behavior" and not has_behavior_intent and run_type != "bucket_writeback":
+            score -= 100
+        if output_bucket == "behavior" and domain == "behavior":
+            score += 12
+        return score
+
+    @staticmethod
+    def _field_score(row, *, base_score: int, has_behavior_intent: bool) -> int:
+        score = base_score
+        table_name = str(getattr(row, "table_name", "") or "").lower()
+        if "behavior" in table_name or "burying_point" in table_name:
+            if has_behavior_intent:
+                score += 8
+            else:
+                score -= 6
+        return score
+
+    @staticmethod
+    def _glossary_score(row, *, base_score: int, run_type: str, has_behavior_intent: bool) -> int:
+        score = base_score
+        score += 4 * len(getattr(row, "mapped_tables_json", []) or [])
+        score += 2 * len(getattr(row, "mapped_fields_json", []) or [])
+        glossary_text = " ".join(
+            [
+                str(getattr(row, "term", "") or "").lower(),
+                str(getattr(row, "definition", "") or "").lower(),
+                " ".join(str(item).lower() for item in (getattr(row, "synonyms_json", []) or [])),
+            ]
+        )
+        if run_type != "bucket_writeback" and not has_behavior_intent:
+            if any(marker in glossary_text for marker in ("behavior", "writeback", "写回", "补齐")):
+                score -= 100
+        return score
+
+    @staticmethod
+    def _filter_examples(rows, *, run_type: str, output_bucket: str | None, has_behavior_intent: bool):
+        filtered = []
+        for row in rows:
+            if row.run_type != run_type:
+                continue
+            if output_bucket is None and row.output_bucket is not None:
+                continue
+            if output_bucket is not None and row.output_bucket not in {None, output_bucket}:
+                continue
+            if run_type == "cohort_query" and row.output_bucket is not None and not has_behavior_intent:
+                continue
+            filtered.append(row)
+        return filtered
+
+    @staticmethod
+    def _filter_error_cases(rows, *, run_type: str, output_bucket: str | None):
+        filtered = []
+        for row in rows:
+            if row.run_type not in {None, run_type}:
+                continue
+            if output_bucket is None and row.output_bucket is not None:
+                continue
+            if output_bucket is not None and row.output_bucket not in {None, output_bucket}:
+                continue
+            filtered.append(row)
+        return filtered
+
+    @staticmethod
+    def _example_score(row, *, base_score: int, run_type: str, output_bucket: str | None) -> int:
+        score = base_score
+        if row.run_type == run_type:
+            score += 12
+        if output_bucket and row.output_bucket == output_bucket:
+            score += 10
+        return score
+
+    @staticmethod
+    def _error_case_score(row, *, base_score: int, run_type: str, output_bucket: str | None) -> int:
+        score = base_score
+        if row.run_type in {None, run_type}:
+            score += 8
+        if output_bucket and row.output_bucket == output_bucket:
+            score += 6
+        return score
 
     @staticmethod
     def _scope_rank(row, *, project_id: int | None, country: str | None) -> int:
