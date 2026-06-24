@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 import uuid
+import json
 from datetime import datetime, timezone
 
 from app.core.logger import get_logger
@@ -71,7 +72,7 @@ class DataAcquisitionOrchestrator:
                                         request_id=rid)
             raise OrchestratorError(ErrorType.UPSTREAM_LLM_ERROR,
                                     "model unavailable", request_id=rid)
-        payload = mr["structured_result"]
+        payload = self._coerce_structured_payload(mr.get("structured_result"), rid)
         self._enforce_nl_sql_kind_consistency(request, payload, rid)
         danger_events = self._enforce_output_policies(payload, manifest, rid)
         return self._build_response(rid, request, payload, mr, token_estimate, files,
@@ -113,6 +114,37 @@ class DataAcquisitionOrchestrator:
         raise OrchestratorError(ErrorType.SCHEMA_VALIDATION_FAILED,
                                 "response payload failed schema validation",
                                 request_id=rid)
+
+    def _coerce_structured_payload(self, payload, rid: str) -> dict:
+        if isinstance(payload, dict):
+            return payload
+        if isinstance(payload, str):
+            repaired = self._extract_json_object(payload)
+            if isinstance(repaired, dict):
+                return repaired
+        raise OrchestratorError(
+            ErrorType.SCHEMA_VALIDATION_FAILED,
+            "model output failed schema validation",
+            request_id=rid,
+        )
+
+    @staticmethod
+    def _extract_json_object(raw_text: str) -> dict | None:
+        text = str(raw_text or "").strip()
+        if not text:
+            return None
+        fence_match = re.fullmatch(r"```(?:json)?\s*(.*?)\s*```", text, flags=re.DOTALL | re.IGNORECASE)
+        if fence_match:
+            text = fence_match.group(1).strip()
+        decoder = json.JSONDecoder()
+        for match in re.finditer(r"\{", text):
+            try:
+                candidate, _end = decoder.raw_decode(text[match.start():])
+            except json.JSONDecodeError:
+                continue
+            if isinstance(candidate, dict):
+                return candidate
+        return None
 
     def _build_response(self, rid, request, payload, mr, token_estimate, files,
                         redaction_hits, danger_events):
