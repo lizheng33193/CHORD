@@ -9,6 +9,7 @@
 3. SQL example / few-shot pattern guidance 强化
 4. structured output fallback 与可解释失败
 5. 结果文档与中等范围回归验证
+6. Data Agent non-SQL generation guard
 
 本轮没有做：
 
@@ -81,6 +82,33 @@
 
 同时不暴露 raw LLM output / prompt / internal context。
 
+### 5. Non-SQL generation guard
+
+`app/data_agent/service.py` 现已补齐 Data Agent 专属 SQL HITL 入口边界：
+
+- `create_run()` 要求 generation result 必须包含非空 SQL
+- `revise_run()` 要求 revision result 必须包含非空 SQL
+- `sql=None`、`sql=""`、`sql="   "` 都会返回受控 `HTTP 422`
+
+当前行为：
+
+- structured output unrecoverable：
+  - `create_run -> HTTP 422`，不创建 `DataAgentRun`
+  - `revise_run -> HTTP 422`，不创建新 version，旧 run/version 保持不变
+- structured success but non-SQL result：
+  - `create_run -> HTTP 422`，不创建 `DataAgentRun`
+  - `revise_run -> HTTP 422`，不创建新 version，且不改变 `current_sql_version_id` / `approved_sql_hash` / run status
+- SQL exists but blocked by Safety Gate：
+  - 落 run/version，`safety_status=blocked`
+- SQL exists and safe：
+  - 正常进入 SQL HITL
+
+错误响应现固定包含：
+
+- `detail.code = SQL_GENERATION_REQUIRED`
+- `detail.stage = data_agent_sql_generation`
+- `detail.retriable = true`
+
 ## Verification
 
 ### Targeted checks
@@ -91,7 +119,7 @@
 
 结果：
 
-- `39 passed`
+- `43 passed`
 
 ### Regression subset
 
@@ -99,7 +127,7 @@
 
 结果：
 
-- `58 passed`
+- `62 passed`
 
 ## Outcome By Problem
 
@@ -135,6 +163,14 @@
 - fenced JSON / explanatory-text JSON 可恢复
 - non-JSON 走可解释 `HTTP 422`
 - Data Agent run 生命周期与 pre-HITL generation failure 已明确分离
+
+### non-SQL generation result
+
+状态：已收口
+
+- Data Agent 现拒绝 `sql=None / "" / 仅空白` 的 generation result
+- `create_run` 不再为 non-SQL result 创建 run/version
+- `revise_run` 不再为 non-SQL result 创建新 version，也不会覆盖当前已审核 SQL
 
 ## Remaining Risks
 

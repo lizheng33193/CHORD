@@ -176,7 +176,7 @@ class DataAgentService:
             )
         except OrchestratorError as exc:
             self._raise_generation_http_error(exc)
-        sql_text = str(generated.get("sql") or "")
+        sql_text = self._require_generated_sql(generated)
         sql_kind = str(generated.get("sql_kind") or "query_only")
         safety_result = run_sql_safety_gate(sql_text, sql_kind, target_country)
         run_id = uuid.uuid4().hex
@@ -320,7 +320,7 @@ class DataAgentService:
             )
         except OrchestratorError as exc:
             self._raise_generation_http_error(exc, run_id=run.run_id)
-        sql_text = str(generated.get("sql") or "")
+        sql_text = self._require_generated_sql(generated, run_id=run.run_id)
         sql_kind = str(generated.get("sql_kind") or run.sql_kind or "query_only")
         safety_result = run_sql_safety_gate(sql_text, sql_kind, run.country)
         version = self.repo.add_sql_version(
@@ -529,6 +529,23 @@ class DataAgentService:
                 "request_id": exc.request_id,
             },
         ) from exc
+
+    @staticmethod
+    def _require_generated_sql(generated: dict[str, Any], *, run_id: str | None = None) -> str:
+        sql = generated.get("sql")
+        if isinstance(sql, str):
+            normalized = sql.strip()
+            if normalized:
+                return normalized
+        detail = {
+            "code": "SQL_GENERATION_REQUIRED",
+            "stage": "data_agent_sql_generation",
+            "reason": "Data Agent generation must produce non-empty SQL before entering SQL HITL.",
+            "retriable": True,
+        }
+        if run_id is not None:
+            detail["run_id"] = run_id
+        raise HTTPException(status_code=422, detail=detail)
 
     def _to_summary(self, run, *, can_view_sql: bool) -> DataAgentRunSummary:
         current = self.repo.get_sql_version(run.current_sql_version_id)

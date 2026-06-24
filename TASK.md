@@ -35,7 +35,7 @@
 - [x] E1 单用户埋点深度解析 → docs/plans/trace-analyzer-plan.md（2026-05-01）
 
 ## 当前进行中的功能
-- [x] M2A-Runtime Quality：Data Agent 运行时质量收敛 — 第一轮完成（2026-06-24）
+- [x] M2A-Runtime Quality：Data Agent 运行时质量收敛 — 第一轮完成 + RQ-FU1 completed（2026-06-24）
   - plan / baseline：
     - `docs/plans/m2a-runtime-quality-plan.md`
     - `docs/reviews/m2a-runtime-quality-baseline.md`
@@ -50,13 +50,19 @@
     - `mx high-risk cohort` 不再误召回 behavior writeback glossary/table/example
     - prompt context 已加入 pattern guidance 与 cohort-first writeback 约束
     - structured output unrecoverable 现返回 `HTTP 422`，且 `create_run` / `revise_run` 边界已固定
-    - 中等范围回归：`58 passed`
+    - non-SQL generation result 现返回 `HTTP 422`，且不会创建/覆盖 SQL HITL run/version
+    - 中等范围回归：`62 passed`
   - 保持不变：
     - 不做 `M2B`
     - 不接 vector DB / embedding / reranker
     - 不改 `M1` SQL HITL 状态机
     - 不改 `M1.5` Orchestrator Bridge
     - 不让 `query_data` 接入 `M2A`
+  - 下一步：
+    - 同步 `origin/main`
+    - 合并 `codex/m2a-runtime-quality`
+    - 执行 `M2A-Runtime Quality Round 1` 复测
+    - 根据复测结果决定进入 `M2B` 还是继续 `M2A-RQ-FU2`
 - [ ] M2A-Verify：真实业务样例验证 + Seed 质量补齐 — 进行中（2026-06-23）
   - plan / runbook / sample set / gap list：
     - `docs/plans/m2a-verify-knowledge-quality-plan.md`

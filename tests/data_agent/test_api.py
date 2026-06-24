@@ -74,14 +74,14 @@ def _create_role(db, *, code: str, name: str, permission_codes: list[str]) -> No
     db.commit()
 
 
-def _stub_generate_result(sql: str, sql_kind: str = "query_only") -> dict:
+def _stub_generate_result(sql: str | None, sql_kind: str = "query_only", *, python: str | None = None) -> dict:
     return {
         "request_id": "gen-001",
         "target_country": "mexico",
         "reasoning_summary": "stub",
         "sql": sql,
         "sql_kind": sql_kind,
-        "python": None,
+        "python": python,
         "audit_report": {"high_risk_ddl": sql_kind == "build_table_script", "final_verdict": "ok"},
         "metadata": {
             "model": "stub",
@@ -590,6 +590,51 @@ def test_data_agent_create_run_returns_422_without_persisting_run_on_structured_
         assert run_count == 0
 
 
+@pytest.mark.parametrize("sql_value", [None, "", "   "])
+def test_data_agent_create_run_rejects_non_sql_generation_results(
+    client: TestClient,
+    monkeypatch,
+    sql_value: str | None,
+) -> None:
+    from app.auth.database import AuthSessionLocal
+    from app.data_agent.models import DataAgentRun, DataAgentSqlVersion
+
+    _register_privileged_user(username="da-create-no-sql", email="da-create-no-sql@example.com", role_codes=["data_admin"])
+    token, _ = _login(client, "da-create-no-sql", "passw0rd123")
+
+    with AuthSessionLocal() as db:
+        before_runs = db.scalar(select(func.count()).select_from(DataAgentRun))
+        before_versions = db.scalar(select(func.count()).select_from(DataAgentSqlVersion))
+
+    monkeypatch.setattr(
+        "app.data_agent.service._generate_sql_response",
+        lambda *_args, **_kwargs: _stub_generate_result(sql_value, python="print('x')"),
+    )
+    create = client.post(
+        "/api/data-agent/runs",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "natural_language_request": "查询高风险用户",
+            "target_country": "mexico",
+            "run_type": "cohort_query",
+        },
+    )
+    assert create.status_code == 422
+    body = create.json()
+    assert body["detail"]["code"] == "SQL_GENERATION_REQUIRED"
+    assert body["detail"]["stage"] == "data_agent_sql_generation"
+    assert body["detail"]["retriable"] is True
+    assert "python" not in str(body).lower()
+    assert "prompt" not in str(body).lower()
+    assert "context" not in str(body).lower()
+
+    with AuthSessionLocal() as db:
+        after_runs = db.scalar(select(func.count()).select_from(DataAgentRun))
+        after_versions = db.scalar(select(func.count()).select_from(DataAgentSqlVersion))
+        assert after_runs == before_runs
+        assert after_versions == before_versions
+
+
 def test_data_agent_revise_run_returns_422_without_mutating_current_sql(client: TestClient, monkeypatch) -> None:
     _register_privileged_user(username="da-revise-422", email="da-revise-422@example.com", role_codes=["data_admin"])
     token, _ = _login(client, "da-revise-422", "passw0rd123")
@@ -633,6 +678,78 @@ def test_data_agent_revise_run_returns_422_without_mutating_current_sql(client: 
     )
     assert detail.status_code == 200
     assert detail.json()["current_sql"]["sql_hash"] == original_hash
+
+
+def test_data_agent_revise_run_rejects_non_sql_generation_results_without_creating_version(
+    client: TestClient,
+    monkeypatch,
+) -> None:
+    from app.auth.database import AuthSessionLocal
+    from app.data_agent.models import DataAgentSqlVersion
+
+    _register_privileged_user(username="da-revise-no-sql", email="da-revise-no-sql@example.com", role_codes=["data_admin"])
+    token, _ = _login(client, "da-revise-no-sql", "passw0rd123")
+
+    monkeypatch.setattr(
+        "app.data_agent.service._generate_sql_response",
+        lambda *_args, **_kwargs: _stub_generate_result("SELECT uid FROM users LIMIT 4"),
+    )
+    create = client.post(
+        "/api/data-agent/runs",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "natural_language_request": "查询高风险用户",
+            "target_country": "mexico",
+            "run_type": "cohort_query",
+        },
+    )
+    assert create.status_code == 201
+    run_id = create.json()["run_id"]
+
+    approve = client.post(
+        f"/api/data-agent/runs/{run_id}/approve",
+        headers={"Authorization": f"Bearer {token}"},
+        json={},
+    )
+    assert approve.status_code == 200
+    original_hash = approve.json()["current_sql"]["sql_hash"]
+    original_approved_hash = approve.json()["approved_sql_hash"]
+
+    with AuthSessionLocal() as db:
+        before_versions = db.scalar(select(func.count()).select_from(DataAgentSqlVersion))
+
+    monkeypatch.setattr(
+        "app.data_agent.service._generate_sql_response",
+        lambda *_args, **_kwargs: _stub_generate_result(None, python="print('x')"),
+    )
+    revise = client.post(
+        f"/api/data-agent/runs/{run_id}/revise",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"comment": "请改成最近 7 天"},
+    )
+    assert revise.status_code == 422
+    body = revise.json()
+    assert body["detail"]["code"] == "SQL_GENERATION_REQUIRED"
+    assert body["detail"]["stage"] == "data_agent_sql_generation"
+    assert body["detail"]["run_id"] == run_id
+    assert body["detail"]["retriable"] is True
+    assert "python" not in str(body).lower()
+    assert "prompt" not in str(body).lower()
+    assert "context" not in str(body).lower()
+
+    with AuthSessionLocal() as db:
+        after_versions = db.scalar(select(func.count()).select_from(DataAgentSqlVersion))
+        assert after_versions == before_versions
+
+    detail = client.get(
+        f"/api/data-agent/runs/{run_id}",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert detail.status_code == 200
+    detail_payload = detail.json()
+    assert detail_payload["current_sql"]["sql_hash"] == original_hash
+    assert detail_payload["approved_sql_hash"] == original_approved_hash
+    assert detail_payload["status"] == "approved"
 
 
 def test_data_agent_successful_execute_persists_draft_sql_example(client: TestClient, monkeypatch) -> None:
