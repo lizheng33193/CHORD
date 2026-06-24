@@ -105,3 +105,62 @@ def test_assemble_includes_retrieved_context_when_provided():
     prompt, _, _, _ = assemble_prompt(req, m, retrieved_context=retrieved)
     assert "# === retrieved_glossary_terms ===" in prompt
     assert "term=首贷" in prompt
+
+
+def test_assemble_includes_current_request_priority_rules_for_retrieved_context():
+    m = load_manifest("mexico")
+    req = GenerateRequest(natural_language_request="找出墨西哥首贷且从未逾期的用户，并写回 behavior", target_country="mexico")
+    retrieved = AssembledPromptContext(
+        rendered_text=(
+            "# === retrieved_sql_examples ===\n"
+            "- request=首贷用户; summary=pattern; tables=dwd_w_apply; fields=uid,loan_count\n\n"
+            "# === writeback_constraints ===\n"
+            "- output_bucket=behavior\n"
+            "- query_only SQL only\n"
+            "- result must include uid"
+        ),
+        context_hash="ctx-hash",
+        section_counts={"sql_examples": 1},
+        source_ids={"example_ids": [1]},
+        trimmed=False,
+    )
+    prompt, _, _, _ = assemble_prompt(req, m, retrieved_context=retrieved)
+    assert "Current Request Priority Rules" in prompt
+    assert "current user request is the source of truth" in prompt
+    assert "do not inherit dates, source codes, partition filters, table aliases, uid placeholders" in prompt
+    assert "prefer field names explicitly present in retrieved catalog/glossary" in prompt
+
+
+def test_assemble_scopes_sql_null_guidance_to_under_specified_writeback():
+    m = load_manifest("mexico")
+    req = GenerateRequest(natural_language_request="用 Data Agent 补齐这些用户的 behavior 数据并写回 behavior", target_country="mexico")
+    retrieved = AssembledPromptContext(
+        rendered_text=(
+            "# === retrieved_sql_examples ===\n"
+            "- request=behavior writeback; summary=pattern; tables=dwb_b1_data_burying_point; fields=uid,eventname,timestamp_\n\n"
+            "# === writeback_constraints ===\n"
+            "- output_bucket=behavior\n"
+            "- query_only SQL only\n"
+            "- result must include uid"
+        ),
+        context_hash="ctx-hash",
+        section_counts={"sql_examples": 1},
+        source_ids={"example_ids": [1]},
+        trimmed=False,
+    )
+    prompt, _, _, _ = assemble_prompt(req, m, retrieved_context=retrieved)
+    assert "return sql=null" in prompt.lower()
+
+
+def test_assemble_does_not_add_sql_null_guidance_for_ordinary_query_prompt():
+    m = load_manifest("mexico")
+    req = GenerateRequest(natural_language_request="查询最近 7 天高风险用户", target_country="mexico")
+    retrieved = AssembledPromptContext(
+        rendered_text="# === retrieved_glossary_terms ===\n- term=高风险用户; definition=高风险 cohort",
+        context_hash="ctx-hash",
+        section_counts={"glossary_terms": 1},
+        source_ids={"glossary_ids": [1]},
+        trimmed=False,
+    )
+    prompt, _, _, _ = assemble_prompt(req, m, retrieved_context=retrieved)
+    assert "return sql=null" not in prompt.lower()

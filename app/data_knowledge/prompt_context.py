@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from dataclasses import dataclass
 
 from app.data_knowledge.retriever import RetrievedKnowledgeContext
@@ -64,9 +65,15 @@ class PromptContextAssembler:
                 )
             lines.extend(
                 [
+                    "- current request is the source of truth.",
                     "- Use these examples as pattern guidance, not literal SQL.",
+                    "- Examples are pattern guidance only.",
                     "- Adapt tables, fields, filters, and dates to the current request.",
                     "- Do not copy example WHERE clauses unless they semantically match the current request.",
+                    "- Do not copy literal dates, partition ranges, source filters, uid placeholders, or table aliases from examples unless explicitly required by the current request and grounded by retrieved catalog/glossary.",
+                    "- Do not copy uid placeholders.",
+                    "- Prefer field names explicitly present in the retrieved catalog for the selected table and country.",
+                    "- Do not substitute to a historical alias family unless that alias is present in retrieved catalog or glossary for the current country/table.",
                 ]
             )
             sections.append("\n".join(lines))
@@ -81,20 +88,22 @@ class PromptContextAssembler:
             sections.append("\n".join(lines))
 
         if run_type == "bucket_writeback":
-            sections.append(
-                "\n".join(
-                    [
-                        "# === writeback_constraints ===",
-                        f"- output_bucket={output_bucket or ''}",
-                        "- query_only SQL only",
-                        "- result must include uid",
-                        "- Define the target cohort first.",
-                        "- Join the behavior source table by uid.",
-                        "- Return uid together with the requested behavior fields.",
-                        "- Do not scan the behavior table without a cohort/uid constraint.",
-                    ]
-                )
-            )
+            lines = [
+                "# === writeback_constraints ===",
+                f"- output_bucket={output_bucket or ''}",
+                "- query_only SQL only",
+                "- result must include uid",
+                "- Define the target cohort first.",
+                "- Define the target cohort or use an explicit uid list first.",
+                "- Join the behavior source table by uid.",
+                "- Return uid together with the requested behavior fields.",
+                "- Do not emit unresolved uid placeholders.",
+                "- Do not scan the behavior table without a cohort/uid constraint.",
+                "- Do not broad-scan the behavior table.",
+            ]
+            if self._is_under_specified_writeback_request(natural_language_request):
+                lines.append("- If the request has no cohort condition and no explicit uid list, return sql=null rather than inventing placeholders.")
+            sections.append("\n".join(lines))
 
         rendered_text = "\n\n".join(section for section in sections if section).strip()
         context_hash = hashlib.sha256(rendered_text.encode("utf-8")).hexdigest() if rendered_text else ""
@@ -126,3 +135,30 @@ class PromptContextAssembler:
             "country": country,
             "project_id": project_id,
         }
+
+    @staticmethod
+    def _is_under_specified_writeback_request(natural_language_request: str) -> bool:
+        request = str(natural_language_request or "").strip().lower()
+        if not request:
+            return True
+        explicit_uid = any(token in request for token in ("uid", "uuid", "user_id", "userid", "用户id", "用户 id"))
+        has_cohort_condition = any(
+            token in request
+            for token in (
+                "查询",
+                "找出",
+                "筛选",
+                "最近",
+                "首贷",
+                "逾期",
+                "高风险",
+                "cohort",
+                "where",
+                "过滤",
+                "满足",
+                "从未",
+                "7 天",
+                "7天",
+            )
+        )
+        return not explicit_uid and not has_cohort_condition

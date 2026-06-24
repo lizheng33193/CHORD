@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path as _Path
+import re
 
 from .manifest import CountryManifest
 from .redactor import redact
@@ -110,6 +111,33 @@ def estimate_tokens(text: str) -> int:
     cjk = sum(1 for c in text if '一' <= c <= '鿿')
     other = len(text) - cjk
     return int(cjk * 1.5 + other / 4)
+
+
+def _is_under_specified_writeback_request(request_text: str) -> bool:
+    request = str(request_text or "").strip().lower()
+    if not request:
+        return True
+    explicit_uid = any(token in request for token in ("uid", "uuid", "user_id", "userid", "用户id", "用户 id"))
+    has_cohort_condition = any(
+        token in request
+        for token in (
+            "查询",
+            "找出",
+            "筛选",
+            "最近",
+            "首贷",
+            "逾期",
+            "高风险",
+            "cohort",
+            "where",
+            "过滤",
+            "满足",
+            "从未",
+            "7 天",
+            "7天",
+        )
+    )
+    return not explicit_uid and not has_cohort_condition
 
 
 def assemble_prompt(request, manifest, *, retrieved_context=None):
@@ -239,6 +267,17 @@ def assemble_prompt(request, manifest, *, retrieved_context=None):
     )
     if retrieved_context is not None and getattr(retrieved_context, "rendered_text", ""):
         sections.append(retrieved_context.rendered_text)
+        priority_lines = [
+            "# === Current Request Priority Rules ===",
+            "- current user request is the source of truth",
+            "- retrieved examples are references, not requirements",
+            "- do not inherit dates, source codes, partition filters, table aliases, uid placeholders, or field-family substitutions unless explicitly required by the current request and grounded by retrieved context",
+            "- prefer field names explicitly present in retrieved catalog/glossary for the selected table and country",
+            "- do not invent placeholders for missing uid lists or cohorts",
+        ]
+        if "# === writeback_constraints ===" in retrieved_context.rendered_text and _is_under_specified_writeback_request(request.natural_language_request):
+            priority_lines.append("- for under-specified Data Agent bucket_writeback requests, return sql=null instead of inventing placeholders or broad-scan SQL")
+        sections.append("\n".join(priority_lines))
     sections.append(user_block)
     prompt = "\n\n".join(sections)
     tokens = estimate_tokens(prompt)
