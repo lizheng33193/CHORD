@@ -64,6 +64,8 @@ def test_prompt_context_adds_current_request_and_anti_copy_guidance(auth_db) -> 
     assert "do not copy uid placeholders" in assembled.rendered_text.lower()
     assert "prefer field names explicitly present in the retrieved catalog" in assembled.rendered_text.lower()
     assert "do not substitute to a historical alias family" in assembled.rendered_text.lower()
+    assert "if the current request does not mention a source or channel filter, do not add one from examples" in assembled.rendered_text.lower()
+    assert "if the current request uses a relative time window, keep it relative" in assembled.rendered_text.lower()
 
 
 def test_prompt_context_adds_under_specified_writeback_safe_refusal_guidance(auth_db) -> None:
@@ -96,4 +98,6 @@ def test_prompt_context_adds_under_specified_writeback_safe_refusal_guidance(aut
         )
 
     assert "do not broad-scan the behavior table" in assembled.rendered_text.lower()
-    assert "return sql=null rather than inventing placeholders" in assembled.rendered_text.lower()
+    lowered = assembled.rendered_text.lower()
+    assert "return sql=null" in lowered
+    assert "sql_kind=query_only" in lowered

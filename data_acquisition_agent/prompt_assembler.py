@@ -272,11 +272,13 @@ def assemble_prompt(request, manifest, *, retrieved_context=None):
             "- current user request is the source of truth",
             "- retrieved examples are references, not requirements",
             "- do not inherit dates, source codes, partition filters, table aliases, uid placeholders, or field-family substitutions unless explicitly required by the current request and grounded by retrieved context",
+            "- if the current request does not mention a source or channel filter, do not add one from examples",
+            "- if the current request uses a relative time window, keep it relative instead of replacing it with fixed example partitions",
             "- prefer field names explicitly present in retrieved catalog/glossary for the selected table and country",
             "- do not invent placeholders for missing uid lists or cohorts",
         ]
         if "# === writeback_constraints ===" in retrieved_context.rendered_text and _is_under_specified_writeback_request(request.natural_language_request):
-            priority_lines.append("- for under-specified Data Agent bucket_writeback requests, return sql=null instead of inventing placeholders or broad-scan SQL")
+            priority_lines.append("- for under-specified Data Agent bucket_writeback requests, return sql=null and sql_kind=query_only instead of inventing placeholders or broad-scan SQL")
         sections.append("\n".join(priority_lines))
     sections.append(user_block)
     prompt = "\n\n".join(sections)

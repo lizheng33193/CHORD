@@ -72,6 +72,8 @@ class PromptContextAssembler:
                     "- Do not copy example WHERE clauses unless they semantically match the current request.",
                     "- Do not copy literal dates, partition ranges, source filters, uid placeholders, or table aliases from examples unless explicitly required by the current request and grounded by retrieved catalog/glossary.",
                     "- Do not copy uid placeholders.",
+                    "- If the current request does not mention a source or channel filter, do not add one from examples.",
+                    "- If the current request uses a relative time window, keep it relative instead of replacing it with fixed example partitions.",
                     "- Prefer field names explicitly present in the retrieved catalog for the selected table and country.",
                     "- Do not substitute to a historical alias family unless that alias is present in retrieved catalog or glossary for the current country/table.",
                 ]
@@ -102,7 +104,7 @@ class PromptContextAssembler:
                 "- Do not broad-scan the behavior table.",
             ]
             if self._is_under_specified_writeback_request(natural_language_request):
-                lines.append("- If the request has no cohort condition and no explicit uid list, return sql=null rather than inventing placeholders.")
+                lines.append("- If the request has no cohort condition and no explicit uid list, return sql=null and sql_kind=query_only rather than inventing placeholders.")
             sections.append("\n".join(lines))
 
         rendered_text = "\n\n".join(section for section in sections if section).strip()

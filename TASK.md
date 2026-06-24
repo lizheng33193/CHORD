@@ -63,21 +63,31 @@
     - 合并 `codex/m2a-runtime-quality`
     - 执行 `M2A-Runtime Quality Round 1` 复测
     - 根据复测结果决定进入 `M2B` 还是继续 `M2A-RQ-FU2`
-- [ ] M2A-RQ-FU2：Generation Style Drift Control — 进行中（2026-06-24）
+- [x] M2A-RQ-FU2：Generation Style Drift Control — 第一轮完成，仍需 runtime follow-up（2026-06-24）
   - design / plan：
     - `docs/specs/m2a-rq-fu2-generation-style-design.md`
     - `docs/plans/m2a-rq-fu2-generation-style-plan.md`
+    - `docs/reviews/m2a-rq-fu2-generation-style-results.md`
   - 本阶段目标：
     - historical field-family drift 收敛
     - historical date / source-filter drift 收敛
     - unresolved placeholder drift 进一步压低
     - few-shot literal-copy / broad-scan drift 收敛
+  - 第一轮结果：
+    - prompt context 与 prompt assembler 已加入 current-request-first / anti-copy / no-source-filter-inheritance / keep-relative-time / under-specified writeback safe-refusal guidance
+    - `mx-high-risk-cohort` 已明显压下固定日期 / source filter 漂移，但仍保留 historical field-family drift
+    - `mx-behavior-writeback` 已不再生成 placeholder 或 broad scan，但当前 safe-refusal 仍以 `schema_validation_failed` 结束
+    - `mx-glossary-combo-writeback` 仍有明显 historical template drift，暂不进入 `M2B`
   - 保持不变：
     - 不改 retriever scoring 大结构
     - 不改 seed assets
     - 不改 Safety Gate 主逻辑
     - 不改 `M1` / `M1.5` / `query_data`
     - 不进 `M2B`
+  - 下一步：
+    - 继续 runtime follow-up，优先处理 historical field-family drift
+    - 协调 under-specified writeback safe-refusal 与 structured output schema
+    - 在 combo writeback 上继续压低 template-style drift
 - [ ] M2A-Verify：真实业务样例验证 + Seed 质量补齐 — 进行中（2026-06-23）
   - plan / runbook / sample set / gap list：
     - `docs/plans/m2a-verify-knowledge-quality-plan.md`

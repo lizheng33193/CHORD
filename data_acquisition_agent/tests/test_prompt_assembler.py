@@ -129,6 +129,8 @@ def test_assemble_includes_current_request_priority_rules_for_retrieved_context(
     assert "current user request is the source of truth" in prompt
     assert "do not inherit dates, source codes, partition filters, table aliases, uid placeholders" in prompt
     assert "prefer field names explicitly present in retrieved catalog/glossary" in prompt
+    assert "if the current request does not mention a source or channel filter, do not add one from examples" in prompt.lower()
+    assert "if the current request uses a relative time window, keep it relative" in prompt.lower()
 
 
 def test_assemble_scopes_sql_null_guidance_to_under_specified_writeback():
@@ -149,7 +151,9 @@ def test_assemble_scopes_sql_null_guidance_to_under_specified_writeback():
         trimmed=False,
     )
     prompt, _, _, _ = assemble_prompt(req, m, retrieved_context=retrieved)
-    assert "return sql=null" in prompt.lower()
+    lowered = prompt.lower()
+    assert "return sql=null" in lowered
+    assert "sql_kind=query_only" in lowered
 
 
 def test_assemble_does_not_add_sql_null_guidance_for_ordinary_query_prompt():
@@ -163,4 +167,6 @@ def test_assemble_does_not_add_sql_null_guidance_for_ordinary_query_prompt():
         trimmed=False,
     )
     prompt, _, _, _ = assemble_prompt(req, m, retrieved_context=retrieved)
-    assert "return sql=null" not in prompt.lower()
+    lowered = prompt.lower()
+    assert "return sql=null" not in lowered
+    assert "sql_kind=query_only" not in lowered

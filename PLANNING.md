@@ -24,6 +24,7 @@
   - `mx high-risk cohort` 的 behavior false positive 已被压下
   - prompt context 已改为更强的 pattern guidance
   - structured output unrecoverable 已明确为 pre-HITL `HTTP 422`
+  - FU2 已明显压下 historical date / source-filter drift，但 combo writeback 与 field-family drift 仍需后续 runtime follow-up
 - 本阶段继续保持不变：
   - orchestrator `query_data`
   - `M1` SQL HITL 状态机
