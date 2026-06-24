@@ -18,6 +18,10 @@ from app.data_agent.repair import (
     build_plan_guided_repair_instruction,
     select_repairable_plan_warnings,
 )
+from app.data_agent.sql_plan import (
+    build_structured_sql_plan,
+    validate_structured_sql_plan,
+)
 from app.data_agent.repository import DataAgentRepository
 from app.data_agent.safety import resolve_country_names, run_sql_safety_gate
 from app.data_agent.plan_review import review_sql_against_intent_plan
@@ -552,6 +556,7 @@ class DataAgentService:
             run_type=body.run_type,
             output_bucket=body.output_bucket,
             ctx=ctx,
+            run_id=None,
         )
 
         try:
@@ -723,6 +728,7 @@ class DataAgentService:
             run_type=run.run_type,
             output_bucket=run.output_bucket,
             ctx=ctx,
+            run_id=run.run_id,
         )
         try:
             generated = _generate_sql_response(
@@ -1010,6 +1016,24 @@ class DataAgentService:
             detail["run_id"] = run_id
         raise HTTPException(status_code=422, detail=detail)
 
+    @staticmethod
+    def _raise_plan_validation_http_error(
+        *,
+        validation_result,
+        run_id: str | None = None,
+    ) -> None:
+        detail = {
+            "code": validation_result.code or "DATA_AGENT_SQL_PLAN_INVALID",
+            "stage": "data_agent_sql_planning",
+            "reason": validation_result.reason or "Structured SQL plan validation failed.",
+            "retriable": True,
+        }
+        if validation_result.missing:
+            detail["missing"] = list(validation_result.missing)
+        if run_id is not None:
+            detail["run_id"] = run_id
+        raise HTTPException(status_code=422, detail=detail)
+
     def _to_summary(self, run, *, can_view_sql: bool) -> DataAgentRunSummary:
         current = self.repo.get_sql_version(run.current_sql_version_id)
         return DataAgentRunSummary(
@@ -1069,6 +1093,7 @@ class DataAgentService:
         run_type: str,
         output_bucket: str | None,
         ctx: UserContext,
+        run_id: str | None = None,
     ):
         project_id = int(ctx.project_id) if ctx.project_id and str(ctx.project_id).isdigit() else None
         retriever = DataKnowledgeRetriever(self.db)
@@ -1080,12 +1105,36 @@ class DataAgentService:
             output_bucket=output_bucket,
         )
         assembler = PromptContextAssembler()
+        base_snapshot = assembler.build_base_snapshot(
+            country=target_country,
+            project_id=project_id,
+            natural_language_request=natural_language_request,
+            run_type=run_type,
+            output_bucket=output_bucket,
+            context=retrieved_context,
+        )
+        structured_plan = build_structured_sql_plan(
+            natural_language_request=natural_language_request,
+            run_type=run_type,
+            output_bucket=output_bucket,
+            country=target_country,
+            retrieval_snapshot=base_snapshot,
+        )
+        validation = validate_structured_sql_plan(
+            plan=structured_plan,
+            retrieval_snapshot=base_snapshot,
+        )
+        if not validation.valid:
+            self._raise_plan_validation_http_error(validation_result=validation, run_id=run_id)
+        structured_plan_payload = structured_plan.model_dump(mode="json")
+        structured_validation_payload = validation.model_dump(mode="json")
         prompt_context = assembler.assemble(
             natural_language_request=natural_language_request,
             country=target_country,
             run_type=run_type,
             output_bucket=output_bucket,
             context=retrieved_context,
+            structured_plan=structured_plan_payload,
         )
         snapshot = assembler.build_snapshot(
             country=target_country,
@@ -1095,6 +1144,8 @@ class DataAgentService:
             output_bucket=output_bucket,
             context=retrieved_context,
             assembled=prompt_context,
+            structured_plan=structured_plan_payload,
+            structured_plan_validation=structured_validation_payload,
         )
         return retrieved_context, prompt_context, snapshot
 

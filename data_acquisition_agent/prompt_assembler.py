@@ -283,6 +283,14 @@ def assemble_prompt(request, manifest, *, retrieved_context=None):
                     "- alternatives are allowed only when the current request or retrieved context explicitly requires them",
                 ]
             )
+        if "# === structured_sql_plan_contract ===" in retrieved_context.rendered_text:
+            priority_lines.extend(
+                [
+                    "- structured_sql_plan_contract is the source of truth for SQL generation",
+                    "- historical examples are references only",
+                    "- if examples conflict with structured plan, follow structured plan",
+                ]
+            )
         if "# === sql_intent_plan ===" in retrieved_context.rendered_text:
             priority_lines.extend(
                 [

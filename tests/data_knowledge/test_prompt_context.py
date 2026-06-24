@@ -134,18 +134,44 @@ def test_prompt_context_adds_canonical_field_guidance_and_sql_intent_plan() -> N
         trimmed=False,
     )
 
+    structured_plan = {
+        "schema_version": "structured_sql_plan_v1",
+        "task_type": "bucket_writeback",
+        "output_bucket": "behavior",
+        "target_cohort_conditions": ["first_loan", "never_overdue"],
+        "source_tables": ["dwd_w_apply", "dwb_b1_data_burying_point"],
+        "join_keys": ["uid"],
+        "required_fields": ["uid", "timestamp_", "eventname"],
+        "forbidden_patterns": [
+            "unresolved_uid_placeholder",
+            "broad_behavior_scan",
+            "historical_date_copy",
+            "historical_source_filter",
+            "literal_example_copy",
+            "unsupported_field_family",
+        ],
+        "source_filters_allowed": False,
+        "fixed_dates_allowed": False,
+    }
+
     assembled = PromptContextAssembler().assemble(
         natural_language_request="找出墨西哥首贷且从未逾期的用户，并写回 behavior",
         country="mx",
         run_type="bucket_writeback",
         output_bucket="behavior",
         context=context,
+        structured_plan=structured_plan,
     )
 
     lowered = assembled.rendered_text.lower()
     assert "# === canonical_field_guidance ===" in assembled.rendered_text
     assert "preferred=uid" in lowered
     assert "alternatives=user_uuid" in lowered
+    assert "# === structured_sql_plan_contract ===" in assembled.rendered_text
+    assert "schema_version=structured_sql_plan_v1" in lowered
+    assert "fixed_dates_allowed=false" in lowered
+    assert "source_filters_allowed=false" in lowered
+    assert "generated sql must satisfy this structured plan" in lowered
     assert "# === sql_intent_plan ===" in assembled.rendered_text
     assert "task_type=bucket_writeback" in lowered
     assert "target_cohort_conditions=first_loan,never_overdue" in lowered
@@ -184,6 +210,7 @@ def test_prompt_context_does_not_add_sql_intent_plan_for_under_specified_writeba
 
     lowered = assembled.rendered_text.lower()
     assert "return sql=null" in lowered
+    assert "# === structured_sql_plan_contract ===" not in assembled.rendered_text
     assert "# === sql_intent_plan ===" not in assembled.rendered_text
 
 
@@ -216,5 +243,6 @@ def test_prompt_context_does_not_add_writeback_plan_to_query_only_prompt() -> No
         context=context,
     )
 
+    assert "# === structured_sql_plan_contract ===" not in assembled.rendered_text
     assert "# === sql_intent_plan ===" not in assembled.rendered_text
     assert "# === writeback_constraints ===" not in assembled.rendered_text

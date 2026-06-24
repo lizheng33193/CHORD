@@ -110,3 +110,35 @@ def test_build_repair_instruction_preserves_combo_intent_and_reviewer_feedback_p
     assert "保留首贷 cohort" in instruction
     assert "preserve target cohort" in instruction.lower()
     assert "user_uuid" in instruction
+
+
+def test_build_repair_instruction_prefers_structured_sql_plan_contract() -> None:
+    instruction = build_plan_guided_repair_instruction(
+        sql_text="SELECT uid FROM dwd_w_apply WHERE dt >= '20260201'",
+        plan_warnings=[{"category": "PLAN_DATE_DRIFT", "evidence": "20260201"}],
+        retrieval_snapshot={
+            "structured_sql_plan": {
+                "schema_version": "structured_sql_plan_v1",
+                "task_type": "cohort_query",
+                "required_fields": ["uid"],
+                "target_cohort_conditions": ["recent_7d", "high_risk"],
+                "source_tables": ["dwd_w_apply"],
+                "join_keys": ["uid"],
+                "forbidden_patterns": ["historical_date_copy"],
+                "source_filters_allowed": False,
+                "fixed_dates_allowed": False,
+            },
+            "sql_intent_plan_summary": {
+                "task_type": "cohort_query",
+                "required_fields": ["uid"],
+                "target_cohort_conditions": ["old_marker"],
+            },
+        },
+        natural_language_request="找最近 7 天高风险用户",
+        run_type="cohort_query",
+        output_bucket=None,
+    )
+
+    assert "structured_sql_plan" in instruction
+    assert "recent_7d,high_risk" in instruction
+    assert "old_marker" not in instruction

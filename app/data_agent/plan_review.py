@@ -38,7 +38,7 @@ def review_sql_against_intent_plan(
     request_text = str(natural_language_request or "")
     lowered_request = request_text.lower()
     snapshot = dict(retrieval_snapshot or {})
-    intent_plan = dict(snapshot.get("sql_intent_plan_summary") or {})
+    intent_plan = dict(snapshot.get("structured_sql_plan") or snapshot.get("sql_intent_plan_summary") or {})
     forbidden_patterns = {
         str(pattern or "").strip().lower()
         for pattern in (intent_plan.get("forbidden_patterns") or [])

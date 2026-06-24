@@ -198,10 +198,46 @@ def test_assemble_lifts_canonical_guidance_and_sql_intent_plan_priority_rules():
     )
     prompt, _, _, _ = assemble_prompt(req, m, retrieved_context=retrieved)
     lowered = prompt.lower()
+    assert "structured_sql_plan_contract is the source of truth for sql generation" not in lowered
     assert "follow sql_intent_plan before generating sql for bucket_writeback requests" in lowered
     assert "do not bypass sql_intent_plan with historical template sql" in lowered
     assert "prefer preferred fields from canonical_field_guidance" in lowered
     assert "alternatives are allowed only when the current request or retrieved context explicitly requires them" in lowered
+
+
+def test_assemble_lifts_structured_sql_plan_contract_above_historical_examples():
+    m = load_manifest("mexico")
+    req = GenerateRequest(natural_language_request="找出墨西哥首贷且从未逾期的用户，并写回 behavior", target_country="mexico")
+    retrieved = AssembledPromptContext(
+        rendered_text=(
+            "# === structured_sql_plan_contract ===\n"
+            "- schema_version=structured_sql_plan_v1\n"
+            "- task_type=bucket_writeback\n"
+            "- output_bucket=behavior\n"
+            "- target_cohort_conditions=first_loan,never_overdue\n"
+            "- source_tables=dwd_w_apply,dwb_b1_data_burying_point\n"
+            "- join_keys=uid\n"
+            "- required_fields=uid,timestamp_,eventname\n"
+            "- forbidden_patterns=historical_date_copy,historical_source_filter\n"
+            "- source_filters_allowed=false\n"
+            "- fixed_dates_allowed=false\n"
+            "Generated SQL must satisfy this structured plan.\n"
+            "Do not add fixed historical dates unless fixed_dates_allowed=true.\n"
+            "Do not add source/channel filters unless source_filters_allowed=true.\n\n"
+            "# === retrieved_sql_examples ===\n"
+            "- request=old example; summary=historical pattern; tables=dwb_b1_data_burying_point; fields=uid,timestamp_,eventname"
+        ),
+        context_hash="ctx-hash",
+        section_counts={"sql_examples": 1},
+        source_ids={"example_ids": [1]},
+        trimmed=False,
+    )
+    prompt, _, _, _ = assemble_prompt(req, m, retrieved_context=retrieved)
+    lowered = prompt.lower()
+    assert "structured_sql_plan_contract is the source of truth for sql generation" in lowered
+    assert "if examples conflict with structured plan, follow structured plan" in lowered
+    assert "fixed_dates_allowed=true" in lowered
+    assert "source_filters_allowed=true" in lowered
 
 
 def test_assemble_keeps_under_specified_writeback_to_refusal_without_plan():

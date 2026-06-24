@@ -33,6 +33,7 @@ class PromptContextAssembler:
         run_type: str,
         output_bucket: str | None,
         context: RetrievedKnowledgeContext,
+        structured_plan: dict[str, object] | None = None,
     ) -> AssembledPromptContext:
         sections: list[str] = []
         grounded_fields = self._build_grounded_fields_by_table(context)
@@ -145,6 +146,8 @@ class PromptContextAssembler:
                 context=context,
                 grounded_fields_by_table=grounded_fields,
             )
+            if structured_plan:
+                sections.append(self._render_structured_sql_plan_contract(structured_plan))
             if intent_plan_summary:
                 sections.append(self._render_sql_intent_plan(intent_plan_summary))
 
@@ -159,7 +162,7 @@ class PromptContextAssembler:
         )
 
     @staticmethod
-    def build_snapshot(
+    def build_base_snapshot(
         *,
         country: str,
         project_id: int | None,
@@ -167,11 +170,9 @@ class PromptContextAssembler:
         run_type: str,
         output_bucket: str | None,
         context: RetrievedKnowledgeContext,
-        assembled: AssembledPromptContext,
     ) -> dict[str, object]:
         grounded_fields = PromptContextAssembler._build_grounded_fields_by_table(context)
         return {
-            "context_hash": assembled.context_hash,
             "table_ids": context.source_ids["table_ids"],
             "field_ids": context.source_ids["field_ids"],
             "glossary_ids": context.source_ids["glossary_ids"],
@@ -191,6 +192,34 @@ class PromptContextAssembler:
                 grounded_fields_by_table=grounded_fields,
             ),
         }
+
+    @staticmethod
+    def build_snapshot(
+        *,
+        country: str,
+        project_id: int | None,
+        natural_language_request: str,
+        run_type: str,
+        output_bucket: str | None,
+        context: RetrievedKnowledgeContext,
+        assembled: AssembledPromptContext,
+        structured_plan: dict[str, object] | None = None,
+        structured_plan_validation: dict[str, object] | None = None,
+    ) -> dict[str, object]:
+        snapshot = PromptContextAssembler.build_base_snapshot(
+            country=country,
+            project_id=project_id,
+            natural_language_request=natural_language_request,
+            run_type=run_type,
+            output_bucket=output_bucket,
+            context=context,
+        )
+        snapshot["context_hash"] = assembled.context_hash
+        if structured_plan is not None:
+            snapshot["structured_sql_plan"] = structured_plan
+        if structured_plan_validation is not None:
+            snapshot["structured_sql_plan_validation"] = structured_plan_validation
+        return snapshot
 
     @staticmethod
     def _is_under_specified_writeback_request(natural_language_request: str) -> bool:
@@ -310,5 +339,28 @@ class PromptContextAssembler:
                 f"- join_keys={','.join(intent_plan_summary.get('join_keys', []) or [])}",
                 f"- required_fields={','.join(intent_plan_summary.get('required_fields', []) or [])}",
                 f"- forbidden_patterns={','.join(intent_plan_summary.get('forbidden_patterns', []) or [])}",
+            ]
+        )
+
+    @staticmethod
+    def _render_structured_sql_plan_contract(structured_plan: dict[str, object]) -> str:
+        return "\n".join(
+            [
+                "# === structured_sql_plan_contract ===",
+                f"- schema_version={structured_plan.get('schema_version', '')}",
+                f"- task_type={structured_plan.get('task_type', '')}",
+                f"- output_bucket={structured_plan.get('output_bucket', '')}",
+                f"- target_cohort_conditions={','.join(structured_plan.get('target_cohort_conditions', []) or [])}",
+                f"- source_tables={','.join(structured_plan.get('source_tables', []) or [])}",
+                f"- join_keys={','.join(structured_plan.get('join_keys', []) or [])}",
+                f"- required_fields={','.join(structured_plan.get('required_fields', []) or [])}",
+                f"- forbidden_patterns={','.join(structured_plan.get('forbidden_patterns', []) or [])}",
+                f"- source_filters_allowed={str(bool(structured_plan.get('source_filters_allowed', False))).lower()}",
+                f"- fixed_dates_allowed={str(bool(structured_plan.get('fixed_dates_allowed', False))).lower()}",
+                "Generated SQL must satisfy this structured plan.",
+                "Do not add fixed historical dates unless fixed_dates_allowed=true.",
+                "Do not add source/channel filters unless source_filters_allowed=true.",
+                "Do not drop target cohort conditions.",
+                "Do not simplify combo writeback into plain behavior scan.",
             ]
         )

@@ -34,7 +34,7 @@ def build_plan_guided_repair_instruction(
     reviewer_feedback: str | None = None,
 ) -> str:
     snapshot = dict(retrieval_snapshot or {})
-    intent_plan = dict(snapshot.get("sql_intent_plan_summary") or {})
+    intent_plan = dict(snapshot.get("structured_sql_plan") or snapshot.get("sql_intent_plan_summary") or {})
     required_fields = [str(field).strip() for field in (intent_plan.get("required_fields") or []) if str(field).strip()]
     target_cohort_conditions = [
         str(marker).strip() for marker in (intent_plan.get("target_cohort_conditions") or []) if str(marker).strip()
@@ -60,6 +60,8 @@ def build_plan_guided_repair_instruction(
                 f"- reviewer_feedback={reviewer_feedback}",
             ]
         )
+    if snapshot.get("structured_sql_plan"):
+        lines.append("- Use the structured_sql_plan as the contract.")
     if target_cohort_conditions:
         lines.append(f"- target_cohort_conditions={','.join(target_cohort_conditions)}")
     if source_tables:
@@ -83,6 +85,7 @@ def build_plan_guided_repair_instruction(
             "- Remove fixed historical date filters unless explicitly requested.",
             "- Remove source or channel filters unless explicitly requested.",
             "- Keep dynamic relative date expressions when the request is relative.",
+            "- Do not violate required_fields, forbidden_patterns, source_filters_allowed, or fixed_dates_allowed.",
             "- Treat canonical drift only as a low-priority hint; do not rewrite the task around it.",
             "- Do not output explanations, only return repaired SQL in the normal generator response.",
             "",
