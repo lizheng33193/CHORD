@@ -44,6 +44,20 @@
   - high-risk cohort 现会把 `user_uuid` 暴露为 unsupported grounding gap，但 canonical policy 仍受 retrieval snapshot 覆盖限制
   - combo writeback 已形成 `sql_intent_plan_summary`，但生成 SQL 仍明显绕过 plan，回退 historical template
   - 当前不进入 `M2B`，下一步应为 `FU5: Plan Validation / Plan-to-SQL Consistency Review`
+- 下一轮 follow-up 固定为 `M2A-RQ-FU5`：
+  - deterministic post-generation review for plan adherence
+  - warning-only `PLAN_*` risk surfaced to reviewer
+  - 当前阶段仍不进入 `M2B`
+- FU5 当前目标：
+  - review generated SQL against `sql_intent_plan_summary`
+  - 显式标出 fixed historical date drift、source filter drift、canonical field drift
+  - 在 `behavior` writeback 上标出 required-field missing 与 broad-scan risk
+  - 继续保持 pure warning-only，不改变 `safety_status` 或 SQL HITL 状态机
+- FU5 第一轮结果：
+  - combo writeback 中的 fixed historical dates 与 fixed source filters 已能以后验 `PLAN_*` warnings 稳定暴露给 reviewer
+  - under-specified `bucket_writeback` 继续保持 stable refusal
+  - high-risk cohort 仍主要受 retrieval grounding gap 影响
+  - 当前仍不进入 `M2B`，下一步应为 `FU6: Plan-guided Regeneration / Repair`
 - 本阶段继续保持不变：
   - orchestrator `query_data`
   - `M1` SQL HITL 状态机
