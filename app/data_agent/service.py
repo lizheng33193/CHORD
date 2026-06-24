@@ -16,6 +16,7 @@ from app.core.audit import record_runtime_audit_event
 from app.core.user_context import UserContext
 from app.data_agent.repository import DataAgentRepository
 from app.data_agent.safety import resolve_country_names, run_sql_safety_gate
+from app.data_agent.plan_review import review_sql_against_intent_plan
 from app.data_knowledge.canonical_fields import normalize_field_name, normalize_table_name
 from app.data_agent.schemas import (
     DataAgentEditRequest,
@@ -366,6 +367,13 @@ class DataAgentService:
             sql_text=sql_text,
             retrieval_snapshot=retrieval_snapshot,
         )
+        safety_result["warnings"] = list(safety_result.get("warnings") or []) + review_sql_against_intent_plan(
+            sql_text=sql_text,
+            retrieval_snapshot=retrieval_snapshot,
+            natural_language_request=body.natural_language_request,
+            run_type=body.run_type,
+            output_bucket=body.output_bucket,
+        )
         run_id = uuid.uuid4().hex
         run = self.repo.create_run(
             run_id=run_id,
@@ -520,6 +528,13 @@ class DataAgentService:
             safety_result=safety_result,
             sql_text=sql_text,
             retrieval_snapshot=retrieval_snapshot,
+        )
+        safety_result["warnings"] = list(safety_result.get("warnings") or []) + review_sql_against_intent_plan(
+            sql_text=sql_text,
+            retrieval_snapshot=retrieval_snapshot,
+            natural_language_request=revised_request,
+            run_type=run.run_type,
+            output_bucket=run.output_bucket,
         )
         version = self.repo.add_sql_version(
             run_id=run.run_id,
