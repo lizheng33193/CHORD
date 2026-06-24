@@ -134,6 +134,30 @@
   - 下一步：
     - 不进入 `M2B`
     - 进入 `FU5: Plan Validation / Plan-to-SQL Consistency Review`
+- [ ] M2A-RQ-FU5：Plan-to-SQL Consistency Review — 启动（2026-06-24）
+  - design / plan：
+    - `docs/specs/m2a-rq-fu5-plan-sql-consistency-design.md`
+    - `docs/plans/m2a-rq-fu5-plan-sql-consistency-plan.md`
+  - 本阶段目标：
+    - generated SQL 后验审查是否遵守 `sql_intent_plan`
+    - 把 drift 以 `PLAN_*` warning 形式暴露给 reviewer
+    - 保持 warning-only，不改变 `safety_status`
+  - 第一版范围：
+    - `PLAN_DATE_DRIFT`
+    - `PLAN_SOURCE_FILTER_DRIFT`
+    - `PLAN_CANONICAL_FIELD_DRIFT`
+    - `PLAN_REQUIRED_FIELD_MISSING`
+    - `PLAN_BROAD_SCAN_RISK`
+    - `PLAN_FORBIDDEN_PATTERN`
+  - 保持不变：
+    - 不改 `GenerateRequest` / `GenerateResponse` schema
+    - 不改 `M1` / `M1.5` / `query_data`
+    - 不改 retriever scoring / seed assets / vector retrieval
+    - 不进入 `M2B`
+  - 下一步：
+    - 先完成 helper + API warning 接入
+    - 复跑 `mx-high-risk-cohort` / `mx-behavior-writeback` / `mx-glossary-combo-writeback`
+    - 根据结果决定进入 `FU6` 还是 `M2B`
 - [ ] M2A-Verify：真实业务样例验证 + Seed 质量补齐 — 进行中（2026-06-23）
   - plan / runbook / sample set / gap list：
     - `docs/plans/m2a-verify-knowledge-quality-plan.md`
