@@ -14,6 +14,10 @@ from sqlalchemy.orm import Session
 from app.auth.permissions import normalize_country_scope_value, require_country_access, require_permissions
 from app.core.audit import record_runtime_audit_event
 from app.core.user_context import UserContext
+from app.data_agent.repair import (
+    build_plan_guided_repair_instruction,
+    select_repairable_plan_warnings,
+)
 from app.data_agent.repository import DataAgentRepository
 from app.data_agent.safety import resolve_country_names, run_sql_safety_gate
 from app.data_agent.plan_review import review_sql_against_intent_plan
@@ -328,10 +332,215 @@ def _append_unsupported_field_warnings(
     return safety_result
 
 
+def _review_sql_candidate(
+    *,
+    sql_text: str,
+    sql_kind: str,
+    target_country: str,
+    retrieval_snapshot: dict[str, Any] | None,
+    natural_language_request: str,
+    run_type: str,
+    output_bucket: str | None,
+) -> dict[str, Any]:
+    safety_result = run_sql_safety_gate(sql_text, sql_kind, target_country)
+    safety_result = _append_unsupported_field_warnings(
+        safety_result=safety_result,
+        sql_text=sql_text,
+        retrieval_snapshot=retrieval_snapshot,
+    )
+    safety_result["warnings"] = list(safety_result.get("warnings") or []) + review_sql_against_intent_plan(
+        sql_text=sql_text,
+        retrieval_snapshot=retrieval_snapshot or {},
+        natural_language_request=natural_language_request,
+        run_type=run_type,
+        output_bucket=output_bucket,
+    )
+    return safety_result
+
+
+def _warning_categories(warnings: list[dict[str, Any]] | None) -> list[str]:
+    return [str(item.get("category") or "") for item in (warnings or []) if str(item.get("category") or "")]
+
+
+def _has_more_severe_plan_warning(
+    *,
+    original_warnings: list[dict[str, Any]],
+    repaired_warnings: list[dict[str, Any]],
+) -> bool:
+    severe_categories = {"PLAN_BROAD_SCAN_RISK", "PLAN_REQUIRED_FIELD_MISSING", "PLAN_FORBIDDEN_PATTERN"}
+    original_categories = {str(item.get("category") or "") for item in original_warnings}
+    repaired_categories = {str(item.get("category") or "") for item in repaired_warnings}
+    return bool((repaired_categories & severe_categories) - original_categories)
+
+
+def _build_repair_trace(
+    *,
+    attempted: bool,
+    applied: bool,
+    trigger_categories: list[str],
+    original_safety_result: dict[str, Any],
+    final_safety_result: dict[str, Any],
+    selection_reason: str | None = None,
+    failure_reason: str | None = None,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "attempted": attempted,
+        "applied": applied,
+        "attempt_count": 1 if attempted else 0,
+        "trigger_categories": trigger_categories,
+        "original_sql_hash": original_safety_result.get("sql_hash"),
+        "original_warning_categories": _warning_categories(list(original_safety_result.get("warnings") or [])),
+        "final_warning_categories": _warning_categories(list(final_safety_result.get("warnings") or [])),
+    }
+    if selection_reason:
+        payload["selection_reason"] = selection_reason
+    if failure_reason:
+        payload["failure_reason"] = failure_reason
+    return payload
+
+
 class DataAgentService:
     def __init__(self, db: Session) -> None:
         self.db = db
         self.repo = DataAgentRepository(db)
+
+    def _fallback_after_failed_repair(
+        self,
+        *,
+        original_safety_result: dict[str, Any],
+        trigger_categories: list[str],
+        original_source: str,
+        failure_reason: str,
+        final_safety_result: dict[str, Any] | None = None,
+    ) -> tuple[str, dict[str, Any], str]:
+        fallback = dict(original_safety_result)
+        fallback["warnings"] = list(original_safety_result.get("warnings") or [])
+        fallback["repair"] = _build_repair_trace(
+            attempted=True,
+            applied=False,
+            trigger_categories=trigger_categories,
+            original_safety_result=original_safety_result,
+            final_safety_result=final_safety_result or original_safety_result,
+            failure_reason=failure_reason,
+        )
+        return original_source, fallback
+
+    def _maybe_apply_plan_guided_repair(
+        self,
+        *,
+        request_text: str,
+        reviewer_feedback: str | None,
+        prompt_context,
+        target_country: str,
+        target_action: str,
+        run_type: str,
+        output_bucket: str | None,
+        retrieval_snapshot: dict[str, Any] | None,
+        original_sql_kind: str,
+        original_safety_result: dict[str, Any],
+        original_source: str,
+        run_id: str | None = None,
+    ) -> tuple[str, str, dict[str, Any]]:
+        original_warnings = list(original_safety_result.get("warnings") or [])
+        repairable_warnings = select_repairable_plan_warnings(original_warnings)
+        if original_safety_result.get("status") == "blocked" or not repairable_warnings:
+            return original_source, original_sql_kind, original_safety_result
+
+        trigger_categories = [str(item.get("category") or "") for item in repairable_warnings]
+        repair_instruction = build_plan_guided_repair_instruction(
+            sql_text=str(original_safety_result.get("normalized_sql") or ""),
+            plan_warnings=repairable_warnings,
+            retrieval_snapshot=retrieval_snapshot or {},
+            natural_language_request=request_text,
+            run_type=run_type,
+            output_bucket=output_bucket,
+            reviewer_feedback=reviewer_feedback,
+        )
+        repair_request = f"{request_text}\n\nRepair instruction:\n{repair_instruction}"
+        try:
+            repaired_generated = _generate_sql_response(
+                natural_language_request=repair_request,
+                target_country=target_country,
+                target_action=target_action,
+                knowledge_prompt_context=prompt_context,
+            )
+        except OrchestratorError:
+            original_source, original_safety_result = self._fallback_after_failed_repair(
+                original_safety_result=original_safety_result,
+                trigger_categories=trigger_categories,
+                original_source=original_source,
+                failure_reason="generation_error",
+            )
+            return original_source, original_sql_kind, original_safety_result
+
+        try:
+            repaired_sql_text = self._require_generated_sql(repaired_generated, run_id=run_id)
+        except HTTPException:
+            original_source, original_safety_result = self._fallback_after_failed_repair(
+                original_safety_result=original_safety_result,
+                trigger_categories=trigger_categories,
+                original_source=original_source,
+                failure_reason="empty_sql",
+            )
+            return original_source, original_sql_kind, original_safety_result
+
+        repaired_sql_kind = str(repaired_generated.get("sql_kind") or original_sql_kind or "query_only")
+        repaired_safety_result = _review_sql_candidate(
+            sql_text=repaired_sql_text,
+            sql_kind=repaired_sql_kind,
+            target_country=target_country,
+            retrieval_snapshot=retrieval_snapshot,
+            natural_language_request=request_text,
+            run_type=run_type,
+            output_bucket=output_bucket,
+        )
+        repaired_warnings = list(repaired_safety_result.get("warnings") or [])
+        repaired_repairable_warnings = select_repairable_plan_warnings(repaired_warnings)
+        if repaired_safety_result.get("status") == "blocked" and original_safety_result.get("status") != "blocked":
+            original_source, original_safety_result = self._fallback_after_failed_repair(
+                original_safety_result=original_safety_result,
+                trigger_categories=trigger_categories,
+                original_source=original_source,
+                failure_reason="safety_regression",
+                final_safety_result=repaired_safety_result,
+            )
+            return original_source, original_sql_kind, original_safety_result
+        if _has_more_severe_plan_warning(
+            original_warnings=original_warnings,
+            repaired_warnings=repaired_warnings,
+        ):
+            original_source, original_safety_result = self._fallback_after_failed_repair(
+                original_safety_result=original_safety_result,
+                trigger_categories=trigger_categories,
+                original_source=original_source,
+                failure_reason="introduced_more_severe_warning",
+                final_safety_result=repaired_safety_result,
+            )
+            return original_source, original_sql_kind, original_safety_result
+        if len(repaired_repairable_warnings) >= len(repairable_warnings):
+            original_source, original_safety_result = self._fallback_after_failed_repair(
+                original_safety_result=original_safety_result,
+                trigger_categories=trigger_categories,
+                original_source=original_source,
+                failure_reason="repairable_warnings_not_reduced",
+                final_safety_result=repaired_safety_result,
+            )
+            return original_source, original_sql_kind, original_safety_result
+
+        selection_reason = (
+            "repair_removed_trigger_warnings"
+            if not repaired_repairable_warnings
+            else "repair_reduced_repairable_warning_count"
+        )
+        repaired_safety_result["repair"] = _build_repair_trace(
+            attempted=True,
+            applied=True,
+            trigger_categories=trigger_categories,
+            original_safety_result=original_safety_result,
+            final_safety_result=repaired_safety_result,
+            selection_reason=selection_reason,
+        )
+        return original_source, repaired_sql_kind, repaired_safety_result
 
     def create_run(self, *, ctx: UserContext, body: DataAgentRunCreateRequest) -> DataAgentRunDetail:
         require_permissions(ctx, ("data:query:generate", "data:query:view_sql"))
@@ -361,18 +570,27 @@ class DataAgentService:
             )
         sql_text = self._require_generated_sql(generated)
         sql_kind = str(generated.get("sql_kind") or "query_only")
-        safety_result = run_sql_safety_gate(sql_text, sql_kind, target_country)
-        safety_result = _append_unsupported_field_warnings(
-            safety_result=safety_result,
+        safety_result = _review_sql_candidate(
             sql_text=sql_text,
-            retrieval_snapshot=retrieval_snapshot,
-        )
-        safety_result["warnings"] = list(safety_result.get("warnings") or []) + review_sql_against_intent_plan(
-            sql_text=sql_text,
+            sql_kind=sql_kind,
+            target_country=target_country,
             retrieval_snapshot=retrieval_snapshot,
             natural_language_request=body.natural_language_request,
             run_type=body.run_type,
             output_bucket=body.output_bucket,
+        )
+        source, sql_kind, safety_result = self._maybe_apply_plan_guided_repair(
+            request_text=body.natural_language_request,
+            reviewer_feedback=None,
+            prompt_context=prompt_context,
+            target_country=target_country,
+            target_action=body.target_action,
+            run_type=body.run_type,
+            output_bucket=body.output_bucket,
+            retrieval_snapshot=retrieval_snapshot,
+            original_sql_kind=sql_kind,
+            original_safety_result=safety_result,
+            original_source="agent_generated",
         )
         run_id = uuid.uuid4().hex
         run = self.repo.create_run(
@@ -394,7 +612,7 @@ class DataAgentService:
             version_no=1,
             sql_text=safety_result["normalized_sql"],
             sql_hash=safety_result["sql_hash"],
-            source="agent_generated",
+            source=source,
             sql_kind=sql_kind,
             safety_status=safety_result["status"],
             safety_result_json=safety_result,
@@ -523,25 +741,35 @@ class DataAgentService:
             )
         sql_text = self._require_generated_sql(generated, run_id=run.run_id)
         sql_kind = str(generated.get("sql_kind") or run.sql_kind or "query_only")
-        safety_result = run_sql_safety_gate(sql_text, sql_kind, run.country)
-        safety_result = _append_unsupported_field_warnings(
-            safety_result=safety_result,
+        safety_result = _review_sql_candidate(
             sql_text=sql_text,
-            retrieval_snapshot=retrieval_snapshot,
-        )
-        safety_result["warnings"] = list(safety_result.get("warnings") or []) + review_sql_against_intent_plan(
-            sql_text=sql_text,
+            sql_kind=sql_kind,
+            target_country=run.country,
             retrieval_snapshot=retrieval_snapshot,
             natural_language_request=revised_request,
             run_type=run.run_type,
             output_bucket=run.output_bucket,
+        )
+        source, sql_kind, safety_result = self._maybe_apply_plan_guided_repair(
+            request_text=revised_request,
+            reviewer_feedback=body.comment,
+            prompt_context=prompt_context,
+            target_country=run.country,
+            target_action="extract",
+            run_type=run.run_type,
+            output_bucket=run.output_bucket,
+            retrieval_snapshot=retrieval_snapshot,
+            original_sql_kind=sql_kind,
+            original_safety_result=safety_result,
+            original_source="agent_revised",
+            run_id=run.run_id,
         )
         version = self.repo.add_sql_version(
             run_id=run.run_id,
             version_no=self.repo.next_version_no(run.run_id),
             sql_text=safety_result["normalized_sql"],
             sql_hash=safety_result["sql_hash"],
-            source="agent_revised",
+            source=source,
             sql_kind=sql_kind,
             safety_status=safety_result["status"],
             safety_result_json=safety_result,

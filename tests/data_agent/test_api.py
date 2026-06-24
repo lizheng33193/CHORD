@@ -1266,6 +1266,274 @@ def test_data_agent_revise_run_adds_plan_drift_warnings(
     assert any(item["category"] == "PLAN_DATE_DRIFT" for item in warnings)
 
 
+def test_data_agent_create_run_repairs_plan_date_drift_once(
+    client: TestClient,
+    monkeypatch,
+) -> None:
+    _register_privileged_user(username="da-repair-create", email="da-repair-create@example.com", role_codes=["data_admin"])
+    token, _ = _login(client, "da-repair-create", "passw0rd123")
+
+    monkeypatch.setattr(
+        "app.data_agent.service.DataAgentService._build_generation_context",
+        lambda self, **_kwargs: (
+            None,
+            None,
+            {
+                "country": "mx",
+                "project_id": 1,
+                "grounded_fields_by_table": {
+                    "dwd_w_apply": ["uid", "risk_level", "apply_time"],
+                },
+                "sql_intent_plan_summary": {
+                    "task_type": "cohort_query",
+                    "output_bucket": "",
+                    "target_cohort_conditions": ["recent_7d", "high_risk"],
+                    "source_tables": ["dwd_w_apply"],
+                    "join_keys": ["uid"],
+                    "required_fields": ["uid"],
+                    "forbidden_patterns": ["historical_date_copy"],
+                },
+            },
+        ),
+    )
+    requests: list[str] = []
+    responses = iter(
+        [
+            _stub_generate_result("SELECT uid FROM dwd_w_apply WHERE dt >= '20260201'"),
+            _stub_generate_result("SELECT uid FROM dwd_w_apply WHERE apply_time >= DATE_SUB(CURRENT_DATE(), INTERVAL 7 DAY)"),
+        ]
+    )
+
+    def _generate(*_args, **kwargs):
+        requests.append(kwargs["natural_language_request"])
+        return next(responses)
+
+    monkeypatch.setattr("app.data_agent.service._generate_sql_response", _generate)
+
+    create = client.post(
+        "/api/data-agent/runs",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "natural_language_request": "查询最近 7 天高风险用户",
+            "target_country": "mexico",
+            "run_type": "cohort_query",
+        },
+    )
+    assert create.status_code == 201
+    body = create.json()
+    assert len(requests) == 2
+    assert body["current_sql"]["source"] == "agent_generated"
+    assert "DATE_SUB" in body["current_sql"]["sql_text"]
+    repair = body["current_sql"]["safety_result"]["repair"]
+    assert repair["attempted"] is True
+    assert repair["applied"] is True
+    assert repair["attempt_count"] == 1
+    assert repair["selection_reason"] == "repair_removed_trigger_warnings"
+
+
+def test_data_agent_does_not_repair_hard_blocked_sql(
+    client: TestClient,
+    monkeypatch,
+) -> None:
+    _register_privileged_user(username="da-repair-blocked", email="da-repair-blocked@example.com", role_codes=["data_admin"])
+    token, _ = _login(client, "da-repair-blocked", "passw0rd123")
+
+    monkeypatch.setattr(
+        "app.data_agent.service.DataAgentService._build_generation_context",
+        lambda self, **_kwargs: (
+            None,
+            None,
+            {
+                "country": "mx",
+                "project_id": 1,
+                "grounded_fields_by_table": {"dwd_w_apply": ["uid"]},
+                "sql_intent_plan_summary": {
+                    "task_type": "cohort_query",
+                    "output_bucket": "",
+                    "target_cohort_conditions": ["explicit_uid_list"],
+                    "source_tables": ["dwd_w_apply"],
+                    "join_keys": ["uid"],
+                    "required_fields": ["uid"],
+                    "forbidden_patterns": ["unresolved_uid_placeholder"],
+                },
+            },
+        ),
+    )
+    requests: list[str] = []
+
+    def _generate(*_args, **kwargs):
+        requests.append(kwargs["natural_language_request"])
+        return _stub_generate_result("SELECT uid FROM dwd_w_apply WHERE uid IN (<target_users>)")
+
+    monkeypatch.setattr("app.data_agent.service._generate_sql_response", _generate)
+
+    create = client.post(
+        "/api/data-agent/runs",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "natural_language_request": "查询指定 uid 列表",
+            "target_country": "mexico",
+            "run_type": "cohort_query",
+        },
+    )
+    assert create.status_code == 201
+    body = create.json()
+    assert len(requests) == 1
+    assert body["current_sql"]["source"] == "agent_generated"
+    assert body["current_sql"]["safety_status"] == "blocked"
+    assert "repair" not in body["current_sql"]["safety_result"]
+
+
+def test_data_agent_repair_failure_keeps_original_sql_when_combo_intent_is_lost(
+    client: TestClient,
+    monkeypatch,
+) -> None:
+    _register_privileged_user(username="da-repair-fallback", email="da-repair-fallback@example.com", role_codes=["data_admin"])
+    token, _ = _login(client, "da-repair-fallback", "passw0rd123")
+
+    monkeypatch.setattr(
+        "app.data_agent.service.DataAgentService._build_generation_context",
+        lambda self, **_kwargs: (
+            None,
+            None,
+            {
+                "country": "mx",
+                "project_id": 1,
+                "grounded_fields_by_table": {
+                    "dwd_w_apply": ["uid", "loan_count", "max_overdue_days"],
+                    "dwb_b1_data_burying_point": ["uid", "timestamp_", "eventname"],
+                },
+                "sql_intent_plan_summary": {
+                    "task_type": "bucket_writeback",
+                    "output_bucket": "behavior",
+                    "target_cohort_conditions": ["first_loan", "never_overdue"],
+                    "source_tables": ["dwd_w_apply", "dwb_b1_data_burying_point"],
+                    "join_keys": ["uid"],
+                    "required_fields": ["uid", "timestamp_", "eventname"],
+                    "forbidden_patterns": [
+                        "historical_date_copy",
+                        "broad_behavior_scan",
+                    ],
+                },
+            },
+        ),
+    )
+    requests: list[str] = []
+    first_sql = (
+        "WITH target_users AS ("
+        " SELECT uid FROM dwd_w_apply WHERE loan_count = 1 AND max_overdue_days = 0 AND dt >= '20260201'"
+        ") "
+        "SELECT b.uid, b.timestamp_, b.eventname "
+        "FROM dwb_b1_data_burying_point b JOIN target_users t ON b.uid = t.uid"
+    )
+    repaired_bad_sql = "SELECT uid, timestamp_, eventname FROM dwb_b1_data_burying_point LIMIT 100"
+    responses = iter([_stub_generate_result(first_sql), _stub_generate_result(repaired_bad_sql)])
+
+    def _generate(*_args, **kwargs):
+        requests.append(kwargs["natural_language_request"])
+        return next(responses)
+
+    monkeypatch.setattr("app.data_agent.service._generate_sql_response", _generate)
+
+    create = client.post(
+        "/api/data-agent/runs",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "natural_language_request": "给首贷且从未逾期用户补齐 behavior",
+            "target_country": "mexico",
+            "run_type": "bucket_writeback",
+            "output_bucket": "behavior",
+            "output_format": "json",
+        },
+    )
+    assert create.status_code == 201
+    body = create.json()
+    assert len(requests) == 2
+    assert body["current_sql"]["source"] == "agent_generated"
+    assert body["current_sql"]["sql_text"] == first_sql
+    repair = body["current_sql"]["safety_result"]["repair"]
+    assert repair["attempted"] is True
+    assert repair["applied"] is False
+    assert repair["failure_reason"] == "introduced_more_severe_warning"
+
+
+def test_data_agent_revise_run_repairs_with_reviewer_feedback_priority(
+    client: TestClient,
+    monkeypatch,
+) -> None:
+    _register_privileged_user(username="da-repair-revise", email="da-repair-revise@example.com", role_codes=["data_admin"])
+    token, _ = _login(client, "da-repair-revise", "passw0rd123")
+
+    monkeypatch.setattr(
+        "app.data_agent.service.DataAgentService._build_generation_context",
+        lambda self, **_kwargs: (
+            None,
+            None,
+            {
+                "country": "mx",
+                "project_id": 1,
+                "grounded_fields_by_table": {
+                    "dwd_w_apply": ["uid", "risk_level", "apply_time"],
+                },
+                "sql_intent_plan_summary": {
+                    "task_type": "cohort_query",
+                    "output_bucket": "",
+                    "target_cohort_conditions": ["recent_7d", "high_risk"],
+                    "source_tables": ["dwd_w_apply"],
+                    "join_keys": ["uid"],
+                    "required_fields": ["uid"],
+                    "forbidden_patterns": ["historical_date_copy"],
+                },
+            },
+        ),
+    )
+    create_calls: list[str] = []
+
+    def _first_generate(*_args, **kwargs):
+        create_calls.append(kwargs["natural_language_request"])
+        return _stub_generate_result("SELECT uid FROM dwd_w_apply WHERE risk_level = 'high'")
+
+    monkeypatch.setattr("app.data_agent.service._generate_sql_response", _first_generate)
+    create = client.post(
+        "/api/data-agent/runs",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "natural_language_request": "查询最近 7 天高风险用户",
+            "target_country": "mexico",
+            "run_type": "cohort_query",
+        },
+    )
+    assert create.status_code == 201
+    run_id = create.json()["run_id"]
+
+    revise_calls: list[str] = []
+    revise_responses = iter(
+        [
+            _stub_generate_result("SELECT uid FROM dwd_w_apply WHERE dt = '20260315'"),
+            _stub_generate_result("SELECT uid FROM dwd_w_apply WHERE apply_time >= DATE_SUB(CURRENT_DATE(), INTERVAL 7 DAY)"),
+        ]
+    )
+
+    def _revise_generate(*_args, **kwargs):
+        revise_calls.append(kwargs["natural_language_request"])
+        return next(revise_responses)
+
+    monkeypatch.setattr("app.data_agent.service._generate_sql_response", _revise_generate)
+    revise = client.post(
+        f"/api/data-agent/runs/{run_id}/revise",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"comment": "必须保留最近 7 天，不要固定历史日期。"},
+    )
+    assert revise.status_code == 200
+    body = revise.json()
+    assert len(revise_calls) == 2
+    assert "必须保留最近 7 天" in revise_calls[0]
+    assert "必须保留最近 7 天" in revise_calls[1]
+    assert body["current_sql"]["source"] == "agent_revised"
+    assert body["status"] == "awaiting_review"
+    assert body["current_sql"]["safety_result"]["repair"]["applied"] is True
+
+
 def test_data_agent_does_not_flag_interval_units_as_unsupported_fields(
     client: TestClient,
     monkeypatch,

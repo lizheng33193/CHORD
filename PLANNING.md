@@ -58,6 +58,17 @@
   - under-specified `bucket_writeback` 继续保持 stable refusal
   - high-risk cohort 仍主要受 retrieval grounding gap 影响
   - 当前仍不进入 `M2B`，下一步应为 `FU6: Plan-guided Regeneration / Repair`
+- 下一轮 follow-up 固定为 `M2A-RQ-FU6`：
+  - bounded one-shot repair for repairable `PLAN_*` warnings
+  - repair trace stays inside `safety_result_json`
+  - repair remains generation-only and still passes through SQL HITL
+  - 当前阶段仍不进入 `M2B`
+- FU6 第一轮结果：
+  - bounded repair harness 已在定向测试里验证通过
+  - `mx-high-risk-cohort` 仍主要是 retrieval grounding gap，因此未触发 repair
+  - `mx-behavior-writeback` 继续稳定 `DATA_AGENT_WRITEBACK_REQUIRES_COHORT`
+  - `mx-glossary-combo-writeback` 在 `2026-06-24` live rerun 中两次卡在 `SCHEMA_VALIDATION_FAILED`，未进入可评审 repair 路径
+  - 当前仍不进入 `M2B`，下一步应为 `FU7: Structured SQL Plan Contract`
 - 本阶段继续保持不变：
   - orchestrator `query_data`
   - `M1` SQL HITL 状态机
