@@ -170,3 +170,31 @@ def test_review_accepts_clean_cohort_plus_behavior_join_sql() -> None:
     assert "PLAN_SOURCE_FILTER_DRIFT" not in categories
     assert "PLAN_BROAD_SCAN_RISK" not in categories
     assert "PLAN_REQUIRED_FIELD_MISSING" not in categories
+
+
+def test_review_prefers_structured_sql_plan_over_legacy_intent_summary() -> None:
+    warnings = review_sql_against_intent_plan(
+        sql_text="SELECT uid FROM dwb_b1_data_burying_point WHERE uid IN ('u1')",
+        retrieval_snapshot={
+            "structured_sql_plan": {
+                "task_type": "bucket_writeback",
+                "output_bucket": "behavior",
+                "required_fields": ["uid"],
+                "forbidden_patterns": [],
+            },
+            "sql_intent_plan_summary": {
+                "task_type": "bucket_writeback",
+                "output_bucket": "behavior",
+                "required_fields": ["uid", "timestamp_", "eventname"],
+                "forbidden_patterns": [],
+            },
+            "grounded_fields_by_table": {
+                "dwb_b1_data_burying_point": ["uid", "timestamp_", "eventname"],
+            },
+        },
+        natural_language_request="给指定 uid 写回 behavior",
+        run_type="bucket_writeback",
+        output_bucket="behavior",
+    )
+
+    assert not any(item["category"] == "PLAN_REQUIRED_FIELD_MISSING" for item in warnings)

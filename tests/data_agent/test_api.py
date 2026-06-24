@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from fastapi.testclient import TestClient
@@ -93,6 +94,62 @@ def _stub_generate_result(sql: str | None, sql_kind: str = "query_only", *, pyth
             "generated_at": "2026-06-12T00:00:00Z",
         },
     }
+
+
+def _retrieved_context(
+    *,
+    include_behavior_table: bool = True,
+    include_eventname: bool = True,
+):
+    from app.data_knowledge.retriever import RetrievedKnowledgeContext
+
+    catalog_tables = [
+        SimpleNamespace(
+            table_name="dwd_w_apply",
+            purpose="loan applications",
+            grain="uid",
+            time_field="apply_time",
+            join_keys_json=["uid"],
+        ),
+    ]
+    if include_behavior_table:
+        catalog_tables.append(
+            SimpleNamespace(
+                table_name="dwb_b1_data_burying_point",
+                purpose="behavior events",
+                grain="event",
+                time_field="timestamp_",
+                join_keys_json=["uid"],
+            )
+        )
+
+    catalog_fields = [
+        SimpleNamespace(table_name="dwd_w_apply", field_name="uid", field_type="string", business_meaning="user id", description=""),
+        SimpleNamespace(table_name="dwd_w_apply", field_name="apply_time", field_type="datetime", business_meaning="apply time", description=""),
+        SimpleNamespace(table_name="dwd_w_apply", field_name="risk_level", field_type="string", business_meaning="risk level", description=""),
+    ]
+    if include_behavior_table:
+        catalog_fields.extend(
+            [
+                SimpleNamespace(table_name="dwb_b1_data_burying_point", field_name="uid", field_type="string", business_meaning="user id", description=""),
+                SimpleNamespace(table_name="dwb_b1_data_burying_point", field_name="timestamp_", field_type="datetime", business_meaning="event time", description=""),
+            ]
+        )
+        if include_eventname:
+            catalog_fields.append(
+                SimpleNamespace(table_name="dwb_b1_data_burying_point", field_name="eventname", field_type="string", business_meaning="event name", description="")
+            )
+
+    return RetrievedKnowledgeContext(
+        catalog_tables=catalog_tables,
+        catalog_fields=catalog_fields,
+        glossary_terms=[],
+        sql_examples=[],
+        error_cases=[],
+        section_counts={},
+        source_ids={"table_ids": [], "field_ids": [], "glossary_ids": [], "example_ids": [], "error_case_ids": []},
+        trimmed=False,
+    )
 
 
 def test_data_agent_run_lifecycle_create_list_and_hidden_sql_without_view_permission(client: TestClient, monkeypatch) -> None:
@@ -260,14 +317,22 @@ def test_data_agent_execute_requires_writeback_permission_for_bucket_writeback(c
     token, _ = _login(client, "da-no-writeback", "passw0rd123")
 
     monkeypatch.setattr(
+        "app.data_agent.service.DataKnowledgeRetriever.retrieve",
+        lambda *_args, **_kwargs: _retrieved_context(),
+    )
+    monkeypatch.setattr(
         "app.data_agent.service._generate_sql_response",
-        lambda *_args, **_kwargs: _stub_generate_result("SELECT uid, score FROM users LIMIT 2"),
+        lambda *_args, **_kwargs: _stub_generate_result(
+            "WITH target_users AS (SELECT uid FROM dwd_w_apply WHERE risk_level = 'high') "
+            "SELECT b.uid, b.timestamp_, b.eventname FROM dwb_b1_data_burying_point b "
+            "JOIN target_users t ON b.uid = t.uid"
+        ),
     )
     create = client.post(
         "/api/data-agent/runs",
         headers={"Authorization": f"Bearer {token}"},
         json={
-            "natural_language_request": "补齐行为画像",
+            "natural_language_request": "给首贷且从未逾期用户补齐 behavior 数据",
             "target_country": "mexico",
             "run_type": "bucket_writeback",
             "output_bucket": "behavior",
@@ -373,8 +438,16 @@ def test_data_agent_bucket_writeback_records_real_target_dir_in_api_db_and_audit
     target_dir = str(tmp_path / "behavior" / "by_uid")
 
     monkeypatch.setattr(
+        "app.data_agent.service.DataKnowledgeRetriever.retrieve",
+        lambda *_args, **_kwargs: _retrieved_context(),
+    )
+    monkeypatch.setattr(
         "app.data_agent.service._generate_sql_response",
-        lambda *_args, **_kwargs: _stub_generate_result("SELECT uid, score FROM users LIMIT 2"),
+        lambda *_args, **_kwargs: _stub_generate_result(
+            "WITH target_users AS (SELECT uid FROM dwd_w_apply WHERE risk_level = 'high') "
+            "SELECT b.uid, b.timestamp_, b.eventname FROM dwb_b1_data_burying_point b "
+            "JOIN target_users t ON b.uid = t.uid"
+        ),
     )
     monkeypatch.setattr(
         "app.data_agent.service._execute_bucket_writeback",
@@ -400,7 +473,7 @@ def test_data_agent_bucket_writeback_records_real_target_dir_in_api_db_and_audit
         "/api/data-agent/runs",
         headers={"Authorization": f"Bearer {token}"},
         json={
-            "natural_language_request": "写回行为画像 bucket",
+            "natural_language_request": "给首贷且从未逾期用户补齐 behavior 数据",
             "target_country": "mexico",
             "run_type": "bucket_writeback",
             "output_bucket": "behavior",
@@ -786,7 +859,7 @@ def test_data_agent_bucket_writeback_create_returns_specific_422_for_under_speci
     assert create.status_code == 422
     body = create.json()
     assert body["detail"]["code"] == "DATA_AGENT_WRITEBACK_REQUIRES_COHORT"
-    assert body["detail"]["stage"] == "data_agent_sql_generation"
+    assert body["detail"]["stage"] == "data_agent_sql_planning"
     assert body["detail"]["retriable"] is True
 
     with AuthSessionLocal() as db:
@@ -831,7 +904,7 @@ def test_data_agent_bucket_writeback_generic_verbs_still_require_explicit_cohort
     assert create.status_code == 422
     body = create.json()
     assert body["detail"]["code"] == "DATA_AGENT_WRITEBACK_REQUIRES_COHORT"
-    assert body["detail"]["stage"] == "data_agent_sql_generation"
+    assert body["detail"]["stage"] == "data_agent_sql_planning"
     assert body["detail"]["retriable"] is True
 
 
@@ -909,7 +982,7 @@ def test_data_agent_bucket_writeback_revise_returns_specific_422_without_mutatin
     assert revise.status_code == 422
     body = revise.json()
     assert body["detail"]["code"] == "DATA_AGENT_WRITEBACK_REQUIRES_COHORT"
-    assert body["detail"]["stage"] == "data_agent_sql_generation"
+    assert body["detail"]["stage"] == "data_agent_sql_planning"
     assert body["detail"]["run_id"] == run_id
     assert body["detail"]["retriable"] is True
 
@@ -926,6 +999,199 @@ def test_data_agent_bucket_writeback_revise_returns_specific_422_without_mutatin
     assert detail_payload["current_sql"]["sql_hash"] == "orig-hash"
     assert detail_payload["approved_sql_hash"] == "orig-hash"
     assert detail_payload["status"] == "approved"
+
+
+def test_data_agent_create_run_returns_plan_invalid_without_persisting_run(
+    client: TestClient,
+    monkeypatch,
+) -> None:
+    from app.auth.database import AuthSessionLocal
+    from app.data_agent.models import DataAgentRun, DataAgentSqlVersion
+
+    _register_privileged_user(username="da-plan-invalid", email="da-plan-invalid@example.com", role_codes=["data_admin"])
+    token, _ = _login(client, "da-plan-invalid", "passw0rd123")
+
+    with AuthSessionLocal() as db:
+        before_runs = db.scalar(select(func.count()).select_from(DataAgentRun))
+        before_versions = db.scalar(select(func.count()).select_from(DataAgentSqlVersion))
+
+    monkeypatch.setattr(
+        "app.data_agent.service.DataKnowledgeRetriever.retrieve",
+        lambda *_args, **_kwargs: _retrieved_context(include_behavior_table=False),
+    )
+    monkeypatch.setattr(
+        "app.data_agent.service._generate_sql_response",
+        lambda *_args, **_kwargs: pytest.fail("SQL generation should not run when structured plan is invalid"),
+    )
+
+    create = client.post(
+        "/api/data-agent/runs",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "natural_language_request": "给首贷且从未逾期用户补齐行为数据",
+            "target_country": "mexico",
+            "run_type": "bucket_writeback",
+            "output_bucket": "behavior",
+            "output_format": "json",
+        },
+    )
+    assert create.status_code == 422
+    body = create.json()
+    assert body["detail"]["code"] == "DATA_AGENT_SQL_PLAN_INVALID"
+    assert body["detail"]["stage"] == "data_agent_sql_planning"
+    assert "behavior_table" in body["detail"]["missing"]
+
+    with AuthSessionLocal() as db:
+        after_runs = db.scalar(select(func.count()).select_from(DataAgentRun))
+        after_versions = db.scalar(select(func.count()).select_from(DataAgentSqlVersion))
+        assert after_runs == before_runs
+        assert after_versions == before_versions
+
+
+def test_data_agent_revise_run_plan_invalid_keeps_existing_version_state(
+    client: TestClient,
+    monkeypatch,
+) -> None:
+    from datetime import datetime
+
+    from app.auth.database import AuthSessionLocal
+    from app.data_agent.models import DataAgentRun, DataAgentSqlVersion
+
+    _register_privileged_user(username="da-revise-plan-invalid", email="da-revise-plan-invalid@example.com", role_codes=["data_admin"])
+    token, _ = _login(client, "da-revise-plan-invalid", "passw0rd123")
+
+    run_id = "writeback-fu7-revise"
+    with AuthSessionLocal() as db:
+        run = DataAgentRun(
+            run_id=run_id,
+            user_id=1,
+            project_id=1,
+            country="mx",
+            run_type="bucket_writeback",
+            natural_language_request="给首贷且从未逾期用户补齐行为数据",
+            status="approved",
+            sql_kind="query_only",
+            approved_sql_hash="orig-fu7-hash",
+            output_bucket="behavior",
+            output_format="json",
+            uid_column="uid",
+            overwrite=True,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+        )
+        db.add(run)
+        db.flush()
+        version = DataAgentSqlVersion(
+            run_id=run_id,
+            version_no=1,
+            sql_text="SELECT uid, timestamp_, eventname FROM dwb_b1_data_burying_point WHERE uid IN ('u1')",
+            sql_hash="orig-fu7-hash",
+            source="agent_generated",
+            sql_kind="query_only",
+            safety_status="passed",
+            safety_result_json={
+                "status": "passed",
+                "risk_level": "low",
+                "blocked_reasons": [],
+                "warnings": [],
+                "normalized_sql": "SELECT uid, timestamp_, eventname FROM dwb_b1_data_burying_point WHERE uid IN ('u1')",
+                "sql_hash": "orig-fu7-hash",
+                "target_country": "mx",
+            },
+            retrieval_snapshot_json=None,
+            created_by="da-revise-plan-invalid",
+        )
+        db.add(version)
+        db.flush()
+        run.current_sql_version_id = version.id
+        run.approved_sql_version_id = version.id
+        db.commit()
+        before_versions = db.scalar(select(func.count()).select_from(DataAgentSqlVersion))
+        original_current_version_id = run.current_sql_version_id
+
+    monkeypatch.setattr(
+        "app.data_agent.service.DataKnowledgeRetriever.retrieve",
+        lambda *_args, **_kwargs: _retrieved_context(include_behavior_table=False),
+    )
+    monkeypatch.setattr(
+        "app.data_agent.service._generate_sql_response",
+        lambda *_args, **_kwargs: pytest.fail("SQL generation should not run when revise structured plan is invalid"),
+    )
+
+    revise = client.post(
+        f"/api/data-agent/runs/{run_id}/revise",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"comment": "请保留 cohort，但修掉漂移"},
+    )
+    assert revise.status_code == 422
+    body = revise.json()
+    assert body["detail"]["code"] == "DATA_AGENT_SQL_PLAN_INVALID"
+    assert body["detail"]["stage"] == "data_agent_sql_planning"
+    assert body["detail"]["run_id"] == run_id
+
+    with AuthSessionLocal() as db:
+        after_versions = db.scalar(select(func.count()).select_from(DataAgentSqlVersion))
+        run = db.scalar(select(DataAgentRun).where(DataAgentRun.run_id == run_id))
+        assert run is not None
+        assert after_versions == before_versions
+        assert run.current_sql_version_id == original_current_version_id
+        assert run.approved_sql_hash == "orig-fu7-hash"
+        assert run.status == "approved"
+
+
+def test_data_agent_valid_structured_plan_is_written_to_snapshot_and_prompt(
+    client: TestClient,
+    monkeypatch,
+) -> None:
+    from app.auth.database import AuthSessionLocal
+    from app.data_agent.models import DataAgentSqlVersion
+
+    _register_privileged_user(username="da-structured-plan", email="da-structured-plan@example.com", role_codes=["data_admin"])
+    token, _ = _login(client, "da-structured-plan", "passw0rd123")
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr(
+        "app.data_agent.service.DataKnowledgeRetriever.retrieve",
+        lambda *_args, **_kwargs: _retrieved_context(),
+    )
+
+    def _fake_generate(**kwargs):
+        captured["knowledge_prompt_context"] = kwargs.get("knowledge_prompt_context")
+        return _stub_generate_result(
+            "WITH target_users AS (SELECT uid FROM dwd_w_apply WHERE risk_level = 'high') "
+            "SELECT b.uid, b.timestamp_, b.eventname FROM dwb_b1_data_burying_point b "
+            "JOIN target_users t ON b.uid = t.uid"
+        )
+
+    monkeypatch.setattr("app.data_agent.service._generate_sql_response", _fake_generate)
+
+    create = client.post(
+        "/api/data-agent/runs",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "natural_language_request": "给首贷且从未逾期用户补齐行为数据",
+            "target_country": "mexico",
+            "run_type": "bucket_writeback",
+            "output_bucket": "behavior",
+            "output_format": "json",
+        },
+    )
+    assert create.status_code == 201
+    rendered = getattr(captured["knowledge_prompt_context"], "rendered_text", "")
+    assert "# === structured_sql_plan_contract ===" in rendered
+
+    run_id = create.json()["run_id"]
+    with AuthSessionLocal() as db:
+        version = db.scalar(
+            select(DataAgentSqlVersion)
+            .where(DataAgentSqlVersion.run_id == run_id)
+            .order_by(DataAgentSqlVersion.id.desc())
+        )
+        assert version is not None
+        snapshot = version.retrieval_snapshot_json or {}
+        assert snapshot["structured_sql_plan"]["schema_version"] == "structured_sql_plan_v1"
+        assert snapshot["structured_sql_plan"]["task_type"] == "bucket_writeback"
+        assert snapshot["structured_sql_plan_validation"]["valid"] is True
 
 
 def test_data_agent_adds_unsupported_field_warning_without_blocking_run(
