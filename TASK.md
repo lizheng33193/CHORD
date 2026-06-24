@@ -59,10 +59,9 @@
     - 不改 `M1.5` Orchestrator Bridge
     - 不让 `query_data` 接入 `M2A`
   - 下一步：
-    - 同步 `origin/main`
-    - 合并 `codex/m2a-runtime-quality`
-    - 执行 `M2A-Runtime Quality Round 1` 复测
-    - 根据复测结果决定进入 `M2B` 还是继续 `M2A-RQ-FU2`
+    - `main` 已完成 `M2A-Runtime Quality` 合并
+    - `Round 1` 复测见 `docs/reviews/m2a-runtime-quality-round1-rerun.md`
+    - 当前结论：先进入 `M2A-RQ-FU2`，暂不直接进入 `M2B`
 - [ ] M2A-Verify：真实业务样例验证 + Seed 质量补齐 — 进行中（2026-06-23）
   - plan / runbook / sample set / gap list：
     - `docs/plans/m2a-verify-knowledge-quality-plan.md`
