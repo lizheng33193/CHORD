@@ -173,6 +173,16 @@
     - `max_repair_attempts = 1`
     - 不改 schema / `M1` / `M1.5` / `query_data`
     - 不进入 `M2B`
+  - 第一轮结果：
+    - bounded repair helper 与 `create_run` / `revise_run` 接线已完成
+    - repair 成功会写入 `safety_result["repair"]`
+    - repair 失败会保留首轮 SQL + warnings，不创建失败 repaired version
+    - `mx-high-risk-cohort` 仍主要是 retrieval grounding gap
+    - `mx-behavior-writeback` 继续稳定 `DATA_AGENT_WRITEBACK_REQUIRES_COHORT`
+    - `mx-glossary-combo-writeback` 在 live rerun 中两次卡在 `SCHEMA_VALIDATION_FAILED`，未进入可评审 repair 路径
+  - 下一步：
+    - 不进入 `M2B`
+    - 进入 `FU7: Structured SQL Plan Contract`
 - [ ] M2A-Verify：真实业务样例验证 + Seed 质量补齐 — 进行中（2026-06-23）
   - plan / runbook / sample set / gap list：
     - `docs/plans/m2a-verify-knowledge-quality-plan.md`
