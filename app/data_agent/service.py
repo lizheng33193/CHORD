@@ -44,6 +44,21 @@ from data_acquisition_agent.schemas import ErrorType as DataAcquisitionErrorType
 
 
 _UID_FIELD_CANDIDATES = {"uid", "userid", "useruuid", "customerid"}
+_SQL_KEYWORDS = {
+    "select", "from", "where", "and", "or", "with", "as", "on", "join", "left", "right", "inner",
+    "outer", "full", "group", "by", "order", "limit", "having", "case", "when", "then", "else",
+    "end", "distinct", "union", "all", "not", "is", "null", "in", "between", "like", "desc", "asc",
+    "true", "false", "over", "partition", "rows", "range", "current_date", "date_sub", "date_add",
+    "date_format", "count", "sum", "avg", "min", "max", "cast", "if", "coalesce",
+}
+_FIELD_TOKEN_RE = re.compile(r"\b([A-Za-z_][A-Za-z0-9_]*)\b")
+_QUALIFIED_FIELD_RE = re.compile(r"\b([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)\b")
+_FROM_JOIN_RE = re.compile(
+    r"\b(?:from|join)\s+([A-Za-z_][A-Za-z0-9_.]*)(?:\s+(?:as\s+)?([A-Za-z_][A-Za-z0-9_]*))?",
+    re.IGNORECASE,
+)
+_WITH_CTE_RE = re.compile(r"\bwith\s+([A-Za-z_][A-Za-z0-9_]*)\s+as\s*\(", re.IGNORECASE)
+_FUNCTION_RE = re.compile(r"\b([A-Za-z_][A-Za-z0-9_]*)\s*\(", re.IGNORECASE)
 
 
 def _normalize_column_name(name: Any) -> str:
@@ -150,6 +165,134 @@ def _execute_bucket_writeback(*, run, sql_text: str, approved_by: str) -> dict[s
     }
 
 
+def _is_under_specified_writeback_request(
+    *,
+    natural_language_request: str,
+    run_type: str,
+    output_bucket: str | None,
+) -> bool:
+    if run_type != "bucket_writeback" or not output_bucket:
+        return False
+    request = str(natural_language_request or "").strip().lower()
+    if not request:
+        return True
+    explicit_uid = any(token in request for token in ("uid", "uuid", "user_id", "userid", "用户id", "用户 id", "用户列表"))
+    has_cohort_condition = any(
+        token in request
+        for token in (
+            "查询",
+            "找出",
+            "筛选",
+            "最近",
+            "首贷",
+            "逾期",
+            "高风险",
+            "cohort",
+            "where",
+            "过滤",
+            "满足",
+            "从未",
+            "7 天",
+            "7天",
+            "注册用户",
+            "first-loan",
+            "never-overdue",
+        )
+    )
+    return not explicit_uid and not has_cohort_condition
+
+
+def _append_unsupported_field_warnings(
+    *,
+    safety_result: dict[str, Any],
+    sql_text: str,
+    retrieval_snapshot: dict[str, Any] | None,
+) -> dict[str, Any]:
+    snapshot = dict(retrieval_snapshot or {})
+    grounded = {
+        str(table_name).lower(): {str(field).lower() for field in field_names or []}
+        for table_name, field_names in (snapshot.get("grounded_fields_by_table") or {}).items()
+    }
+    if not grounded:
+        return safety_result
+
+    sql_wo_strings = re.sub(r"'(?:''|[^'])*'", " ", str(sql_text or ""))
+    cte_names = {match.group(1).lower() for match in _WITH_CTE_RE.finditer(sql_wo_strings)}
+    alias_to_table: dict[str, str] = {}
+    base_tables: list[str] = []
+    has_join = False
+    for match in _FROM_JOIN_RE.finditer(sql_wo_strings):
+        raw_table = match.group(1)
+        raw_alias = match.group(2)
+        table_name = raw_table.split(".")[-1].lower()
+        if table_name in cte_names:
+            continue
+        if match.group(0).lower().startswith("join"):
+            has_join = True
+        if table_name not in base_tables:
+            base_tables.append(table_name)
+        alias_to_table[table_name] = table_name
+        if raw_alias:
+            alias = raw_alias.lower()
+            if alias not in _SQL_KEYWORDS:
+                alias_to_table[alias] = table_name
+
+    warnings = list(safety_result.get("warnings") or [])
+    seen_pairs = {(item.get("table"), item.get("field")) for item in warnings if isinstance(item, dict)}
+
+    for alias, field in _QUALIFIED_FIELD_RE.findall(sql_wo_strings):
+        alias_key = alias.lower()
+        field_key = field.lower()
+        table_name = alias_to_table.get(alias_key)
+        if not table_name or table_name not in grounded:
+            continue
+        if field_key in grounded[table_name]:
+            continue
+        pair = (table_name, field_key)
+        if pair in seen_pairs:
+            continue
+        warnings.append(
+            {
+                "category": "UNSUPPORTED_FIELD",
+                "risk_level": "medium",
+                "table": table_name,
+                "field": field_key,
+                "message": f"Field {field_key} is not found in retrieved catalog/glossary for {table_name}.",
+            }
+        )
+        seen_pairs.add(pair)
+
+    if cte_names or has_join or len(base_tables) != 1:
+        safety_result["warnings"] = warnings
+        return safety_result
+
+    functions = {match.group(1).lower() for match in _FUNCTION_RE.finditer(sql_wo_strings)}
+    only_table = base_tables[0]
+    table_tokens = set(alias_to_table.keys()) | {only_table}
+    for token in _FIELD_TOKEN_RE.findall(sql_wo_strings):
+        token_key = token.lower()
+        if token_key in _SQL_KEYWORDS or token_key in functions or token_key in table_tokens:
+            continue
+        if token_key in grounded.get(only_table, set()):
+            continue
+        pair = (only_table, token_key)
+        if pair in seen_pairs:
+            continue
+        warnings.append(
+            {
+                "category": "UNSUPPORTED_FIELD",
+                "risk_level": "medium",
+                "table": only_table,
+                "field": token_key,
+                "message": f"Field {token_key} is not found in retrieved catalog/glossary for {only_table}.",
+            }
+        )
+        seen_pairs.add(pair)
+
+    safety_result["warnings"] = warnings
+    return safety_result
+
+
 class DataAgentService:
     def __init__(self, db: Session) -> None:
         self.db = db
@@ -175,10 +318,20 @@ class DataAgentService:
                 knowledge_prompt_context=prompt_context,
             )
         except OrchestratorError as exc:
-            self._raise_generation_http_error(exc)
+            self._raise_generation_http_error(
+                exc,
+                natural_language_request=body.natural_language_request,
+                run_type=body.run_type,
+                output_bucket=body.output_bucket,
+            )
         sql_text = self._require_generated_sql(generated)
         sql_kind = str(generated.get("sql_kind") or "query_only")
         safety_result = run_sql_safety_gate(sql_text, sql_kind, target_country)
+        safety_result = _append_unsupported_field_warnings(
+            safety_result=safety_result,
+            sql_text=sql_text,
+            retrieval_snapshot=retrieval_snapshot,
+        )
         run_id = uuid.uuid4().hex
         run = self.repo.create_run(
             run_id=run_id,
@@ -319,10 +472,21 @@ class DataAgentService:
                 knowledge_prompt_context=prompt_context,
             )
         except OrchestratorError as exc:
-            self._raise_generation_http_error(exc, run_id=run.run_id)
+            self._raise_generation_http_error(
+                exc,
+                run_id=run.run_id,
+                natural_language_request=revised_request,
+                run_type=run.run_type,
+                output_bucket=run.output_bucket,
+            )
         sql_text = self._require_generated_sql(generated, run_id=run.run_id)
         sql_kind = str(generated.get("sql_kind") or run.sql_kind or "query_only")
         safety_result = run_sql_safety_gate(sql_text, sql_kind, run.country)
+        safety_result = _append_unsupported_field_warnings(
+            safety_result=safety_result,
+            sql_text=sql_text,
+            retrieval_snapshot=retrieval_snapshot,
+        )
         version = self.repo.add_sql_version(
             run_id=run.run_id,
             version_no=self.repo.next_version_no(run.run_id),
@@ -500,8 +664,30 @@ class DataAgentService:
         return run
 
     @staticmethod
-    def _raise_generation_http_error(exc: OrchestratorError, *, run_id: str | None = None) -> None:
+    def _raise_generation_http_error(
+        exc: OrchestratorError,
+        *,
+        run_id: str | None = None,
+        natural_language_request: str = "",
+        run_type: str = "",
+        output_bucket: str | None = None,
+    ) -> None:
         if exc.error_type == DataAcquisitionErrorType.SCHEMA_VALIDATION_FAILED:
+            if _is_under_specified_writeback_request(
+                natural_language_request=natural_language_request,
+                run_type=run_type,
+                output_bucket=output_bucket,
+            ):
+                detail = {
+                    "code": "DATA_AGENT_WRITEBACK_REQUIRES_COHORT",
+                    "stage": "data_agent_sql_generation",
+                    "reason": "Writeback requests require an explicit uid list or cohort conditions before SQL generation.",
+                    "request_id": exc.request_id,
+                    "retriable": True,
+                }
+                if run_id is not None:
+                    detail["run_id"] = run_id
+                raise HTTPException(status_code=422, detail=detail) from exc
             detail = {
                 "code": "SCHEMA_VALIDATION_FAILED",
                 "stage": "structured_output",

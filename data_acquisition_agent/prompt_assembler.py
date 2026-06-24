@@ -275,6 +275,7 @@ def assemble_prompt(request, manifest, *, retrieved_context=None):
             "- if the current request does not mention a source or channel filter, do not add one from examples",
             "- if the current request uses a relative time window, keep it relative instead of replacing it with fixed example partitions",
             "- prefer field names explicitly present in retrieved catalog/glossary for the selected table and country",
+            "- selected table fields must come from retrieved catalog/glossary for that table and country",
             "- do not invent placeholders for missing uid lists or cohorts",
         ]
         if "# === writeback_constraints ===" in retrieved_context.rendered_text and _is_under_specified_writeback_request(request.natural_language_request):

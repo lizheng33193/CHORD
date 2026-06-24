@@ -114,6 +114,9 @@ def test_assemble_includes_current_request_priority_rules_for_retrieved_context(
         rendered_text=(
             "# === retrieved_sql_examples ===\n"
             "- request=首贷用户; summary=pattern; tables=dwd_w_apply; fields=uid,loan_count\n\n"
+            "# === retrieved_field_grounding ===\n"
+            "- table=dwd_w_apply; allowed_fields=uid,apply_time,risk_level\n"
+            "- selected table fields must come from retrieved catalog/glossary for that table and country.\n\n"
             "# === writeback_constraints ===\n"
             "- output_bucket=behavior\n"
             "- query_only SQL only\n"
@@ -129,6 +132,7 @@ def test_assemble_includes_current_request_priority_rules_for_retrieved_context(
     assert "current user request is the source of truth" in prompt
     assert "do not inherit dates, source codes, partition filters, table aliases, uid placeholders" in prompt
     assert "prefer field names explicitly present in retrieved catalog/glossary" in prompt
+    assert "selected table fields must come from retrieved catalog/glossary" in prompt.lower()
     assert "if the current request does not mention a source or channel filter, do not add one from examples" in prompt.lower()
     assert "if the current request uses a relative time window, keep it relative" in prompt.lower()
 
