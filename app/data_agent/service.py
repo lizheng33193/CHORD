@@ -16,6 +16,7 @@ from app.core.audit import record_runtime_audit_event
 from app.core.user_context import UserContext
 from app.data_agent.repository import DataAgentRepository
 from app.data_agent.safety import resolve_country_names, run_sql_safety_gate
+from app.data_knowledge.canonical_fields import normalize_field_name, normalize_table_name
 from app.data_agent.schemas import (
     DataAgentEditRequest,
     DataAgentReviseRequest,
@@ -50,6 +51,7 @@ _SQL_KEYWORDS = {
     "end", "distinct", "union", "all", "not", "is", "null", "in", "between", "like", "desc", "asc",
     "true", "false", "over", "partition", "rows", "range", "current_date", "date_sub", "date_add",
     "date_format", "count", "sum", "avg", "min", "max", "cast", "if", "coalesce",
+    "interval", "day", "days", "month", "months", "year", "years", "hour", "hours", "minute", "minutes", "second", "seconds",
 }
 _FIELD_TOKEN_RE = re.compile(r"\b([A-Za-z_][A-Za-z0-9_]*)\b")
 _QUALIFIED_FIELD_RE = re.compile(r"\b([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)\b")
@@ -206,8 +208,18 @@ def _append_unsupported_field_warnings(
 ) -> dict[str, Any]:
     snapshot = dict(retrieval_snapshot or {})
     grounded = {
-        str(table_name).lower(): {str(field).lower() for field in field_names or []}
+        normalize_table_name(table_name): {normalize_field_name(field) for field in field_names or [] if normalize_field_name(field)}
         for table_name, field_names in (snapshot.get("grounded_fields_by_table") or {}).items()
+        if normalize_table_name(table_name)
+    }
+    canonical_alternative_to_preferred = {
+        normalize_table_name(table_name): {
+            normalize_field_name(field): normalize_field_name(preferred_field)
+            for field, preferred_field in (field_mapping or {}).items()
+            if normalize_field_name(field) and normalize_field_name(preferred_field)
+        }
+        for table_name, field_mapping in (snapshot.get("canonical_alternative_to_preferred_by_table") or {}).items()
+        if normalize_table_name(table_name)
     }
     if not grounded:
         return safety_result
@@ -216,11 +228,17 @@ def _append_unsupported_field_warnings(
     cte_names = {match.group(1).lower() for match in _WITH_CTE_RE.finditer(sql_wo_strings)}
     alias_to_table: dict[str, str] = {}
     base_tables: list[str] = []
+    raw_table_tokens: set[str] = set()
     has_join = False
     for match in _FROM_JOIN_RE.finditer(sql_wo_strings):
         raw_table = match.group(1)
         raw_alias = match.group(2)
-        table_name = raw_table.split(".")[-1].lower()
+        table_name = normalize_table_name(raw_table)
+        raw_table_tokens.update(
+            normalize_field_name(part)
+            for part in raw_table.split(".")
+            if normalize_field_name(part)
+        )
         if table_name in cte_names:
             continue
         if match.group(0).lower().startswith("join"):
@@ -236,26 +254,47 @@ def _append_unsupported_field_warnings(
     warnings = list(safety_result.get("warnings") or [])
     seen_pairs = {(item.get("table"), item.get("field")) for item in warnings if isinstance(item, dict)}
 
-    for alias, field in _QUALIFIED_FIELD_RE.findall(sql_wo_strings):
-        alias_key = alias.lower()
-        field_key = field.lower()
-        table_name = alias_to_table.get(alias_key)
-        if not table_name or table_name not in grounded:
-            continue
-        if field_key in grounded[table_name]:
-            continue
-        pair = (table_name, field_key)
-        if pair in seen_pairs:
-            continue
+    def _append_non_canonical_warning(*, table_name: str, field_name: str, preferred_field: str) -> None:
+        warnings.append(
+            {
+                "category": "NON_CANONICAL_FIELD",
+                "risk_level": "low",
+                "table": table_name,
+                "field": field_name,
+                "preferred_field": preferred_field,
+                "message": f"Field {field_name} is grounded for {table_name}, but prefer {preferred_field} for this semantic unless the current request explicitly requires {field_name}.",
+            }
+        )
+
+    def _append_unsupported_warning(*, table_name: str, field_name: str) -> None:
         warnings.append(
             {
                 "category": "UNSUPPORTED_FIELD",
                 "risk_level": "medium",
                 "table": table_name,
-                "field": field_key,
-                "message": f"Field {field_key} is not found in retrieved catalog/glossary for {table_name}.",
+                "field": field_name,
+                "message": f"Field {field_name} is not found in retrieved catalog/glossary for {table_name}.",
             }
         )
+
+    for alias, field in _QUALIFIED_FIELD_RE.findall(sql_wo_strings):
+        alias_key = alias.lower()
+        field_key = normalize_field_name(field)
+        table_name = alias_to_table.get(alias_key)
+        if not table_name or table_name not in grounded:
+            continue
+        if field_key in grounded[table_name]:
+            preferred_field = canonical_alternative_to_preferred.get(table_name, {}).get(field_key)
+            if preferred_field:
+                pair = (table_name, field_key)
+                if pair not in seen_pairs:
+                    _append_non_canonical_warning(table_name=table_name, field_name=field_key, preferred_field=preferred_field)
+                    seen_pairs.add(pair)
+            continue
+        pair = (table_name, field_key)
+        if pair in seen_pairs:
+            continue
+        _append_unsupported_warning(table_name=table_name, field_name=field_key)
         seen_pairs.add(pair)
 
     if cte_names or has_join or len(base_tables) != 1:
@@ -265,25 +304,23 @@ def _append_unsupported_field_warnings(
     functions = {match.group(1).lower() for match in _FUNCTION_RE.finditer(sql_wo_strings)}
     select_aliases = {match.group(1).lower() for match in _AS_ALIAS_RE.finditer(sql_wo_strings)}
     only_table = base_tables[0]
-    table_tokens = set(alias_to_table.keys()) | {only_table}
+    table_tokens = set(alias_to_table.keys()) | {only_table} | raw_table_tokens
     for token in _FIELD_TOKEN_RE.findall(sql_wo_strings):
-        token_key = token.lower()
+        token_key = normalize_field_name(token)
         if token_key in _SQL_KEYWORDS or token_key in functions or token_key in table_tokens or token_key in select_aliases:
             continue
         if token_key in grounded.get(only_table, set()):
+            preferred_field = canonical_alternative_to_preferred.get(only_table, {}).get(token_key)
+            if preferred_field:
+                pair = (only_table, token_key)
+                if pair not in seen_pairs:
+                    _append_non_canonical_warning(table_name=only_table, field_name=token_key, preferred_field=preferred_field)
+                    seen_pairs.add(pair)
             continue
         pair = (only_table, token_key)
         if pair in seen_pairs:
             continue
-        warnings.append(
-            {
-                "category": "UNSUPPORTED_FIELD",
-                "risk_level": "medium",
-                "table": only_table,
-                "field": token_key,
-                "message": f"Field {token_key} is not found in retrieved catalog/glossary for {only_table}.",
-            }
-        )
+        _append_unsupported_warning(table_name=only_table, field_name=token_key)
         seen_pairs.add(pair)
 
     safety_result["warnings"] = warnings
@@ -810,6 +847,9 @@ class DataAgentService:
         snapshot = assembler.build_snapshot(
             country=target_country,
             project_id=project_id,
+            natural_language_request=natural_language_request,
+            run_type=run_type,
+            output_bucket=output_bucket,
             context=retrieved_context,
             assembled=prompt_context,
         )

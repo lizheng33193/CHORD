@@ -174,3 +174,51 @@ def test_assemble_does_not_add_sql_null_guidance_for_ordinary_query_prompt():
     lowered = prompt.lower()
     assert "return sql=null" not in lowered
     assert "sql_kind=query_only" not in lowered
+
+
+def test_assemble_lifts_canonical_guidance_and_sql_intent_plan_priority_rules():
+    m = load_manifest("mexico")
+    req = GenerateRequest(natural_language_request="找出墨西哥首贷且从未逾期的用户，并写回 behavior", target_country="mexico")
+    retrieved = AssembledPromptContext(
+        rendered_text=(
+            "# === canonical_field_guidance ===\n"
+            "- table=dwd_w_apply; semantic=user_identifier; preferred=uid; alternatives=user_uuid\n"
+            "- table=dwd_w_apply; semantic=apply_time; preferred=apply_time; alternatives=apply_create_at\n\n"
+            "# === sql_intent_plan ===\n"
+            "- task_type=bucket_writeback\n"
+            "- output_bucket=behavior\n"
+            "- target_cohort_conditions=first_loan,never_overdue\n"
+            "- join_keys=uid\n"
+            "- required_fields=uid,timestamp_,eventname"
+        ),
+        context_hash="ctx-hash",
+        section_counts={"sql_examples": 1},
+        source_ids={"example_ids": [1]},
+        trimmed=False,
+    )
+    prompt, _, _, _ = assemble_prompt(req, m, retrieved_context=retrieved)
+    lowered = prompt.lower()
+    assert "follow sql_intent_plan before generating sql for bucket_writeback requests" in lowered
+    assert "prefer preferred fields from canonical_field_guidance" in lowered
+    assert "alternatives are allowed only when the current request or retrieved context explicitly requires them" in lowered
+
+
+def test_assemble_keeps_under_specified_writeback_to_refusal_without_plan():
+    m = load_manifest("mexico")
+    req = GenerateRequest(natural_language_request="帮我查询并写回 behavior", target_country="mexico")
+    retrieved = AssembledPromptContext(
+        rendered_text=(
+            "# === writeback_constraints ===\n"
+            "- output_bucket=behavior\n"
+            "- query_only SQL only\n"
+            "- result must include uid"
+        ),
+        context_hash="ctx-hash",
+        section_counts={"sql_examples": 1},
+        source_ids={"example_ids": [1]},
+        trimmed=False,
+    )
+    prompt, _, _, _ = assemble_prompt(req, m, retrieved_context=retrieved)
+    lowered = prompt.lower()
+    assert "return sql=null" in lowered
+    assert "follow sql_intent_plan before generating sql for bucket_writeback requests" not in lowered

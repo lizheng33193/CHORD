@@ -117,24 +117,22 @@ def _is_under_specified_writeback_request(request_text: str) -> bool:
     request = str(request_text or "").strip().lower()
     if not request:
         return True
-    explicit_uid = any(token in request for token in ("uid", "uuid", "user_id", "userid", "用户id", "用户 id"))
+    explicit_uid = any(token in request for token in ("uid", "uuid", "user_id", "userid", "用户id", "用户 id", "用户列表"))
     has_cohort_condition = any(
         token in request
         for token in (
-            "查询",
-            "找出",
-            "筛选",
             "最近",
             "首贷",
             "逾期",
             "高风险",
             "cohort",
-            "where",
-            "过滤",
-            "满足",
             "从未",
             "7 天",
             "7天",
+            "注册用户",
+            "逾期用户",
+            "first-loan",
+            "never-overdue",
         )
     )
     return not explicit_uid and not has_cohort_condition
@@ -278,6 +276,15 @@ def assemble_prompt(request, manifest, *, retrieved_context=None):
             "- selected table fields must come from retrieved catalog/glossary for that table and country",
             "- do not invent placeholders for missing uid lists or cohorts",
         ]
+        if "# === canonical_field_guidance ===" in retrieved_context.rendered_text:
+            priority_lines.extend(
+                [
+                    "- prefer preferred fields from canonical_field_guidance",
+                    "- alternatives are allowed only when the current request or retrieved context explicitly requires them",
+                ]
+            )
+        if "# === sql_intent_plan ===" in retrieved_context.rendered_text:
+            priority_lines.append("- follow sql_intent_plan before generating SQL for bucket_writeback requests")
         if "# === writeback_constraints ===" in retrieved_context.rendered_text and _is_under_specified_writeback_request(request.natural_language_request):
             priority_lines.append("- for under-specified Data Agent bucket_writeback requests, return sql=null and sql_kind=query_only instead of inventing placeholders or broad-scan SQL")
         sections.append("\n".join(priority_lines))

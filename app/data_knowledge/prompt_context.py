@@ -6,6 +6,12 @@ import hashlib
 import re
 from dataclasses import dataclass
 
+from app.data_knowledge.canonical_fields import (
+    build_canonical_alternative_to_preferred_by_table,
+    build_canonical_guidance_rows,
+    normalize_field_name,
+    normalize_table_name,
+)
 from app.data_knowledge.retriever import RetrievedKnowledgeContext
 
 
@@ -29,6 +35,7 @@ class PromptContextAssembler:
         context: RetrievedKnowledgeContext,
     ) -> AssembledPromptContext:
         sections: list[str] = []
+        grounded_fields = self._build_grounded_fields_by_table(context)
         if context.catalog_tables:
             lines = ["# === retrieved_catalog_tables ==="]
             for row in context.catalog_tables:
@@ -45,11 +52,6 @@ class PromptContextAssembler:
                     f"meaning={row.business_meaning or row.description or ''}"
                 )
             sections.append("\n".join(lines))
-            grounded_fields: dict[str, list[str]] = {}
-            for row in context.catalog_fields:
-                bucket = grounded_fields.setdefault(row.table_name, [])
-                if row.field_name not in bucket:
-                    bucket.append(row.field_name)
             grounding_lines = ["# === retrieved_field_grounding ==="]
             for table_name, field_names in grounded_fields.items():
                 grounding_lines.append(f"- table={table_name}; allowed_fields={','.join(field_names)}")
@@ -61,6 +63,21 @@ class PromptContextAssembler:
                 ]
             )
             sections.append("\n".join(grounding_lines))
+            canonical_rows = build_canonical_guidance_rows(grounded_fields)
+            if canonical_rows:
+                canonical_lines = ["# === canonical_field_guidance ==="]
+                for row in canonical_rows:
+                    canonical_lines.append(
+                        f"- table={row['table']}; semantic={row['semantic']}; preferred={row['preferred']}; alternatives={row['alternatives']}"
+                    )
+                canonical_lines.extend(
+                    [
+                        "- Use preferred fields by default.",
+                        "- Alternatives are allowed only when the current request or retrieved context explicitly requires them.",
+                        "- Do not switch from preferred fields to alternative families because of historical examples.",
+                    ]
+                )
+                sections.append("\n".join(canonical_lines))
         if context.glossary_terms:
             lines = ["# === retrieved_glossary_terms ==="]
             for row in context.glossary_terms:
@@ -121,6 +138,15 @@ class PromptContextAssembler:
             if self._is_under_specified_writeback_request(natural_language_request):
                 lines.append("- If the request has no cohort condition and no explicit uid list, return sql=null and sql_kind=query_only rather than inventing placeholders.")
             sections.append("\n".join(lines))
+            intent_plan_summary = self._build_sql_intent_plan_summary(
+                natural_language_request=natural_language_request,
+                run_type=run_type,
+                output_bucket=output_bucket,
+                context=context,
+                grounded_fields_by_table=grounded_fields,
+            )
+            if intent_plan_summary:
+                sections.append(self._render_sql_intent_plan(intent_plan_summary))
 
         rendered_text = "\n\n".join(section for section in sections if section).strip()
         context_hash = hashlib.sha256(rendered_text.encode("utf-8")).hexdigest() if rendered_text else ""
@@ -137,9 +163,13 @@ class PromptContextAssembler:
         *,
         country: str,
         project_id: int | None,
+        natural_language_request: str,
+        run_type: str,
+        output_bucket: str | None,
         context: RetrievedKnowledgeContext,
         assembled: AssembledPromptContext,
     ) -> dict[str, object]:
+        grounded_fields = PromptContextAssembler._build_grounded_fields_by_table(context)
         return {
             "context_hash": assembled.context_hash,
             "table_ids": context.source_ids["table_ids"],
@@ -151,7 +181,15 @@ class PromptContextAssembler:
             "trimmed": context.trimmed,
             "country": country,
             "project_id": project_id,
-            "grounded_fields_by_table": PromptContextAssembler._build_grounded_fields_by_table(context),
+            "grounded_fields_by_table": grounded_fields,
+            "canonical_alternative_to_preferred_by_table": build_canonical_alternative_to_preferred_by_table(grounded_fields),
+            "sql_intent_plan_summary": PromptContextAssembler._build_sql_intent_plan_summary(
+                natural_language_request=natural_language_request,
+                run_type=run_type,
+                output_bucket=output_bucket,
+                context=context,
+                grounded_fields_by_table=grounded_fields,
+            ),
         }
 
     @staticmethod
@@ -159,24 +197,22 @@ class PromptContextAssembler:
         request = str(natural_language_request or "").strip().lower()
         if not request:
             return True
-        explicit_uid = any(token in request for token in ("uid", "uuid", "user_id", "userid", "用户id", "用户 id"))
+        explicit_uid = any(token in request for token in ("uid", "uuid", "user_id", "userid", "用户id", "用户 id", "用户列表"))
         has_cohort_condition = any(
             token in request
             for token in (
-                "查询",
-                "找出",
-                "筛选",
                 "最近",
                 "首贷",
                 "逾期",
                 "高风险",
                 "cohort",
-                "where",
-                "过滤",
-                "满足",
                 "从未",
                 "7 天",
                 "7天",
+                "注册用户",
+                "逾期用户",
+                "first-loan",
+                "never-overdue",
             )
         )
         return not explicit_uid and not has_cohort_condition
@@ -185,15 +221,94 @@ class PromptContextAssembler:
     def _build_grounded_fields_by_table(context: RetrievedKnowledgeContext) -> dict[str, list[str]]:
         grounded_fields: dict[str, list[str]] = {}
         for row in context.catalog_fields:
-            bucket = grounded_fields.setdefault(row.table_name, [])
-            if row.field_name not in bucket:
-                bucket.append(row.field_name)
+            table_name = normalize_table_name(row.table_name)
+            field_name = normalize_field_name(row.field_name)
+            if not table_name or not field_name:
+                continue
+            bucket = grounded_fields.setdefault(table_name, [])
+            if field_name not in bucket:
+                bucket.append(field_name)
         for row in context.glossary_terms:
-            mapped_tables = [table for table in (row.mapped_tables_json or []) if table]
-            mapped_fields = [field for field in (row.mapped_fields_json or []) if field]
+            mapped_tables = [normalize_table_name(table) for table in (row.mapped_tables_json or []) if normalize_table_name(table)]
+            mapped_fields = [normalize_field_name(field) for field in (row.mapped_fields_json or []) if normalize_field_name(field)]
             for table_name in mapped_tables:
                 bucket = grounded_fields.setdefault(table_name, [])
                 for field_name in mapped_fields:
                     if field_name not in bucket:
                         bucket.append(field_name)
         return grounded_fields
+
+    @classmethod
+    def _build_sql_intent_plan_summary(
+        cls,
+        *,
+        natural_language_request: str,
+        run_type: str,
+        output_bucket: str | None,
+        context: RetrievedKnowledgeContext,
+        grounded_fields_by_table: dict[str, list[str]],
+    ) -> dict[str, object] | None:
+        if run_type != "bucket_writeback" or cls._is_under_specified_writeback_request(natural_language_request):
+            return None
+        source_tables: list[str] = []
+        for row in context.catalog_tables:
+            table_name = normalize_table_name(row.table_name)
+            if table_name and table_name not in source_tables:
+                source_tables.append(table_name)
+        grounded_field_set = {field_name for field_names in grounded_fields_by_table.values() for field_name in field_names}
+        required_fields = ["uid"]
+        if output_bucket == "behavior":
+            required_fields = [
+                field_name
+                for field_name in ("uid", "timestamp_", "eventname")
+                if field_name in grounded_field_set
+            ]
+        return {
+            "task_type": "bucket_writeback",
+            "output_bucket": output_bucket or "",
+            "target_cohort_conditions": cls._extract_target_cohort_conditions(natural_language_request),
+            "source_tables": source_tables,
+            "join_keys": ["uid"],
+            "required_fields": required_fields,
+            "forbidden_patterns": [
+                "unresolved_uid_placeholder",
+                "broad_behavior_scan",
+                "historical_date_copy",
+                "historical_source_filter",
+                "literal_example_copy",
+                "unsupported_field_family",
+            ],
+        }
+
+    @staticmethod
+    def _extract_target_cohort_conditions(natural_language_request: str) -> list[str]:
+        request = str(natural_language_request or "").strip().lower()
+        markers: list[tuple[tuple[str, ...], str]] = [
+            (("首贷", "first loan", "first-loan", "first_loan"), "first_loan"),
+            (("从未逾期", "never overdue", "never-overdue", "never_overdue"), "never_overdue"),
+            (("高风险", "high risk", "high-risk", "high_risk"), "high_risk"),
+            (("最近 7 天", "最近7天", "7 天", "7天", "7 days", "recent 7 days"), "recent_7d"),
+            (("注册用户", "registered users", "registered user"), "registered_users"),
+            (("逾期用户", "overdue users", "overdue user"), "overdue_users"),
+            (("uid", "uuid", "user_id", "userid", "用户列表"), "explicit_uid_list"),
+        ]
+        results: list[str] = []
+        for tokens, label in markers:
+            if any(token in request for token in tokens) and label not in results:
+                results.append(label)
+        return results
+
+    @staticmethod
+    def _render_sql_intent_plan(intent_plan_summary: dict[str, object]) -> str:
+        return "\n".join(
+            [
+                "# === sql_intent_plan ===",
+                f"- task_type={intent_plan_summary.get('task_type', '')}",
+                f"- output_bucket={intent_plan_summary.get('output_bucket', '')}",
+                f"- target_cohort_conditions={','.join(intent_plan_summary.get('target_cohort_conditions', []) or [])}",
+                f"- source_tables={','.join(intent_plan_summary.get('source_tables', []) or [])}",
+                f"- join_keys={','.join(intent_plan_summary.get('join_keys', []) or [])}",
+                f"- required_fields={','.join(intent_plan_summary.get('required_fields', []) or [])}",
+                f"- forbidden_patterns={','.join(intent_plan_summary.get('forbidden_patterns', []) or [])}",
+            ]
+        )
