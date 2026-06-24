@@ -1084,6 +1084,188 @@ def test_data_agent_preferred_field_does_not_trigger_non_canonical_warning(
     assert not any(item["category"] == "NON_CANONICAL_FIELD" for item in warnings)
 
 
+def test_data_agent_adds_plan_drift_warnings_without_blocking_run(
+    client: TestClient,
+    monkeypatch,
+) -> None:
+    _register_privileged_user(username="da-plan-drift", email="da-plan-drift@example.com", role_codes=["data_admin"])
+    token, _ = _login(client, "da-plan-drift", "passw0rd123")
+
+    monkeypatch.setattr(
+        "app.data_agent.service.DataAgentService._build_generation_context",
+        lambda self, **_kwargs: (
+            None,
+            None,
+            {
+                "country": "mx",
+                "project_id": 1,
+                "grounded_fields_by_table": {
+                    "dwd_w_apply": ["uid", "risk_level", "apply_time"],
+                },
+                "sql_intent_plan_summary": {
+                    "task_type": "cohort_query",
+                    "output_bucket": "",
+                    "target_cohort_conditions": ["recent_7d", "high_risk"],
+                    "source_tables": ["dwd_w_apply"],
+                    "join_keys": ["uid"],
+                    "required_fields": ["uid"],
+                    "forbidden_patterns": [
+                        "historical_date_copy",
+                        "historical_source_filter",
+                    ],
+                },
+            },
+        ),
+    )
+    monkeypatch.setattr(
+        "app.data_agent.service._generate_sql_response",
+        lambda *_args, **_kwargs: _stub_generate_result(
+            "SELECT uid FROM dwd_w_apply "
+            "WHERE dt >= '20260201' AND apply_source = 'MEX017'"
+        ),
+    )
+    create = client.post(
+        "/api/data-agent/runs",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "natural_language_request": "查询最近 7 天高风险用户",
+            "target_country": "mexico",
+            "run_type": "cohort_query",
+        },
+    )
+    assert create.status_code == 201
+    body = create.json()
+    assert body["current_sql"]["safety_status"] == "passed"
+    warnings = body["current_sql"]["safety_result"]["warnings"]
+    assert any(item["category"] == "PLAN_DATE_DRIFT" for item in warnings)
+    assert any(item["category"] == "PLAN_SOURCE_FILTER_DRIFT" for item in warnings)
+
+
+def test_data_agent_behavior_writeback_adds_plan_required_field_missing_warning(
+    client: TestClient,
+    monkeypatch,
+) -> None:
+    _register_privileged_user(username="da-plan-required", email="da-plan-required@example.com", role_codes=["data_admin"])
+    token, _ = _login(client, "da-plan-required", "passw0rd123")
+
+    monkeypatch.setattr(
+        "app.data_agent.service.DataAgentService._build_generation_context",
+        lambda self, **_kwargs: (
+            None,
+            None,
+            {
+                "country": "mx",
+                "project_id": 1,
+                "grounded_fields_by_table": {
+                    "dwd_w_apply": ["uid", "risk_level", "loan_count", "max_overdue_days"],
+                    "dwb_b1_data_burying_point": ["uid", "timestamp_", "eventname"],
+                },
+                "sql_intent_plan_summary": {
+                    "task_type": "bucket_writeback",
+                    "output_bucket": "behavior",
+                    "target_cohort_conditions": ["first_loan", "never_overdue"],
+                    "source_tables": ["dwd_w_apply", "dwb_b1_data_burying_point"],
+                    "join_keys": ["uid"],
+                    "required_fields": ["uid", "timestamp_", "eventname"],
+                    "forbidden_patterns": [
+                        "broad_behavior_scan",
+                        "historical_date_copy",
+                        "historical_source_filter",
+                    ],
+                },
+            },
+        ),
+    )
+    monkeypatch.setattr(
+        "app.data_agent.service._generate_sql_response",
+        lambda *_args, **_kwargs: _stub_generate_result(
+            "WITH target_users AS ("
+            " SELECT uid FROM dwd_w_apply WHERE loan_count = 1 AND max_overdue_days = 0"
+            ") "
+            "SELECT b.uid FROM dwb_b1_data_burying_point b "
+            "JOIN target_users t ON b.uid = t.uid"
+        ),
+    )
+    create = client.post(
+        "/api/data-agent/runs",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "natural_language_request": "找出墨西哥首贷且从未逾期的用户，并写回 behavior",
+            "target_country": "mexico",
+            "run_type": "bucket_writeback",
+            "output_bucket": "behavior",
+            "output_format": "json",
+        },
+    )
+    assert create.status_code == 201
+    body = create.json()
+    assert body["current_sql"]["safety_status"] == "passed"
+    warnings = body["current_sql"]["safety_result"]["warnings"]
+    assert any(item["category"] == "PLAN_REQUIRED_FIELD_MISSING" for item in warnings)
+
+
+def test_data_agent_revise_run_adds_plan_drift_warnings(
+    client: TestClient,
+    monkeypatch,
+) -> None:
+    _register_privileged_user(username="da-plan-revise", email="da-plan-revise@example.com", role_codes=["data_admin"])
+    token, _ = _login(client, "da-plan-revise", "passw0rd123")
+
+    monkeypatch.setattr(
+        "app.data_agent.service.DataAgentService._build_generation_context",
+        lambda self, **_kwargs: (
+            None,
+            None,
+            {
+                "country": "mx",
+                "project_id": 1,
+                "grounded_fields_by_table": {
+                    "dwd_w_apply": ["uid", "risk_level", "apply_time"],
+                },
+                "sql_intent_plan_summary": {
+                    "task_type": "cohort_query",
+                    "output_bucket": "",
+                    "target_cohort_conditions": ["recent_7d", "high_risk"],
+                    "source_tables": ["dwd_w_apply"],
+                    "join_keys": ["uid"],
+                    "required_fields": ["uid"],
+                    "forbidden_patterns": ["historical_date_copy"],
+                },
+            },
+        ),
+    )
+    monkeypatch.setattr(
+        "app.data_agent.service._generate_sql_response",
+        lambda *_args, **_kwargs: _stub_generate_result("SELECT uid FROM dwd_w_apply WHERE risk_level = 'high'"),
+    )
+    create = client.post(
+        "/api/data-agent/runs",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "natural_language_request": "查询最近 7 天高风险用户",
+            "target_country": "mexico",
+            "run_type": "cohort_query",
+        },
+    )
+    assert create.status_code == 201
+    run_id = create.json()["run_id"]
+
+    monkeypatch.setattr(
+        "app.data_agent.service._generate_sql_response",
+        lambda *_args, **_kwargs: _stub_generate_result(
+            "SELECT uid FROM dwd_w_apply WHERE dt = '20260315'"
+        ),
+    )
+    revise = client.post(
+        f"/api/data-agent/runs/{run_id}/revise",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"comment": "改成最近 7 天高风险用户"},
+    )
+    assert revise.status_code == 200
+    warnings = revise.json()["current_sql"]["safety_result"]["warnings"]
+    assert any(item["category"] == "PLAN_DATE_DRIFT" for item in warnings)
+
+
 def test_data_agent_does_not_flag_interval_units_as_unsupported_fields(
     client: TestClient,
     monkeypatch,
