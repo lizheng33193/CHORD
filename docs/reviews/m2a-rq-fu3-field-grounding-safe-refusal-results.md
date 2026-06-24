@@ -83,6 +83,20 @@
 - `SQL_GENERATION_REQUIRED`：普通 non-SQL generation result
 - `DATA_AGENT_WRITEBACK_REQUIRES_COHORT`：under-specified `bucket_writeback`
 
+### 4. FU3.1 edge-case cleanup
+
+`app/data_agent/service.py` 已补 FU3.1 收尾，当前额外固定两类边界：
+
+- `查询 / 找一下 / 筛选 / 过滤 / 满足 / where` 这类泛动词本身不再让 `bucket_writeback` 视为 specified
+- `SELECT ... AS alias`、聚合 alias、CTE 输出字段继续不触发 `UNSUPPORTED_FIELD`
+
+本轮新增回归样例：
+
+- `帮我查询并写回 behavior` -> `DATA_AGENT_WRITEBACK_REQUIRES_COHORT`
+- `找一下行为数据并写回` -> `DATA_AGENT_WRITEBACK_REQUIRES_COHORT`
+- `SELECT uid AS user_id, MIN(apply_time) AS first_apply_time FROM dwd_w_apply GROUP BY uid` -> 无 `UNSUPPORTED_FIELD`
+- `WITH target_users AS (...) SELECT uid, first_apply_time FROM target_users` -> 无 `UNSUPPORTED_FIELD`
+
 ## Verification
 
 ### Targeted tests
@@ -92,7 +106,7 @@
 
 结果：
 
-- `38 passed`
+- `41 passed`
 
 ### Regression subset
 
@@ -100,7 +114,7 @@
 
 结果：
 
-- `59 passed`
+- `62 passed`
 
 ### Repo checks
 
