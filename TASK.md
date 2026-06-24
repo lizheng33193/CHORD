@@ -158,6 +158,21 @@
   - 下一步：
     - 不进入 `M2B`
     - 进入 `FU6: Plan-guided Regeneration / Repair`
+- [ ] M2A-RQ-FU6：Plan-guided Regeneration / Repair — 进行中（2026-06-24）
+  - design / plan：
+    - `docs/specs/m2a-rq-fu6-plan-guided-repair-design.md`
+    - `docs/plans/m2a-rq-fu6-plan-guided-repair-plan.md`
+  - 本阶段目标：
+    - 对 repairable `PLAN_*` warning 做一次 bounded repair generation
+    - repair 后重新跑 Safety Gate / field grounding / canonical / plan review
+    - repair 失败时保留首轮 SQL 作为当前可审版本
+  - 第一版边界：
+    - 只在 `create_run` / `revise_run` 触发
+    - `edit_run` 不自动 repair
+    - `approve_run` / `execute_run` 不 repair
+    - `max_repair_attempts = 1`
+    - 不改 schema / `M1` / `M1.5` / `query_data`
+    - 不进入 `M2B`
 - [ ] M2A-Verify：真实业务样例验证 + Seed 质量补齐 — 进行中（2026-06-23）
   - plan / runbook / sample set / gap list：
     - `docs/plans/m2a-verify-knowledge-quality-plan.md`

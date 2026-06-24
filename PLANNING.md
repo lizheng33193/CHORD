@@ -58,6 +58,11 @@
   - under-specified `bucket_writeback` 继续保持 stable refusal
   - high-risk cohort 仍主要受 retrieval grounding gap 影响
   - 当前仍不进入 `M2B`，下一步应为 `FU6: Plan-guided Regeneration / Repair`
+- 下一轮 follow-up 固定为 `M2A-RQ-FU6`：
+  - bounded one-shot repair for repairable `PLAN_*` warnings
+  - repair trace stays inside `safety_result_json`
+  - repair remains generation-only and still passes through SQL HITL
+  - 当前阶段仍不进入 `M2B`
 - 本阶段继续保持不变：
   - orchestrator `query_data`
   - `M1` SQL HITL 状态机
