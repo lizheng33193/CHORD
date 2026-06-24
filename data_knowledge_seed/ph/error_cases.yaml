@@ -1,0 +1,12 @@
+- source_key: case:ph-withdraw-uuid
+  status: open
+  natural_language_request: 修复菲律宾首贷从未逾期 SQL，避免使用 withdraw_uuid
+  run_type: cohort_query
+  output_bucket:
+  error_type: invalid_field
+  error_message: Philippines tables do not expose withdraw_uuid; use ph_apply_orders.uid and approved fields instead.
+  failed_sql_hash: failed-ph-withdraw-uuid
+  failed_sql_text: "SELECT withdraw_uuid FROM ph_apply_orders"
+  fix_summary: Do not use mx-only field withdraw_uuid in ph cohort queries.
+  detected_tables: ["ph_apply_orders"]
+  detected_fields: ["withdraw_uuid", "uid"]

@@ -61,6 +61,9 @@ _SQL_EXAMPLE_SOURCE_NAMESPACE = {
     "mx": "seed/mx/sql_examples",
     "ph": "seed/ph/sql_examples",
 }
+_SQL_ERROR_CASE_SOURCE_NAMESPACE = {
+    "ph": "seed/ph/error_cases",
+}
 
 
 def _normalize_json_payload(value: Any) -> str:
@@ -139,6 +142,7 @@ class DataKnowledgeService:
         if bundle != "common":
             upserted += self._import_catalog_seed(bundle=bundle, country=country, project_id=project_id, actor_username=actor_username)
             upserted += self._import_sql_examples_seed(bundle=bundle, country=country, project_id=project_id, actor_username=actor_username)
+            upserted += self._import_sql_error_cases_seed(bundle=bundle, country=country, project_id=project_id, actor_username=actor_username)
             deprecated += self._deprecate_removed_namespace_rows(
                 DataCatalogTable,
                 project_id=project_id,
@@ -160,6 +164,14 @@ class DataKnowledgeService:
                 source_namespace=_SQL_EXAMPLE_SOURCE_NAMESPACE[bundle],
                 seen_keys=self._seen_keys_for_namespace(bundle, "sql_examples"),
             )
+            if bundle in _SQL_ERROR_CASE_SOURCE_NAMESPACE:
+                deprecated += self._deprecate_removed_namespace_rows(
+                    DataSqlErrorCase,
+                    project_id=project_id,
+                    country=country,
+                    source_namespace=_SQL_ERROR_CASE_SOURCE_NAMESPACE[bundle],
+                    seen_keys=self._seen_keys_for_namespace(bundle, "error_cases"),
+                )
         upserted += self._import_glossary_seed(bundle=bundle, country=country, project_id=project_id, actor_username=actor_username)
         deprecated += self._deprecate_removed_namespace_rows(
             DataGlossaryTerm,
@@ -452,6 +464,39 @@ class DataKnowledgeService:
             )
         return count
 
+    def _import_sql_error_cases_seed(self, *, bundle: str, country: str | None, project_id: int | None, actor_username: str) -> int:
+        source_namespace = _SQL_ERROR_CASE_SOURCE_NAMESPACE.get(bundle)
+        if source_namespace is None:
+            return 0
+        path = DATA_KNOWLEDGE_SEED_DIR / bundle / "error_cases.yaml"
+        entries = yaml.safe_load(path.read_text(encoding="utf-8")) if path.exists() else []
+        count = 0
+        for entry in entries or []:
+            payload = {
+                "natural_language_request": entry.get("natural_language_request"),
+                "run_type": entry.get("run_type"),
+                "output_bucket": entry.get("output_bucket"),
+                "error_type": entry["error_type"],
+                "error_message": entry.get("error_message"),
+                "failed_sql_hash": entry.get("failed_sql_hash"),
+                "failed_sql_text": entry.get("failed_sql_text"),
+                "fixed_sql_hash": entry.get("fixed_sql_hash"),
+                "fixed_sql_text": entry.get("fixed_sql_text"),
+                "fix_summary": entry.get("fix_summary"),
+                "detected_tables": entry.get("detected_tables") or [],
+                "detected_fields": entry.get("detected_fields") or [],
+                "status": entry.get("status") or "open",
+            }
+            count += self._upsert_sql_error_case_seed(
+                project_id=project_id,
+                country=country,
+                source_namespace=source_namespace,
+                source_key=str(entry["source_key"]),
+                actor_username=actor_username,
+                payload=payload,
+            )
+        return count
+
     def _upsert_catalog_table_seed(self, *, project_id: int | None, country: str | None, source_namespace: str, source_key: str, actor_username: str, payload: dict[str, Any]) -> int:
         row = self.repo.find_by_source_identity(
             DataCatalogTable,
@@ -645,6 +690,62 @@ class DataKnowledgeService:
         row.pattern_summary = payload.get("pattern_summary")
         row.reviewer_username = payload.get("reviewer_username")
         row.execution_status = payload.get("execution_status")
+        self.db.flush()
+        return 1
+
+    def _upsert_sql_error_case_seed(self, *, project_id: int | None, country: str | None, source_namespace: str, source_key: str, actor_username: str, payload: dict[str, Any]) -> int:
+        row = self.repo.find_by_source_identity(
+            DataSqlErrorCase,
+            project_id=project_id,
+            country=country,
+            source_namespace=source_namespace,
+            source_key=source_key,
+        )
+        source_hash = _hash_payload(payload)
+        if row is None:
+            self.repo.add(
+                DataSqlErrorCase(
+                    project_id=project_id,
+                    country=country,
+                    status=payload.get("status") or "open",
+                    source_type="seed",
+                    source_namespace=source_namespace,
+                    source_key=source_key,
+                    source_hash=source_hash,
+                    created_by=actor_username,
+                    updated_by=actor_username,
+                    natural_language_request=payload.get("natural_language_request"),
+                    run_type=payload.get("run_type"),
+                    output_bucket=payload.get("output_bucket"),
+                    error_type=payload["error_type"],
+                    error_message=payload.get("error_message"),
+                    failed_sql_hash=payload.get("failed_sql_hash"),
+                    failed_sql_text=payload.get("failed_sql_text"),
+                    fixed_sql_hash=payload.get("fixed_sql_hash"),
+                    fixed_sql_text=payload.get("fixed_sql_text"),
+                    fix_summary=payload.get("fix_summary"),
+                    detected_tables_json=payload.get("detected_tables") or [],
+                    detected_fields_json=payload.get("detected_fields") or [],
+                )
+            )
+            return 1
+        if row.source_hash == source_hash and row.status == (payload.get("status") or "open"):
+            return 0
+        row.status = payload.get("status") or "open"
+        row.source_hash = source_hash
+        row.updated_by = actor_username
+        row.natural_language_request = payload.get("natural_language_request")
+        row.run_type = payload.get("run_type")
+        row.output_bucket = payload.get("output_bucket")
+        row.error_type = payload["error_type"]
+        row.error_message = payload.get("error_message")
+        row.failed_sql_hash = payload.get("failed_sql_hash")
+        row.failed_sql_text = payload.get("failed_sql_text")
+        row.fixed_sql_hash = payload.get("fixed_sql_hash")
+        row.fixed_sql_text = payload.get("fixed_sql_text")
+        row.fix_summary = payload.get("fix_summary")
+        row.detected_tables_json = payload.get("detected_tables") or []
+        row.detected_fields_json = payload.get("detected_fields") or []
         self.db.flush()
         return 1
 

@@ -15,7 +15,21 @@
 - source_key: term:writeback_behavior
   term: 写回 behavior
   synonyms: ["补齐 behavior", "writeback behavior"]
-  definition: 生成用于 behavior bucket 写回的 query_only SQL
+  definition: 用于 behavior bucket 写回的按 uid 返回的行为查询结果
+  mapped_tables: []
+  mapped_fields: ["uid", "timestamp_", "eventname"]
+  suggested_filters: ["output_bucket = behavior", "query_only only"]
+- source_key: term:high_risk_user
+  term: 高风险用户
+  synonyms: ["high risk", "高风险"]
+  definition: 风险分层为高风险的用户
   mapped_tables: ["dwd_w_apply"]
-  mapped_fields: ["uid"]
-  suggested_filters: ["output_bucket = behavior"]
+  mapped_fields: ["risk_level"]
+  suggested_filters: ["risk_level = 'high'"]
+- source_key: term:last_7_days
+  term: 最近7天
+  synonyms: ["最近 7 天", "近7天", "last 7 days"]
+  definition: 以申请时间为准的最近 7 天时间窗口
+  mapped_tables: ["dwd_w_apply"]
+  mapped_fields: ["apply_time"]
+  suggested_filters: ["apply_time >= date_sub(current_date, 7)"]

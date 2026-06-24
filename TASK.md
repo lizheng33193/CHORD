@@ -42,6 +42,7 @@
     - `docs/reviews/m2a-verify-sample-set-round1.md`
     - `docs/reviews/m2a-verify-seed-gap-round1.md`
     - `docs/reviews/m2a-verify-round1-results.md`
+    - `docs/reviews/m2a-verify-seed-patch1-results.md`
   - 首轮固定样例：
     - `mx` 高风险 cohort query
     - `mx` behavior bucket_writeback
@@ -54,7 +55,10 @@
   - Round 1 当前状态：
     - 已完成 5 条样例的首轮真实执行记录
     - 本轮未改 seed，只记录动态结果
-    - 下一步进入 `M2A-Verify Seed Patch 1`
+  - Seed Patch 1 当前状态：
+    - 已补第一批 catalog / glossary / example / error case seed
+    - 已完成 patch 后 5 条样例的再次验证
+    - 下一步应把剩余问题拆到 runtime quality follow-up，而不是继续混入 seed patch
 - [x] M2A：Data Agent Knowledge RAG — 首版实现完成并完成本地定向验证（2026-06-23）
   - design / plan：
     - `docs/specs/m2a-data-agent-knowledge-rag-design.md`
