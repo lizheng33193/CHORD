@@ -95,7 +95,7 @@ under-specified writeback 保持：
 
 结果：
 
-- `48 passed`
+- `49 passed`
 
 ### Regression subset
 
@@ -103,7 +103,7 @@ under-specified writeback 保持：
 
 结果：
 
-- `69 passed`
+- `70 passed`
 
 ## Live Rerun Samples
 
@@ -261,12 +261,14 @@ Generated SQL 特征：
 
 - 先建 cohort，再 join behavior table
 - 保留了 combo intent
-- 但仍明显回退 historical template SQL：
-  - `user_uuid`
-  - `apply_create_at`
-  - 长时间窗口 `90 / 1095 / 180`
+- 第二轮 rerun 在更强的 `sql_intent_plan` priority rule 下，已明显收敛：
+  - 最终只保留 `uid`, `timestamp_`, `eventname`
+  - 不再展开整套 historical behavior 字段列举
+- 但仍残留明显 historical template drift：
+  - `user_uuid AS uid`
+  - 固定日期分区 `20260201` / `20260228` / `20260315`
   - 固定 source filter `MEXI / MEXICASH`
-  - 模板式 behavior 字段列举
+  - `concat(customer_type, distribute_type) = 'newDISTRIBUTE'`
 
 Safety Gate status:
 
@@ -274,15 +276,6 @@ Safety Gate status:
 
 UNSUPPORTED_FIELD warnings:
 
-- `servertimestamp`
-- `scenetype`
-- `processtype`
-- `extend`
-- `clientmodel`
-- `clientosversion`
-- `url`
-- `refer`
-- `ip`
 - `dt`
 - `source`
 
@@ -305,8 +298,12 @@ Judgment:
 Interpretation:
 
 - FU4 已经把 combo request 的 cohort / join / required fields / forbidden patterns 明确写进 prompt 和 snapshot
-- 但模型仍能绕过这些 guidance，回到熟悉的 historical template SQL
-- 这说明下一轮主要问题已经变成：`plan 存在，但 SQL 没有稳定遵守 plan`
+- 第二轮 rerun 说明更强的 `sql_intent_plan` priority rule 已经开始起效：模型不再把 behavior 部分扩成整套 historical template 字段族
+- 但 SQL 仍没有稳定遵守 plan：
+  - 仍保留历史日期分区
+  - 仍保留历史 source filter
+  - 仍用 `user_uuid AS uid` 规避 canonical preference
+- 这说明下一轮主要问题已经变成：`plan 已开始约束结构，但仍缺少 plan-to-sql consistency validation`
 
 ## Overall Conclusion
 
