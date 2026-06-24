@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from sqlalchemy import select
@@ -104,3 +105,116 @@ def test_prompt_context_adds_under_specified_writeback_safe_refusal_guidance(aut
     lowered = assembled.rendered_text.lower()
     assert "return sql=null" in lowered
     assert "sql_kind=query_only" in lowered
+
+
+def test_prompt_context_adds_canonical_field_guidance_and_sql_intent_plan() -> None:
+    from app.data_knowledge.prompt_context import PromptContextAssembler
+    from app.data_knowledge.retriever import RetrievedKnowledgeContext
+
+    context = RetrievedKnowledgeContext(
+        catalog_tables=[
+            SimpleNamespace(table_name="dwd_w_apply", purpose="loan applications", grain="uid", time_field="apply_time", join_keys_json=["uid"]),
+            SimpleNamespace(table_name="dwb_b1_data_burying_point", purpose="behavior events", grain="event", time_field="timestamp_", join_keys_json=["uid"]),
+        ],
+        catalog_fields=[
+            SimpleNamespace(table_name="dwd_w_apply", field_name="uid", field_type="string", business_meaning="user id", description=""),
+            SimpleNamespace(table_name="dwd_w_apply", field_name="user_uuid", field_type="string", business_meaning="historical user id", description=""),
+            SimpleNamespace(table_name="dwd_w_apply", field_name="apply_time", field_type="datetime", business_meaning="apply time", description=""),
+            SimpleNamespace(table_name="dwd_w_apply", field_name="apply_create_at", field_type="datetime", business_meaning="historical apply time", description=""),
+            SimpleNamespace(table_name="dwd_w_apply", field_name="risk_level", field_type="string", business_meaning="risk level", description=""),
+            SimpleNamespace(table_name="dwb_b1_data_burying_point", field_name="uid", field_type="string", business_meaning="user id", description=""),
+            SimpleNamespace(table_name="dwb_b1_data_burying_point", field_name="timestamp_", field_type="datetime", business_meaning="event time", description=""),
+            SimpleNamespace(table_name="dwb_b1_data_burying_point", field_name="eventname", field_type="string", business_meaning="event name", description=""),
+        ],
+        glossary_terms=[],
+        sql_examples=[],
+        error_cases=[],
+        section_counts={},
+        source_ids={"table_ids": [], "field_ids": [], "glossary_ids": [], "example_ids": [], "error_case_ids": []},
+        trimmed=False,
+    )
+
+    assembled = PromptContextAssembler().assemble(
+        natural_language_request="找出墨西哥首贷且从未逾期的用户，并写回 behavior",
+        country="mx",
+        run_type="bucket_writeback",
+        output_bucket="behavior",
+        context=context,
+    )
+
+    lowered = assembled.rendered_text.lower()
+    assert "# === canonical_field_guidance ===" in assembled.rendered_text
+    assert "preferred=uid" in lowered
+    assert "alternatives=user_uuid" in lowered
+    assert "# === sql_intent_plan ===" in assembled.rendered_text
+    assert "task_type=bucket_writeback" in lowered
+    assert "target_cohort_conditions=first_loan,never_overdue" in lowered
+    assert "join_keys=uid" in lowered
+    assert "required_fields=uid,timestamp_,eventname" in lowered
+
+
+def test_prompt_context_does_not_add_sql_intent_plan_for_under_specified_writeback() -> None:
+    from app.data_knowledge.prompt_context import PromptContextAssembler
+    from app.data_knowledge.retriever import RetrievedKnowledgeContext
+
+    context = RetrievedKnowledgeContext(
+        catalog_tables=[
+            SimpleNamespace(table_name="dwb_b1_data_burying_point", purpose="behavior events", grain="event", time_field="timestamp_", join_keys_json=["uid"]),
+        ],
+        catalog_fields=[
+            SimpleNamespace(table_name="dwb_b1_data_burying_point", field_name="uid", field_type="string", business_meaning="user id", description=""),
+            SimpleNamespace(table_name="dwb_b1_data_burying_point", field_name="timestamp_", field_type="datetime", business_meaning="event time", description=""),
+            SimpleNamespace(table_name="dwb_b1_data_burying_point", field_name="eventname", field_type="string", business_meaning="event name", description=""),
+        ],
+        glossary_terms=[],
+        sql_examples=[],
+        error_cases=[],
+        section_counts={},
+        source_ids={"table_ids": [], "field_ids": [], "glossary_ids": [], "example_ids": [], "error_case_ids": []},
+        trimmed=False,
+    )
+
+    assembled = PromptContextAssembler().assemble(
+        natural_language_request="帮我查询并写回 behavior",
+        country="mx",
+        run_type="bucket_writeback",
+        output_bucket="behavior",
+        context=context,
+    )
+
+    lowered = assembled.rendered_text.lower()
+    assert "return sql=null" in lowered
+    assert "# === sql_intent_plan ===" not in assembled.rendered_text
+
+
+def test_prompt_context_does_not_add_writeback_plan_to_query_only_prompt() -> None:
+    from app.data_knowledge.prompt_context import PromptContextAssembler
+    from app.data_knowledge.retriever import RetrievedKnowledgeContext
+
+    context = RetrievedKnowledgeContext(
+        catalog_tables=[
+            SimpleNamespace(table_name="dwd_w_apply", purpose="loan applications", grain="uid", time_field="apply_time", join_keys_json=["uid"]),
+        ],
+        catalog_fields=[
+            SimpleNamespace(table_name="dwd_w_apply", field_name="uid", field_type="string", business_meaning="user id", description=""),
+            SimpleNamespace(table_name="dwd_w_apply", field_name="apply_time", field_type="datetime", business_meaning="apply time", description=""),
+            SimpleNamespace(table_name="dwd_w_apply", field_name="risk_level", field_type="string", business_meaning="risk level", description=""),
+        ],
+        glossary_terms=[],
+        sql_examples=[],
+        error_cases=[],
+        section_counts={},
+        source_ids={"table_ids": [], "field_ids": [], "glossary_ids": [], "example_ids": [], "error_case_ids": []},
+        trimmed=False,
+    )
+
+    assembled = PromptContextAssembler().assemble(
+        natural_language_request="查询最近 7 天高风险用户",
+        country="mx",
+        run_type="cohort_query",
+        output_bucket=None,
+        context=context,
+    )
+
+    assert "# === sql_intent_plan ===" not in assembled.rendered_text
+    assert "# === writeback_constraints ===" not in assembled.rendered_text

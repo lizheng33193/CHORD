@@ -32,6 +32,18 @@
     - unsupported-field 已可作为 warning 暴露给 reviewer / audit
     - under-specified `bucket_writeback` 已归一为 `DATA_AGENT_WRITEBACK_REQUIRES_COHORT`
     - combo writeback historical template drift 仍未完全收口，暂不进入 `M2B`
+- FU3.1 edge-case cleanup 已确认：
+  - generic writeback verbs 不再单独构成 specified writeback
+  - select alias / aggregate alias / CTE output field 不误报 `UNSUPPORTED_FIELD`
+- 下一轮 follow-up 固定为 `M2A-RQ-FU4`：
+  - canonical field policy = prompt + warning
+  - SQL intent plan = prompt-side internal plan for combo writeback
+  - 当前阶段仍不进入 `M2B`
+- FU4 第一轮结果：
+  - under-specified `bucket_writeback` 继续稳定返回 `DATA_AGENT_WRITEBACK_REQUIRES_COHORT`
+  - high-risk cohort 现会把 `user_uuid` 暴露为 unsupported grounding gap，但 canonical policy 仍受 retrieval snapshot 覆盖限制
+  - combo writeback 已形成 `sql_intent_plan_summary`，但生成 SQL 仍明显绕过 plan，回退 historical template
+  - 当前不进入 `M2B`，下一步应为 `FU5: Plan Validation / Plan-to-SQL Consistency Review`
 - 本阶段继续保持不变：
   - orchestrator `query_data`
   - `M1` SQL HITL 状态机

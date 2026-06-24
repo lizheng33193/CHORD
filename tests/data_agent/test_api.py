@@ -972,6 +972,161 @@ def test_data_agent_adds_unsupported_field_warning_without_blocking_run(
     assert any(item["field"] == "user_uuid" and item["table"] == "dwd_w_apply" for item in warnings)
 
 
+def test_data_agent_adds_non_canonical_field_warning_without_blocking_run(
+    client: TestClient,
+    monkeypatch,
+) -> None:
+    _register_privileged_user(username="da-noncanonical", email="da-noncanonical@example.com", role_codes=["data_admin"])
+    token, _ = _login(client, "da-noncanonical", "passw0rd123")
+
+    monkeypatch.setattr(
+        "app.data_agent.service.DataAgentService._build_generation_context",
+        lambda self, **_kwargs: (
+            None,
+            None,
+            {
+                "country": "mx",
+                "project_id": 1,
+                "grounded_fields_by_table": {
+                    "dwd_w_apply": ["uid", "user_uuid", "risk_level", "apply_time", "apply_create_at"],
+                },
+                "canonical_alternative_to_preferred_by_table": {
+                    "dwd_w_apply": {
+                        "user_uuid": "uid",
+                        "apply_create_at": "apply_time",
+                    },
+                },
+            },
+        ),
+    )
+    monkeypatch.setattr(
+        "app.data_agent.service._generate_sql_response",
+        lambda *_args, **_kwargs: _stub_generate_result(
+            "SELECT user_uuid, apply_create_at FROM hive.dwd.dwd_w_apply "
+            "WHERE risk_level = 'high' AND apply_create_at >= date_sub(current_date, 7)"
+        ),
+    )
+    create = client.post(
+        "/api/data-agent/runs",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "natural_language_request": "查询最近 7 天高风险用户",
+            "target_country": "mexico",
+            "run_type": "cohort_query",
+        },
+    )
+    assert create.status_code == 201
+    body = create.json()
+    assert body["current_sql"]["safety_status"] == "passed"
+    warnings = body["current_sql"]["safety_result"]["warnings"]
+    assert any(
+        item["category"] == "NON_CANONICAL_FIELD"
+        and item["field"] == "user_uuid"
+        and item["preferred_field"] == "uid"
+        and item["table"] == "dwd_w_apply"
+        for item in warnings
+    )
+    assert any(
+        item["category"] == "NON_CANONICAL_FIELD"
+        and item["field"] == "apply_create_at"
+        and item["preferred_field"] == "apply_time"
+        and item["table"] == "dwd_w_apply"
+        for item in warnings
+    )
+    assert not any(item["category"] == "UNSUPPORTED_FIELD" for item in warnings)
+
+
+def test_data_agent_preferred_field_does_not_trigger_non_canonical_warning(
+    client: TestClient,
+    monkeypatch,
+) -> None:
+    _register_privileged_user(username="da-preferred", email="da-preferred@example.com", role_codes=["data_admin"])
+    token, _ = _login(client, "da-preferred", "passw0rd123")
+
+    monkeypatch.setattr(
+        "app.data_agent.service.DataAgentService._build_generation_context",
+        lambda self, **_kwargs: (
+            None,
+            None,
+            {
+                "country": "mx",
+                "project_id": 1,
+                "grounded_fields_by_table": {
+                    "dwd_w_apply": ["uid", "user_uuid", "risk_level", "apply_time", "apply_create_at"],
+                },
+                "canonical_alternative_to_preferred_by_table": {
+                    "dwd_w_apply": {
+                        "user_uuid": "uid",
+                        "apply_create_at": "apply_time",
+                    },
+                },
+            },
+        ),
+    )
+    monkeypatch.setattr(
+        "app.data_agent.service._generate_sql_response",
+        lambda *_args, **_kwargs: _stub_generate_result(
+            "SELECT uid, apply_time FROM dwd_w_apply "
+            "WHERE risk_level = 'high' AND apply_time >= date_sub(current_date, 7)"
+        ),
+    )
+    create = client.post(
+        "/api/data-agent/runs",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "natural_language_request": "查询最近 7 天高风险用户",
+            "target_country": "mexico",
+            "run_type": "cohort_query",
+        },
+    )
+    assert create.status_code == 201
+    warnings = create.json()["current_sql"]["safety_result"]["warnings"]
+    assert not any(item["category"] == "NON_CANONICAL_FIELD" for item in warnings)
+
+
+def test_data_agent_does_not_flag_interval_units_as_unsupported_fields(
+    client: TestClient,
+    monkeypatch,
+) -> None:
+    _register_privileged_user(username="da-interval-safe", email="da-interval-safe@example.com", role_codes=["data_admin"])
+    token, _ = _login(client, "da-interval-safe", "passw0rd123")
+
+    monkeypatch.setattr(
+        "app.data_agent.service.DataAgentService._build_generation_context",
+        lambda self, **_kwargs: (
+            None,
+            None,
+            {
+                "country": "mx",
+                "project_id": 1,
+                "grounded_fields_by_table": {
+                    "dwd_w_apply": ["uid", "risk_level", "apply_time"],
+                },
+            },
+        ),
+    )
+    monkeypatch.setattr(
+        "app.data_agent.service._generate_sql_response",
+        lambda *_args, **_kwargs: _stub_generate_result(
+            "SELECT uid FROM hive.dwd.dwd_w_apply "
+            "WHERE risk_level = 'high' "
+            "AND apply_time >= DATE_SUB(CURRENT_DATE(), INTERVAL 7 DAY)"
+        ),
+    )
+    create = client.post(
+        "/api/data-agent/runs",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "natural_language_request": "查询最近 7 天高风险用户",
+            "target_country": "mexico",
+            "run_type": "cohort_query",
+        },
+    )
+    assert create.status_code == 201
+    warnings = create.json()["current_sql"]["safety_result"]["warnings"]
+    assert not any(item["field"] in {"interval", "day"} for item in warnings)
+
+
 def test_data_agent_does_not_flag_cte_alias_as_unsupported_field(
     client: TestClient,
     monkeypatch,

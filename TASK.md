@@ -112,6 +112,28 @@
     - 合并 `codex/m2a-rq-fu3-field-grounding-safe-refusal` 到 `main`
     - 从最新 `main` 启动 `M2A-RQ-FU4`
     - 在 combo writeback 上继续处理 canonical field guidance 与 SQL intent plan
+- [x] M2A-RQ-FU4：Canonical Field Policy & SQL Intent Plan — 第一轮完成，下一步进入 FU5（2026-06-24）
+  - design / plan：
+    - `docs/specs/m2a-rq-fu4-sql-intent-plan-design.md`
+    - `docs/plans/m2a-rq-fu4-sql-intent-plan.md`
+  - 本阶段目标：
+    - canonical field policy: prompt + warning
+    - `NON_CANONICAL_FIELD` warning-only risk
+    - combo writeback 先形成 SQL intent plan，再生成 SQL
+  - 保持不变：
+    - 不改 `GenerateRequest` / `GenerateResponse` schema
+    - 不改 `M1` / `M1.5` / `query_data`
+    - 不改 retriever scoring / seed assets / vector retrieval
+  - 第一轮结果：
+    - 新增 `app/data_knowledge/canonical_fields.py` 作为 canonical policy 单一内部来源
+    - prompt context / prompt assembler 已新增 canonical guidance 与 `sql_intent_plan`
+    - `NON_CANONICAL_FIELD` 已落在 reviewer warning 层，且不改变 `safety_status`
+    - `mx-behavior-writeback` 继续稳定 safe refusal
+    - `mx-high-risk-cohort` 仍受 retrieval grounding gap 影响
+    - `mx-glossary-combo-writeback` 虽已有 `sql_intent_plan_summary`，但仍明显回退 historical template SQL
+  - 下一步：
+    - 不进入 `M2B`
+    - 进入 `FU5: Plan Validation / Plan-to-SQL Consistency Review`
 - [ ] M2A-Verify：真实业务样例验证 + Seed 质量补齐 — 进行中（2026-06-23）
   - plan / runbook / sample set / gap list：
     - `docs/plans/m2a-verify-knowledge-quality-plan.md`
