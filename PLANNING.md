@@ -28,6 +28,10 @@
 - 下一轮 runtime follow-up 固定为 `M2A-RQ-FU3`：
   - stronger field grounding with warning-only unsupported-field risk
   - normalize under-specified `bucket_writeback` refusal into a Data Agent specific `422`
+  - 当前 FU3 第一轮结果：
+    - unsupported-field 已可作为 warning 暴露给 reviewer / audit
+    - under-specified `bucket_writeback` 已归一为 `DATA_AGENT_WRITEBACK_REQUIRES_COHORT`
+    - combo writeback historical template drift 仍未完全收口，暂不进入 `M2B`
 - 本阶段继续保持不变：
   - orchestrator `query_data`
   - `M1` SQL HITL 状态机

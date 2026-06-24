@@ -88,18 +88,28 @@
     - 继续 runtime follow-up，优先处理 historical field-family drift
     - 协调 under-specified writeback safe-refusal 与 structured output schema
     - 在 combo writeback 上继续压低 template-style drift
-- [ ] M2A-RQ-FU3：Field Grounding & Safe Refusal Contract — 进行中（2026-06-24）
+- [x] M2A-RQ-FU3：Field Grounding & Safe Refusal Contract — 第一轮完成，仍需 runtime follow-up（2026-06-24）
   - design / plan：
     - `docs/specs/m2a-rq-fu3-field-grounding-safe-refusal-design.md`
     - `docs/plans/m2a-rq-fu3-field-grounding-safe-refusal-plan.md`
+    - `docs/reviews/m2a-rq-fu3-field-grounding-safe-refusal-results.md`
   - 本阶段目标：
     - field grounding 提升到 prompt + risk
     - unsupported base-table field warning 可观测
     - under-specified `bucket_writeback` 返回专属 `422`
+  - 第一轮结果：
+    - prompt context 已新增 `table -> allowed_fields` grounding section
+    - Data Agent 已新增 `UNSUPPORTED_FIELD` warning-only risk
+    - under-specified `bucket_writeback` 已返回 `DATA_AGENT_WRITEBACK_REQUIRES_COHORT`
+    - `mx-behavior-writeback` 已从 `SCHEMA_VALIDATION_FAILED` 收口为可解释 `422`
+    - `mx-glossary-combo-writeback` 虽已能显式暴露 unsupported-field risk，但 historical template drift 仍明显
   - 保持不变：
     - 不改 `GenerateRequest` / `GenerateResponse` schema
     - 不改 `M1` / `M1.5` / `query_data`
     - 不改 retriever scoring / seed assets / vector retrieval
+  - 下一步：
+    - 继续 runtime follow-up，优先处理 combo writeback anti-template drift
+    - 评估是否需要更强的 field-quality gate
 - [ ] M2A-Verify：真实业务样例验证 + Seed 质量补齐 — 进行中（2026-06-23）
   - plan / runbook / sample set / gap list：
     - `docs/plans/m2a-verify-knowledge-quality-plan.md`
