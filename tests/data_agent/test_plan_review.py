@@ -132,6 +132,23 @@ def test_review_flags_forbidden_placeholder_pattern() -> None:
     assert any(item["category"] == "PLAN_FORBIDDEN_PATTERN" for item in warnings)
 
 
+def test_review_does_not_confuse_comparison_operators_with_placeholders() -> None:
+    warnings = review_sql_against_intent_plan(
+        sql_text=(
+            "WITH target_users AS ("
+            " SELECT uid FROM dwd_w_apply WHERE dt <= '20260315'"
+            ") "
+            "SELECT uid FROM target_users WHERE apply_time >= CURRENT_DATE()"
+        ),
+        retrieval_snapshot=_snapshot(required_fields=["uid"]),
+        natural_language_request="查询最近 7 天高风险用户",
+        run_type="cohort_query",
+        output_bucket=None,
+    )
+
+    assert not any(item["category"] == "PLAN_FORBIDDEN_PATTERN" for item in warnings)
+
+
 def test_review_accepts_clean_cohort_plus_behavior_join_sql() -> None:
     warnings = review_sql_against_intent_plan(
         sql_text=(

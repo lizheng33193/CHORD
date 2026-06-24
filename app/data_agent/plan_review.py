@@ -20,11 +20,7 @@ _SOURCE_IN_RE = re.compile(
 _BEHAVIOR_TABLE_RE = re.compile(r"\bdwb_b1_data_burying_point\b", re.IGNORECASE)
 _JOIN_UID_RE = re.compile(r"\bjoin\b[\s\S]+?\bon\b[\s\S]*?\buid\b", re.IGNORECASE)
 _WHERE_UID_RE = re.compile(r"\bwhere\b[\s\S]*?\buid\b", re.IGNORECASE)
-_UID_PLACEHOLDER_RE = re.compile(r"<[^>]*(?:uid|user|target_users)[^>]*>", re.IGNORECASE)
-_CANONICAL_SELECT_RE = re.compile(
-    r"\b([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)\b|\b([A-Za-z_][A-Za-z0-9_]*)\b\s+as\s+([A-Za-z_][A-Za-z0-9_]*)\b",
-    re.IGNORECASE,
-)
+_UID_PLACEHOLDER_RE = re.compile(r"<\s*([A-Za-z0-9_{}-]+)\s*>", re.IGNORECASE)
 
 
 def review_sql_against_intent_plan(
@@ -129,7 +125,12 @@ def review_sql_against_intent_plan(
                 "dwb_b1_data_burying_point",
             )
 
-    if _UID_PLACEHOLDER_RE.search(sql) and "unresolved_uid_placeholder" in forbidden_patterns:
+    placeholder_match = _UID_PLACEHOLDER_RE.search(sql)
+    if (
+        placeholder_match
+        and any(token in placeholder_match.group(1).lower() for token in ("uid", "user", "target_users"))
+        and "unresolved_uid_placeholder" in forbidden_patterns
+    ):
         _append(
             "PLAN_FORBIDDEN_PATTERN",
             "medium",
