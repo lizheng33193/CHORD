@@ -14,8 +14,51 @@
       field_type: string
       description: 用户唯一标识
       business_meaning: profile writeback 必须返回 uid
+      join_hint: 作为 cohort 与行为写回的统一用户键
+    - source_key: field:dwd_w_apply.loan_count
+      field_name: loan_count
+      field_type: int
+      description: 成功放款次数
+      business_meaning: 判断首贷与复贷的重要字段
     - source_key: field:dwd_w_apply.max_overdue_days
       field_name: max_overdue_days
       field_type: int
       description: 历史最大逾期天数
       business_meaning: 判断从未逾期的重要字段
+    - source_key: field:dwd_w_apply.risk_level
+      field_name: risk_level
+      field_type: string
+      description: 风险分层标签
+      business_meaning: 判断高风险用户的重要字段
+    - source_key: field:dwd_w_apply.apply_time
+      field_name: apply_time
+      field_type: timestamp
+      description: 申请时间
+      business_meaning: 最近 7 天、注册同周等时间窗口过滤字段
+- source_key: table:dwb_b1_data_burying_point
+  table_name: dwb_b1_data_burying_point
+  domain: behavior
+  description: 墨西哥行为埋点明细表
+  purpose: 用于 behavior bucket writeback 的行为事件提取
+  grain: event_row
+  time_field: timestamp_
+  partition_field: dt
+  join_keys: ["uid"]
+  common_filters: ["source IN ('MEXI','MEXICASH')"]
+  fields:
+    - source_key: field:dwb_b1_data_burying_point.uid
+      field_name: uid
+      field_type: string
+      description: 行为埋点所属用户
+      business_meaning: behavior writeback 必须返回 uid
+      join_hint: 与 cohort 结果中的 uid 直接关联
+    - source_key: field:dwb_b1_data_burying_point.timestamp_
+      field_name: timestamp_
+      field_type: bigint
+      description: 行为事件时间戳
+      business_meaning: 用于按时间排序提取最近行为数据
+    - source_key: field:dwb_b1_data_burying_point.eventname
+      field_name: eventname
+      field_type: string
+      description: 事件名称
+      business_meaning: behavior writeback 的核心事件字段

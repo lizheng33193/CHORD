@@ -197,3 +197,49 @@ def test_seed_import_does_not_deprecate_manual_or_other_namespace_rows(auth_db, 
         db.refresh(common)
         assert manual.status == "active"
         assert common.status == "active"
+
+
+def test_seed_import_supports_error_case_seed_namespace(auth_db, monkeypatch) -> None:
+    seed_root = auth_db / "data_knowledge_seed"
+    _write_yaml(seed_root / "ph" / "catalog.yaml", "[]")
+    _write_yaml(seed_root / "ph" / "glossary.yaml", "[]")
+    _write_yaml(seed_root / "ph" / "sql_examples.yaml", "[]")
+    _write_yaml(
+        seed_root / "ph" / "error_cases.yaml",
+        """
+- source_key: case:ph-withdraw-uuid
+  status: open
+  natural_language_request: 修复菲律宾首贷从未逾期 SQL，避免使用 withdraw_uuid
+  run_type: cohort_query
+  error_type: invalid_field
+  error_message: Philippines tables do not expose withdraw_uuid.
+  failed_sql_hash: failed-ph-withdraw-uuid
+  failed_sql_text: "SELECT withdraw_uuid FROM ph_apply_orders"
+  fix_summary: Use uid instead of withdraw_uuid.
+  detected_tables: ["ph_apply_orders"]
+  detected_fields: ["withdraw_uuid", "uid"]
+""".strip(),
+    )
+
+    from app.auth.database import AuthSessionLocal
+    from app.auth.models import Project
+    from app.data_knowledge.models import DataSqlErrorCase
+    from app.data_knowledge.service import DataKnowledgeService
+    from sqlalchemy import select
+
+    monkeypatch.setattr("app.data_knowledge.service.DATA_KNOWLEDGE_SEED_DIR", seed_root)
+
+    with AuthSessionLocal() as db:
+        project = db.scalar(select(Project).where(Project.code == "maps_lz"))
+        assert project is not None
+        service = DataKnowledgeService(db)
+
+        result = service.import_seed_bundle(bundle="ph", project_id=project.id, actor_username="admin")
+        assert result["upserted"] == 1
+
+        row = db.scalar(
+            select(DataSqlErrorCase).where(DataSqlErrorCase.source_key == "case:ph-withdraw-uuid")
+        )
+        assert row is not None
+        assert row.status == "open"
+        assert row.source_namespace == "seed/ph/error_cases"

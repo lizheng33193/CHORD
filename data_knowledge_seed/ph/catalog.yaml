@@ -14,6 +14,11 @@
       field_type: string
       description: 用户唯一标识
       business_meaning: cohort 与 writeback 通用 uid
+    - source_key: field:ph_apply_orders.loan_count
+      field_name: loan_count
+      field_type: int
+      description: 成功放款次数
+      business_meaning: 判断首贷与复贷的重要字段
     - source_key: field:ph_apply_orders.history_overdue_count
       field_name: history_overdue_count
       field_type: int
