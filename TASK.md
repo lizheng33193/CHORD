@@ -607,6 +607,20 @@
 - [x] data_acquisition_agent V2 — 连接 StarRocks 执行审核后 SQL + 数据落到 data/ per-uid 文件 — Step 5 TDD 完成（2026-04-30，71 tests）
 - [x] v7 follow-up 已收敛 direct profile gating：Data Agent disabled/unavailable 时，仅对本次请求相关缺失 bucket 发出 `data_acquisition_unavailable`；可运行基础模块继续 partial profile，不再先生成 `repair_*` 再执行期失败（2026-05-29）
 - [x] NL Chat UX v4 验收补丁：补 `run_failed` 前端终态、stop feedback 闭环、`tool_completed.status=cancelled` 兼容、历史 trace pending 摘要文案修正（2026-05-30）
+- [x] M2A-RQ-FU7：Structured SQL Plan Contract（2026-06-24）
+  - 新增 `app/data_agent/sql_plan.py`，在 generation 前构建和校验内部 structured plan
+  - create/revise 在 planning invalid 时稳定返回 `422`
+  - `structured_sql_plan` / validation 写入 `retrieval_snapshot_json`
+  - prompt / plan_review / repair 改为 structured plan 优先，保留 legacy fallback
+  - 定向验证：`82 passed`
+  - 扩展回归：`103 passed`
+  - live rerun：`mx-high-risk-cohort=partial`，`mx-behavior-writeback=pass`，`mx-glossary-combo-writeback=ready_for_m2b`
+
+## 下一步建议
+
+- [ ] M2B Hybrid Retrieval
+  - 重点收敛 `mx-high-risk-cohort` 暴露的 grounding / canonical retrieval gap
+  - 保持 FU7 的 generation 前 structured plan gate 不变
 
 ## 阻塞项
 （空）
