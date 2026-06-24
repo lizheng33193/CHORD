@@ -14,9 +14,9 @@
   run_type: bucket_writeback
   output_bucket: behavior
   sql_hash: mx-example-behavior-writeback
-  sql_text: "SELECT uid, timestamp_, eventname FROM dwb_b1_data_burying_point WHERE source IN ('MEXI','MEXICASH') LIMIT 100"
-  tables_used: ["dwb_b1_data_burying_point"]
-  fields_used: ["uid", "timestamp_", "eventname"]
-  pattern_summary: behavior writeback 示例，强调 uid、行为事件字段与墨西哥 source 过滤
+  sql_text: "WITH target_users AS (SELECT DISTINCT uid FROM dwd_w_apply WHERE apply_time >= date_sub(current_date, 7) AND risk_level = 'high'), behavior_events AS (SELECT b.uid, b.timestamp_, b.eventname FROM dwb_b1_data_burying_point b JOIN target_users u ON b.uid = u.uid WHERE b.source IN ('MEXI','MEXICASH')) SELECT uid, timestamp_, eventname FROM behavior_events"
+  tables_used: ["dwd_w_apply", "dwb_b1_data_burying_point"]
+  fields_used: ["uid", "apply_time", "risk_level", "timestamp_", "eventname"]
+  pattern_summary: Behavior writeback SQL must always restrict rows by a target cohort or explicit uid list before reading behavior events. The behavior source table should be joined by uid, and the output for output_bucket=behavior should include uid plus behavior event fields such as timestamp_ and eventname. Do not scan the behavior table without a cohort/uid constraint and do not rely on LIMIT as the primary safety boundary.
   reviewer_username: seed
   execution_status: executed

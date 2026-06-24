@@ -17,6 +17,19 @@
 - retriever scoring 算法改造
 - 向量检索 / rerank
 
+## Seed Patch 1.1 Follow-up
+
+在 `Seed Patch 1` 结果复盘后，我们识别出一个非阻塞但重要的知识资产风险：
+
+- `example:behavior-writeback` 虽然补上了 behavior source table 与行为字段，但 active SQL pattern 仍是“直接扫 behavior 表 + LIMIT 100”
+- 这会向模型传递一个过宽的 few-shot 模式：把 `LIMIT` 当作控制边界，而不是先限定 target cohort / uid 集合
+
+`Seed Patch 1.1` 已对该风险做最小收口，且仍然只改 seed 与验证文档：
+
+- 保持 `example:behavior-writeback` 为 `active`
+- 把 SQL example 收紧为 `target_users -> JOIN behavior table by uid -> output behavior fields` 的 cohort-constrained pattern
+- 把 `pattern_summary` 收紧为显式安全约束，明确禁止无 cohort/uid 限制扫描 behavior 表，禁止把 `LIMIT` 当作主要安全边界
+
 ## Patch Contents
 
 本轮实际补齐了这些知识资产：
@@ -31,6 +44,7 @@
 8. `最近7天` glossary
 9. `behavior writeback` active example
 10. `ph` 国家差异 error case seed：`case:ph-withdraw-uuid`
+11. `behavior writeback` active example 已在 `Seed Patch 1.1` 中从 broad scan pattern 收紧为 cohort-constrained pattern
 
 ## Verification Method
 
@@ -101,6 +115,11 @@ After:
   - `eventname`
 - example 命中：
   - `example:behavior-writeback`
+- `Seed Patch 1.1` 后该 example 的 active pattern 已收紧为：
+  - 先定义 `target_users`
+  - behavior 表通过 `uid` join `target_users`
+  - 输出 `uid / timestamp_ / eventname`
+  - 不再保留“无 cohort 约束 + LIMIT 100”的 active SQL
 - 生成成功，Safety Gate `passed`
 
 Remaining gaps:
@@ -111,6 +130,7 @@ Remaining gaps:
 Conclusion:
 
 - knowledge coverage 已经补上
+- active example 的 broad scan 风险已作为知识资产问题收口
 - 当前阻塞点不再是 seed 缺失，而是 `model generation` 与 `safety gate` 的后续工程项
 
 ### 3. `ph-first-loan-never-overdue`
@@ -175,9 +195,10 @@ Conclusion:
 
 1. `ph loan_count` field gap 已关闭
 2. behavior source table / fields / example 已进入 writeback context
-3. `mx` 高风险与时间窗口知识已进入 context
-4. `ph` error case recall 不再依赖手工注入
-5. glossary-level `writeback_behavior` 误召回已压下，不再出现在高风险样例里
+3. behavior writeback active example 已收紧为 cohort-constrained pattern
+4. `mx` 高风险与时间窗口知识已进入 context
+5. `ph` error case recall 不再依赖手工注入
+6. glossary-level `writeback_behavior` 误召回已压下，不再出现在高风险样例里
 
 ## Remaining Gaps Kept Out of This Patch
 

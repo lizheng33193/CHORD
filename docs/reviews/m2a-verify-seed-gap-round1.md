@@ -131,3 +131,17 @@
 4. `mx` behavior writeback source table + join hint
 5. `ph` 的国家差异负例知识
 6. 至少 1 条可验证的 open error case 样本
+
+## Follow-up Note
+
+`Seed Patch 1` 完成后，又识别出一个更细粒度的知识资产风险：
+
+- `example:behavior-writeback` 虽然已经进入 active recall，但其最初 SQL pattern 过宽，容易把“直接扫 behavior 表 + LIMIT”传递给模型
+
+`Seed Patch 1.1` 已处理该问题：
+
+- 保持该 example 为 `active`
+- 将 active SQL pattern 收紧为 `target_users / cohort -> JOIN behavior table by uid -> output behavior fields`
+- 将 `pattern_summary` 收紧为显式安全约束，明确不能无 cohort/uid 限制扫描 behavior 表，也不能用 `LIMIT` 代替主要安全边界
+
+因此，这一项现在不再属于 seed gap，而属于已处理的 active example refinement。

@@ -160,6 +160,11 @@ def test_prompt_context_assembler_includes_writeback_constraints(auth_db) -> Non
         assert assembled.section_counts["glossary_terms"] >= 1
         assert "dwb_b1_data_burying_point" in assembled.rendered_text
         assert any(item.source_key == "example:behavior-writeback" for item in context.sql_examples)
+        behavior_example = next(item for item in context.sql_examples if item.source_key == "example:behavior-writeback")
+        assert "target_users" in (behavior_example.sql_text or "")
+        assert "JOIN target_users" in (behavior_example.sql_text or "")
+        assert "target cohort" in assembled.rendered_text or "target_users" in assembled.rendered_text
+        assert "Do not scan the behavior table without a cohort/uid constraint" in assembled.rendered_text
 
 
 def test_retriever_surfaces_mx_high_risk_knowledge(auth_db) -> None:

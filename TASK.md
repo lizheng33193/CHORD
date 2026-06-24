@@ -59,6 +59,10 @@
     - 已补第一批 catalog / glossary / example / error case seed
     - 已完成 patch 后 5 条样例的再次验证
     - 下一步应把剩余问题拆到 runtime quality follow-up，而不是继续混入 seed patch
+  - Seed Patch 1.1 当前状态：
+    - 已收紧 `example:behavior-writeback` active pattern
+    - active example 现明确要求先限定 target cohort / uid，再 join behavior source table
+    - 已把“直接扫 behavior 表 + LIMIT”从 active knowledge pattern 中移除
 - [x] M2A：Data Agent Knowledge RAG — 首版实现完成并完成本地定向验证（2026-06-23）
   - design / plan：
     - `docs/specs/m2a-data-agent-knowledge-rag-design.md`
