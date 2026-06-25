@@ -4,8 +4,8 @@ seed_namespaces:
 - mx
 - ph
 - common
-- m2b_legacy_v2
-seed_patch: data_knowledge_seed/m2b/m2b_legacy_v2.yaml
+- m2b_legacy_v3
+seed_patch: data_knowledge_seed/m2b/m2b_legacy_v3.yaml
 cases:
 - case_id: mx-high-risk-cohort
   matched_expected:
@@ -20,8 +20,8 @@ cases:
   unexpected: []
   coverage_judgment: pass
   notes:
-  - not_runtime_imported_in_m2b_2_1:cohort.mx.high_risk_recent_7d
-  - not_runtime_imported_in_m2b_2_1:canonical.mx.apply_business_time
+  - not_runtime_imported_in_m2b_2_2:cohort.mx.high_risk_recent_7d
+  - not_runtime_imported_in_m2b_2_2:canonical.mx.apply_business_time
 - case_id: mx-recent-7d-risk-users
   matched_expected:
   - table:hive.dwd.dwd_w_apply
@@ -38,36 +38,36 @@ cases:
   matched_expected:
   - table:hive.dwd.dwd_w_apply
   - field:user_uuid
+  - field:withdraw_uuid
   - field:apply_time
   - field:overdue_days
   - glossary:first_loan
   - glossary:never_overdue
-  missing_expected:
-  - field:withdraw_uuid
+  missing_expected: []
   unexpected: []
-  coverage_judgment: partial
+  coverage_judgment: pass
   notes:
-  - not_runtime_imported_in_m2b_2_1:cohort.mx.first_loan_never_overdue
+  - not_runtime_imported_in_m2b_2_2:cohort.mx.first_loan_never_overdue
 - case_id: mx-mob1-settled-7d-churn
   matched_expected:
   - table:hive.dwd.dwd_w_apply
   - field:user_uuid
-  - field:apply_create_at
-  - glossary:first_loan
-  - example:mob1_churn_pattern
-  missing_expected:
   - field:withdraw_uuid
+  - field:apply_create_at
   - field:asset_finish_at
   - field:asset_grant_at
   - glossary:mob1
   - glossary:fully_settled
   - glossary:seven_day_no_reborrow_churn
+  - example:mob1_churn_pattern
+  missing_expected:
+  - glossary:first_loan
   unexpected: []
   coverage_judgment: partial
   notes:
-  - not_runtime_imported_in_m2b_2_1:rule.common.full_settlement
-  - not_runtime_imported_in_m2b_2_1:rule.common.seven_day_no_reborrow
-  - not_runtime_imported_in_m2b_2_1:cohort.mx.mob1_settled_7d_churn
+  - not_runtime_imported_in_m2b_2_2:rule.common.full_settlement
+  - not_runtime_imported_in_m2b_2_2:rule.common.seven_day_no_reborrow
+  - not_runtime_imported_in_m2b_2_2:cohort.mx.mob1_settled_7d_churn
 - case_id: mx-behavior-writeback
   matched_expected:
   - table:hive.dwb.dwb_b1_data_burying_point
@@ -101,23 +101,23 @@ cases:
   notes: []
 - case_id: mx-no-apply-cohort
   matched_expected:
+  - table:hive.dwd.dwd_w_user
   - table:hive.dwd.dwd_w_apply
   - field:user_uuid
   - field:apply_time
-  - glossary:recent_30d
-  missing_expected:
-  - table:hive.dwd.dwd_w_user
   - glossary:no_apply
+  - glossary:recent_30d
+  missing_expected: []
   unexpected: []
-  coverage_judgment: partial
+  coverage_judgment: pass
   notes: []
 - case_id: mx-no-withdraw-cohort
   matched_expected:
   - table:hive.dwd.dwd_w_apply
   - field:user_uuid
+  - field:withdraw_uuid
   - field:apply_time
   missing_expected:
-  - field:withdraw_uuid
   - glossary:no_withdraw
   unexpected: []
   coverage_judgment: partial
@@ -126,13 +126,13 @@ cases:
   matched_expected:
   - table:hive.dwd.dwd_w_apply
   - field:user_uuid
-  - glossary:recent_7d
-  missing_expected:
   - field:withdraw_uuid
   - field:asset_grant_at
   - glossary:successful_withdraw
+  - glossary:recent_7d
+  missing_expected: []
   unexpected: []
-  coverage_judgment: partial
+  coverage_judgment: pass
   notes: []
 - case_id: mx-app-profile-query
   matched_expected:
@@ -205,11 +205,11 @@ cases:
   - table:hive.dwt.dwt_rsk_ask_loan_info_base_d
   - field:ask_loan_uuid
   - field:user_uuid
-  - glossary:ask_loan_risk
-  missing_expected:
   - field:apply_create_at
+  - glossary:ask_loan_risk
+  missing_expected: []
   unexpected: []
-  coverage_judgment: partial
+  coverage_judgment: pass
   notes: []
 - case_id: th-third-party-risk-query
   matched_expected:
@@ -231,10 +231,10 @@ cases:
   - field:last_finish_time
   - field:cur_loan_cnt
   - glossary:mob1
-  missing_expected:
   - glossary:settled_over_3m
+  missing_expected: []
   unexpected: []
-  coverage_judgment: partial
+  coverage_judgment: pass
   notes: []
 - case_id: dws-fox-boc-behavior-query
   matched_expected:
@@ -243,9 +243,9 @@ cases:
   - field:behavior_type
   - field:behavior_time
   - field:behavior_status_name
-  missing_expected:
   - glossary:collection_behavior
   - glossary:contact_outcome
+  missing_expected: []
   unexpected: []
-  coverage_judgment: partial
+  coverage_judgment: pass
   notes: []

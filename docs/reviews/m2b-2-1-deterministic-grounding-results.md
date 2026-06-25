@@ -7,8 +7,8 @@ This is a diagnostic baseline for deterministic Data Knowledge retrieval only.
 - run_mode: `deterministic`
 - retriever: `DataKnowledgeRetriever`
 - seed_patch: `data_knowledge_seed/m2b/m2b_legacy_v2.yaml`
-- pass: `3`
-- partial: `16`
+- pass: `5`
+- partial: `14`
 - fail: `0`
 
 ## Interpretation
@@ -22,13 +22,13 @@ This is a diagnostic baseline for deterministic Data Knowledge retrieval only.
 
 - `field:withdraw_uuid` missing in `4` cases
 - `field:user_uuid` missing in `3` cases
-- `field:overdue_days` missing in `2` cases
 - `field:asset_grant_at` missing in `2` cases
-- `example:behavior_writeback_pattern` missing in `2` cases
 - `field:asset_finish_at` missing in `1` cases
 - `glossary:mob1` missing in `1` cases
 - `glossary:fully_settled` missing in `1` cases
 - `glossary:seven_day_no_reborrow_churn` missing in `1` cases
-- `example:mob1_churn_pattern` missing in `1` cases
 - `table:hive.dwd.dwd_w_user` missing in `1` cases
 - `glossary:no_apply` missing in `1` cases
+- `glossary:no_withdraw` missing in `1` cases
+- `glossary:successful_withdraw` missing in `1` cases
+- `field:category_name` missing in `1` cases

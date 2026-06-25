@@ -133,6 +133,64 @@ def test_v2_seed_patch_enriches_grounding_text_without_changing_runtime_scope() 
     assert withdraw_uuid["metadata"]["table_name_full"] == "hive.dwd.dwd_w_apply"
 
 
+def test_v3_seed_patch_targets_withdraw_overdue_asset_and_mob1_grounding() -> None:
+    from scripts.promote_m2b_extracted_assets import (
+        build_promotion_manifest,
+        build_seed_patch_payload,
+        load_candidate_assets,
+        validate_seed_patch_payload,
+    )
+
+    assets = load_candidate_assets(EXTRACTED_ASSETS_DIR)
+    manifest = build_promotion_manifest(assets, source_namespace="m2b_legacy_v3")
+    seed_payload = build_seed_patch_payload(
+        assets=assets,
+        manifest=manifest,
+        source_namespace="m2b_legacy_v3",
+        generated_from_manifest="data_knowledge_eval/m2b/seed_promotion_manifest.v3.yaml",
+    )
+    validate_seed_patch_payload(seed_payload)
+
+    assert seed_payload["source_namespace"] == "m2b_legacy_v3"
+    assert seed_payload["generated_from_manifest"] == "data_knowledge_eval/m2b/seed_promotion_manifest.v3.yaml"
+
+    glossary_by_key = {item["source_key"]: item for item in seed_payload["glossary_terms"]}
+    field_by_key = {item["source_key"]: item for item in seed_payload["catalog_fields"]}
+
+    mob1 = glossary_by_key["glossary.common.mob1"]
+    assert "结清7天未复借" in mob1["synonyms"]
+    assert "withdraw_uuid" in mob1["mapped_fields"]
+    assert "no_reborrow_within_7d" in mob1["suggested_filters"]
+
+    successful_withdraw = glossary_by_key["glossary.mx.successful_withdraw"]
+    assert "withdraw order" in {item.lower() for item in successful_withdraw["synonyms"]}
+    assert "withdraw_uuid" in successful_withdraw["mapped_fields"]
+    assert "asset_grant_at" in successful_withdraw["mapped_fields"]
+
+    never_overdue = glossary_by_key["glossary.common.never_overdue"]
+    assert "never overdue" in {item.lower() for item in never_overdue["synonyms"]}
+    assert "asset_overdue_days" in never_overdue["mapped_fields"]
+    assert "real_overdue_days" in never_overdue["mapped_fields"]
+
+    credit_profile = glossary_by_key["glossary.mx.credit_profile"]
+    assert "征信相关申请字段" in credit_profile["synonyms"]
+    assert "apply_id" in credit_profile["mapped_fields"]
+    assert "apply_status" in credit_profile["mapped_fields"]
+
+    withdraw_uuid = field_by_key["field.mx.dwd_w_apply.withdraw_uuid"]
+    assert "提现订单" in (withdraw_uuid["business_meaning"] or "")
+    assert "loan order id" in (withdraw_uuid["business_meaning"] or "").lower()
+
+    asset_finish_at = field_by_key["field.mx.dwd_w_apply.asset_finish_at"]
+    assert "结清满7天" in (asset_finish_at["business_meaning"] or "")
+
+    uid = field_by_key["field.mx.dwb_b1_data_burying_point.uid"]
+    assert "behavior writeback" in (uid["business_meaning"] or "").lower()
+
+    apply_status = field_by_key["field.mx.dwb_r_apply.apply_status"]
+    assert "征信相关申请状态" in (apply_status["business_meaning"] or "")
+
+
 def test_import_seed_patch_is_idempotent_and_uses_m2b_namespace(auth_db) -> None:
     from app.auth.database import AuthSessionLocal
     from app.auth.models import Project

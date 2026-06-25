@@ -5,6 +5,30 @@
 - 整体架构：单体 FastAPI 后端，五层（API → 编排 → Skill 执行 → 数据访问 → 外部服务）
 - 入口文件：`app/main.py`
 
+## 2026-06-25 M2B-2.2 Targeted Deterministic Grounding Patch
+
+- `M2B-2.1` 已完成，当前进入 `M2B-2.2`：
+  - `docs/plans/m2b-2-2-targeted-deterministic-grounding-patch-plan.md`
+  - `docs/reviews/m2b-2-2-missing-grounding-analysis.md`
+  - `docs/reviews/m2b-2-2-targeted-grounding-results.md`
+  - `docs/reviews/m2b-2-2-v2-v3-baseline-comparison.md`
+- 本阶段只做最后一轮 deterministic grounding patch：
+  - 生成完整替代 patch `data_knowledge_seed/m2b/m2b_legacy_v3.yaml`
+  - 继续强化 `withdraw_uuid / user_uuid / overdue / asset_* / mob1` 的 runtime-visible seed 文本与映射
+  - 在同一版 runner 下复跑 `m2b_legacy_v2` 与 `m2b_legacy_v3`，保证 v2/v3 A/B 对比公平
+- 本阶段继续保持不变：
+  - 不做 embedding / vector index / hybrid retrieval
+  - 不改 `app/data_knowledge/retriever.py` scoring/top-k/filtering
+  - 不改 `app/data_agent/service.py` / `app/data_agent/sql_plan.py` / SQL HITL / orchestrator bridge
+  - `business_rule / cohort_definition / canonical_field_policy` 仍不进入 runtime seed family
+- 当前 `M2B-2.2` 结果：
+  - rerun v2 baseline：`5 pass / 14 partial / 0 fail`
+  - v3 baseline：`11 pass / 8 partial / 0 fail`
+  - `mx-first-loan-never-overdue`、`mx-withdraw-cohort`、`mx-no-apply-cohort`、`dws-renewal-loan-segment-query`、`dws-fox-boc-behavior-query`、`th-ask-loan-risk-query` 均从 `partial -> pass`
+  - `mx-mob1-settled-7d-churn` 从 6 个 missing 缩减到仅剩 `glossary:first_loan`
+  - `mx-credit-profile-query` 在 v3 中保持 `pass`，不存在 v2/v3 regression
+  - 当前结论是：可以进入 `M2B-3 Embedding Text Builder`
+
 ## 2026-06-25 M2B-2.1 Seed / Alias / Deterministic Grounding Patch
 
 - `M2B-2` 已完成并产出 `m2b_legacy_v1` deterministic baseline，当前进入 `M2B-2.1`：
