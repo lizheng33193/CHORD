@@ -1,0 +1,279 @@
+schema_version: m2b_vector_coverage_v1
+run_mode: vector_prototype
+source_namespace: m2b_legacy_v3
+vector_index: data_knowledge_eval/m2b/vector_index.m2b_legacy_v3.json
+cases:
+- case_id: mx-high-risk-cohort
+  matched_expected:
+  - field:user_uuid
+  - field:apply_time
+  - field:dt
+  - glossary:high_risk
+  missing_expected:
+  - table:hive.dwd.dwd_w_apply
+  - field:risk_level
+  - glossary:recent_7d
+  unexpected: []
+  coverage_judgment: partial
+  notes:
+  - fake/local vector prototype only
+  - comparison normalization only; no synthetic retrieved assets added
+- case_id: mx-recent-7d-risk-users
+  matched_expected:
+  - field:apply_time
+  - glossary:high_risk
+  missing_expected:
+  - table:hive.dwd.dwd_w_apply
+  - field:user_uuid
+  - field:risk_level
+  - glossary:recent_7d
+  unexpected: []
+  coverage_judgment: partial
+  notes:
+  - fake/local vector prototype only
+  - comparison normalization only; no synthetic retrieved assets added
+- case_id: mx-first-loan-never-overdue
+  matched_expected:
+  - field:user_uuid
+  - field:withdraw_uuid
+  - field:overdue_days
+  - glossary:first_loan
+  - glossary:never_overdue
+  missing_expected:
+  - table:hive.dwd.dwd_w_apply
+  - field:apply_time
+  unexpected: []
+  coverage_judgment: partial
+  notes:
+  - fake/local vector prototype only
+  - comparison normalization only; no synthetic retrieved assets added
+- case_id: mx-mob1-settled-7d-churn
+  matched_expected:
+  - field:user_uuid
+  - field:asset_finish_at
+  - glossary:mob1
+  - glossary:seven_day_no_reborrow_churn
+  - example:mob1_churn_pattern
+  missing_expected:
+  - table:hive.dwd.dwd_w_apply
+  - field:withdraw_uuid
+  - field:apply_create_at
+  - field:asset_grant_at
+  - glossary:first_loan
+  - glossary:fully_settled
+  unexpected: []
+  coverage_judgment: partial
+  notes:
+  - fake/local vector prototype only
+  - comparison normalization only; no synthetic retrieved assets added
+- case_id: mx-behavior-writeback
+  matched_expected:
+  - table:hive.dwb.dwb_b1_data_burying_point
+  - field:uid
+  - field:timestamp_
+  - field:eventname
+  - glossary:writeback_behavior
+  - example:behavior_writeback_pattern
+  missing_expected:
+  - glossary:uid_cohort_required
+  unexpected: []
+  coverage_judgment: partial
+  notes:
+  - fake/local vector prototype only
+  - comparison normalization only; no synthetic retrieved assets added
+- case_id: mx-glossary-combo-writeback
+  matched_expected:
+  - table:hive.dwb.dwb_b1_data_burying_point
+  - field:user_uuid
+  - field:apply_time
+  - field:uid
+  - glossary:high_risk
+  - glossary:writeback_behavior
+  - example:behavior_writeback_pattern
+  missing_expected:
+  - table:hive.dwd.dwd_w_apply
+  - field:risk_level
+  - field:timestamp_
+  - field:eventname
+  - glossary:recent_7d
+  unexpected: []
+  coverage_judgment: partial
+  notes:
+  - fake/local vector prototype only
+  - comparison normalization only; no synthetic retrieved assets added
+- case_id: mx-no-apply-cohort
+  matched_expected:
+  - table:hive.dwd.dwd_w_user
+  - field:user_uuid
+  - glossary:no_apply
+  - glossary:recent_30d
+  missing_expected:
+  - table:hive.dwd.dwd_w_apply
+  - field:apply_time
+  unexpected: []
+  coverage_judgment: partial
+  notes:
+  - fake/local vector prototype only
+  - comparison normalization only; no synthetic retrieved assets added
+- case_id: mx-no-withdraw-cohort
+  matched_expected:
+  - field:withdraw_uuid
+  - field:apply_time
+  - glossary:no_withdraw
+  missing_expected:
+  - table:hive.dwd.dwd_w_apply
+  - field:user_uuid
+  unexpected: []
+  coverage_judgment: partial
+  notes:
+  - fake/local vector prototype only
+  - comparison normalization only; no synthetic retrieved assets added
+- case_id: mx-withdraw-cohort
+  matched_expected:
+  - field:user_uuid
+  - glossary:successful_withdraw
+  missing_expected:
+  - table:hive.dwd.dwd_w_apply
+  - field:withdraw_uuid
+  - field:asset_grant_at
+  - glossary:recent_7d
+  unexpected: []
+  coverage_judgment: partial
+  notes:
+  - fake/local vector prototype only
+  - comparison normalization only; no synthetic retrieved assets added
+- case_id: mx-app-profile-query
+  matched_expected:
+  - table:hive.ods.ods_f_market_app_categories
+  - field:year_day
+  - glossary:app_profile
+  missing_expected:
+  - field:app_package
+  - field:category_name
+  unexpected: []
+  coverage_judgment: partial
+  notes:
+  - fake/local vector prototype only
+  - comparison normalization only; no synthetic retrieved assets added
+- case_id: mx-credit-profile-query
+  matched_expected:
+  - field:apply_id
+  - field:user_uuid
+  - field:apply_status
+  - glossary:credit_profile
+  missing_expected:
+  - table:hive.dwb.dwb_r_apply
+  unexpected: []
+  coverage_judgment: partial
+  notes:
+  - fake/local vector prototype only
+  - comparison normalization only; no synthetic retrieved assets added
+- case_id: ph-first-loan-never-overdue
+  matched_expected:
+  - glossary:first_loan
+  - glossary:never_overdue
+  missing_expected:
+  - table:ph_apply_orders
+  - field:user_uuid
+  - field:loan_count
+  - field:overdue_days
+  unexpected: []
+  coverage_judgment: partial
+  notes:
+  - fake/local vector prototype only
+  - comparison normalization only; no synthetic retrieved assets added
+- case_id: ph-withdraw-uuid-negative
+  matched_expected:
+  - glossary:never_overdue
+  missing_expected:
+  - table:ph_apply_orders
+  - field:loan_count
+  - field:user_uuid
+  unexpected: []
+  coverage_judgment: partial
+  notes:
+  - fake/local vector prototype only
+  - comparison normalization only; no synthetic retrieved assets added
+- case_id: th-asset-snapshot-query
+  matched_expected:
+  - table:hive.dwt.dwt_asset_info_base_snap
+  - field:asset_id
+  - field:user_uuid
+  - field:finish_time
+  - glossary:asset_snapshot
+  missing_expected: []
+  unexpected: []
+  coverage_judgment: pass
+  notes:
+  - fake/local vector prototype only
+  - comparison normalization only; no synthetic retrieved assets added
+- case_id: th-risk-apply-query
+  matched_expected:
+  - table:hive.dwt.dwt_rsk_apply_info_base_d
+  - field:apply_uuid
+  - glossary:risk_apply
+  missing_expected:
+  - field:ask_loan_uuid
+  - field:user_loan_label
+  unexpected: []
+  coverage_judgment: partial
+  notes:
+  - fake/local vector prototype only
+  - comparison normalization only; no synthetic retrieved assets added
+- case_id: th-ask-loan-risk-query
+  matched_expected:
+  - table:hive.dwt.dwt_rsk_ask_loan_info_base_d
+  - field:ask_loan_uuid
+  - glossary:ask_loan_risk
+  missing_expected:
+  - field:user_uuid
+  - field:apply_create_at
+  unexpected: []
+  coverage_judgment: partial
+  notes:
+  - fake/local vector prototype only
+  - comparison normalization only; no synthetic retrieved assets added
+- case_id: th-third-party-risk-query
+  matched_expected:
+  - glossary:third_party_risk
+  - glossary:credit_report
+  missing_expected:
+  - table:hive.third_party.thailand_sources
+  - field:supplier_name
+  - field:product_name
+  - field:parse_table_name
+  unexpected: []
+  coverage_judgment: partial
+  notes:
+  - fake/local vector prototype only
+  - comparison normalization only; no synthetic retrieved assets added
+- case_id: dws-renewal-loan-segment-query
+  matched_expected:
+  - table:dws.dws_user_renewal_loan_seg_d
+  - field:user_uuid
+  - field:mob_code
+  - field:last_finish_time
+  - field:cur_loan_cnt
+  - glossary:settled_over_3m
+  missing_expected:
+  - glossary:mob1
+  unexpected: []
+  coverage_judgment: partial
+  notes:
+  - fake/local vector prototype only
+  - comparison normalization only; no synthetic retrieved assets added
+- case_id: dws-fox-boc-behavior-query
+  matched_expected:
+  - table:dws.dws_fox_boc_behavior_log_d
+  - field:debtor_id
+  - field:behavior_type
+  - field:behavior_time
+  - field:behavior_status_name
+  - glossary:collection_behavior
+  - glossary:contact_outcome
+  missing_expected: []
+  unexpected: []
+  coverage_judgment: pass
+  notes:
+  - fake/local vector prototype only
+  - comparison normalization only; no synthetic retrieved assets added

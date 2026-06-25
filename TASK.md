@@ -35,6 +35,35 @@
 - [x] E1 单用户埋点深度解析 → docs/plans/trace-analyzer-plan.md（2026-05-01）
 
 ## 当前进行中的功能
+- [x] M2B-4：Vector Index Prototype — 已完成（2026-06-25）
+  - plan / reviews：
+    - `docs/plans/m2b-4-vector-index-prototype-plan.md`
+    - `docs/reviews/m2b-4-vector-index-prototype-results.md`
+    - `docs/reviews/m2b-4-deterministic-vs-vector-comparison.md`
+  - 本阶段产出：
+    - `data_knowledge_eval/m2b/vector_index.m2b_legacy_v3.json`
+    - `data_knowledge_eval/m2b/vector_index_manifest.m2b_legacy_v3.yaml`
+    - `data_knowledge_eval/m2b/vector_results.m2b_legacy_v3.json`
+    - `data_knowledge_eval/m2b/vector_coverage.m2b_legacy_v3.yaml`
+    - `scripts/build_m2b_vector_index.py`
+    - `scripts/run_m2b_vector_baseline.py`
+    - `tests/test_m2b_vector_index.py`
+    - `tests/test_m2b_vector_baseline.py`
+  - 本轮结果：
+    - `local_hashing_bow_v1` 已稳定构建 101 条 embedding records 的离线 sparse vector index
+    - vector baseline：`2 pass / 17 partial / 0 fail`
+    - `vector_only_matches` 已在 `mx-no-withdraw-cohort`、`mx-app-profile-query`、`th-asset-snapshot-query` 中出现
+    - `th-asset-snapshot-query` 在 vector-only baseline 中达到 `pass`
+    - comparison 已输出 deterministic-only / vector-only / shared matches 与 `hybrid_potential`
+  - 保持不变：
+    - 不调用真实 embedding API
+    - 不生成生产向量库
+    - 不改 runtime retriever / Data Agent runtime
+    - 不改 SQL HITL / approve / execute / orchestrator bridge
+    - 不修改 `m2b_legacy_v3` seed 或 `embedding_records`
+  - 下一步：
+    - 进入 `M2B-5 Hybrid Retrieval Fusion`
+
 - [x] M2B-3：Embedding Text Builder — 已完成（2026-06-25）
   - plan / results：
     - `docs/plans/m2b-3-embedding-text-builder-plan.md`
