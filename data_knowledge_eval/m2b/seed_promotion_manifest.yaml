@@ -1,0 +1,1742 @@
+schema_version: m2b_seed_promotion_manifest_v1
+source_namespace: m2b_legacy_v1
+assets:
+- asset_id: canonical.mx.apply_business_time
+  asset_type: canonical_field_policy
+  country: mx
+  domain: loan
+  confidence: medium
+  runtime_allowed: sanitized_only
+  promotion_decision: defer_needs_review
+  seed_import_decision: not_imported
+  source_namespace: m2b_legacy_v1
+  source_key: canonical.mx.apply_business_time
+  review_status: needs_human_review
+  source_files:
+  - scheme.md
+  - gem prompt.md
+- asset_id: canonical.mx.behavior_event_time
+  asset_type: canonical_field_policy
+  country: mx
+  domain: behavior
+  confidence: medium
+  runtime_allowed: sanitized_only
+  promotion_decision: defer_needs_review
+  seed_import_decision: not_imported
+  source_namespace: m2b_legacy_v1
+  source_key: canonical.mx.behavior_event_time
+  review_status: needs_human_review
+  source_files:
+  - few.md
+  - all_examples .md
+- asset_id: canonical.mx.credit_user_identifier
+  asset_type: canonical_field_policy
+  country: mx
+  domain: credit
+  confidence: medium
+  runtime_allowed: sanitized_only
+  promotion_decision: defer_needs_review
+  seed_import_decision: not_imported
+  source_namespace: m2b_legacy_v1
+  source_key: canonical.mx.credit_user_identifier
+  review_status: needs_human_review
+  source_files:
+  - 🚀 征信所需表格结构
+  - gem prompt.md
+- asset_id: canonical.th.ask_loan_vs_apply_time
+  asset_type: canonical_field_policy
+  country: th
+  domain: risk
+  confidence: medium
+  runtime_allowed: sanitized_only
+  promotion_decision: defer_needs_review
+  seed_import_decision: not_imported
+  source_namespace: m2b_legacy_v1
+  source_key: canonical.th.ask_loan_vs_apply_time
+  review_status: needs_human_review
+  source_files:
+  - (泰国风控域)dwt_rsk_ask_loan_info_base_d.md
+  - BI数仓_2. 风控域定义.md
+- asset_id: cohort.mx.behavior_writeback_target
+  asset_type: cohort_definition
+  country: mx
+  domain: behavior
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: manifest_only
+  source_namespace: m2b_legacy_v1
+  source_key: cohort.mx.behavior_writeback_target
+  review_status: null
+  source_files:
+  - few.md
+  - all_examples .md
+- asset_id: cohort.mx.first_loan_never_overdue
+  asset_type: cohort_definition
+  country: mx
+  domain: lifecycle
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: manifest_only
+  source_namespace: m2b_legacy_v1
+  source_key: cohort.mx.first_loan_never_overdue
+  review_status: null
+  source_files:
+  - 多国业务逻辑.md
+  - scheme.md
+- asset_id: cohort.mx.high_risk_recent_7d
+  asset_type: cohort_definition
+  country: mx
+  domain: risk
+  confidence: medium
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: manifest_only
+  source_namespace: m2b_legacy_v1
+  source_key: cohort.mx.high_risk_recent_7d
+  review_status: null
+  source_files:
+  - scheme.md
+  - few.md
+  - all_examples .md
+- asset_id: cohort.mx.mob1_settled_7d_churn
+  asset_type: cohort_definition
+  country: mx
+  domain: lifecycle
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: manifest_only
+  source_namespace: m2b_legacy_v1
+  source_key: cohort.mx.mob1_settled_7d_churn
+  review_status: null
+  source_files:
+  - 多国业务逻辑.md
+  - scheme.md
+- asset_id: cohort.mx.no_apply_recent_30d
+  asset_type: cohort_definition
+  country: mx
+  domain: lifecycle
+  confidence: medium
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: manifest_only
+  source_namespace: m2b_legacy_v1
+  source_key: cohort.mx.no_apply_recent_30d
+  review_status: null
+  source_files:
+  - few.md
+  - all_examples .md
+  - scheme.md
+- asset_id: cohort.mx.no_withdraw_after_apply
+  asset_type: cohort_definition
+  country: mx
+  domain: lifecycle
+  confidence: medium
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: manifest_only
+  source_namespace: m2b_legacy_v1
+  source_key: cohort.mx.no_withdraw_after_apply
+  review_status: null
+  source_files:
+  - few.md
+  - all_examples .md
+  - scheme.md
+- asset_id: error_case.common.cross_country_table_leak
+  asset_type: sql_error_case
+  country: common
+  domain: retrieval_grounding
+  confidence: high
+  runtime_allowed: eval_only
+  promotion_decision: eval_only
+  seed_import_decision: not_imported
+  source_namespace: m2b_legacy_v1
+  source_key: error_case.common.cross_country_table_leak
+  review_status: null
+  source_files:
+  - BI数仓_1. 资产域定义.md
+  - BI数仓_2. 风控域定义.md
+  - hive_泰国三方域.md
+- asset_id: error_case.common.fixed_historical_date_copy
+  asset_type: sql_error_case
+  country: common
+  domain: sql_generation
+  confidence: high
+  runtime_allowed: eval_only
+  promotion_decision: eval_only
+  seed_import_decision: not_imported
+  source_namespace: m2b_legacy_v1
+  source_key: error_case.common.fixed_historical_date_copy
+  review_status: null
+  source_files:
+  - few.md
+  - all_examples .md
+- asset_id: error_case.common.historical_source_filter_copy
+  asset_type: sql_error_case
+  country: common
+  domain: sql_generation
+  confidence: high
+  runtime_allowed: eval_only
+  promotion_decision: eval_only
+  seed_import_decision: not_imported
+  source_namespace: m2b_legacy_v1
+  source_key: error_case.common.historical_source_filter_copy
+  review_status: null
+  source_files:
+  - few.md
+  - all_examples .md
+- asset_id: error_case.common.missing_reborrow_anti_join
+  asset_type: sql_error_case
+  country: common
+  domain: lifecycle
+  confidence: high
+  runtime_allowed: eval_only
+  promotion_decision: eval_only
+  seed_import_decision: not_imported
+  source_namespace: m2b_legacy_v1
+  source_key: error_case.common.missing_reborrow_anti_join
+  review_status: null
+  source_files:
+  - 多国业务逻辑.md
+- asset_id: error_case.common.missing_settlement_7d_observation
+  asset_type: sql_error_case
+  country: common
+  domain: lifecycle
+  confidence: high
+  runtime_allowed: eval_only
+  promotion_decision: eval_only
+  seed_import_decision: not_imported
+  source_namespace: m2b_legacy_v1
+  source_key: error_case.common.missing_settlement_7d_observation
+  review_status: null
+  source_files:
+  - 多国业务逻辑.md
+- asset_id: error_case.common.temporary_table_name_copy
+  asset_type: sql_error_case
+  country: common
+  domain: sql_generation
+  confidence: high
+  runtime_allowed: eval_only
+  promotion_decision: eval_only
+  seed_import_decision: not_imported
+  source_namespace: m2b_legacy_v1
+  source_key: error_case.common.temporary_table_name_copy
+  review_status: null
+  source_files:
+  - few.md
+  - all_examples .md
+- asset_id: error_case.common.unresolved_uid_placeholder
+  asset_type: sql_error_case
+  country: common
+  domain: sql_generation
+  confidence: high
+  runtime_allowed: eval_only
+  promotion_decision: eval_only
+  seed_import_decision: not_imported
+  source_namespace: m2b_legacy_v1
+  source_key: error_case.common.unresolved_uid_placeholder
+  review_status: null
+  source_files:
+  - few.md
+  - all_examples .md
+- asset_id: error_case.mx.broad_behavior_scan
+  asset_type: sql_error_case
+  country: mx
+  domain: behavior
+  confidence: high
+  runtime_allowed: eval_only
+  promotion_decision: eval_only
+  seed_import_decision: not_imported
+  source_namespace: m2b_legacy_v1
+  source_key: error_case.mx.broad_behavior_scan
+  review_status: null
+  source_files:
+  - 多国业务逻辑.md
+  - few.md
+  - all_examples .md
+- asset_id: error_case.ph.withdraw_uuid_negative_mismatch
+  asset_type: sql_error_case
+  country: ph
+  domain: lifecycle
+  confidence: medium
+  runtime_allowed: eval_only
+  promotion_decision: eval_only
+  seed_import_decision: not_imported
+  source_namespace: m2b_legacy_v1
+  source_key: error_case.ph.withdraw_uuid_negative_mismatch
+  review_status: null
+  source_files:
+  - all_examples .md
+- asset_id: field.multi.dws_fox_boc_behavior_log_d.behavior_status_name
+  asset_type: catalog_field
+  country: multi
+  domain: behavior
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.multi.dws_fox_boc_behavior_log_d.behavior_status_name
+  review_status: null
+  source_files:
+  - 2.dws.dws_fox_boc_behavior_log_d介绍.md
+  - schema_dws_dws_fox_boc_behavior_log_d.csv
+- asset_id: field.multi.dws_fox_boc_behavior_log_d.behavior_time
+  asset_type: catalog_field
+  country: multi
+  domain: behavior
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.multi.dws_fox_boc_behavior_log_d.behavior_time
+  review_status: null
+  source_files:
+  - 2.dws.dws_fox_boc_behavior_log_d介绍.md
+  - schema_dws_dws_fox_boc_behavior_log_d.csv
+- asset_id: field.multi.dws_fox_boc_behavior_log_d.behavior_type
+  asset_type: catalog_field
+  country: multi
+  domain: behavior
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.multi.dws_fox_boc_behavior_log_d.behavior_type
+  review_status: null
+  source_files:
+  - 2.dws.dws_fox_boc_behavior_log_d介绍.md
+  - schema_dws_dws_fox_boc_behavior_log_d.csv
+- asset_id: field.multi.dws_fox_boc_behavior_log_d.contact_type
+  asset_type: catalog_field
+  country: multi
+  domain: behavior
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.multi.dws_fox_boc_behavior_log_d.contact_type
+  review_status: null
+  source_files:
+  - 2.dws.dws_fox_boc_behavior_log_d介绍.md
+  - schema_dws_dws_fox_boc_behavior_log_d.csv
+- asset_id: field.multi.dws_fox_boc_behavior_log_d.debtor_id
+  asset_type: catalog_field
+  country: multi
+  domain: behavior
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.multi.dws_fox_boc_behavior_log_d.debtor_id
+  review_status: null
+  source_files:
+  - 2.dws.dws_fox_boc_behavior_log_d介绍.md
+  - schema_dws_dws_fox_boc_behavior_log_d.csv
+- asset_id: field.multi.dws_fox_boc_behavior_log_d.source_table
+  asset_type: catalog_field
+  country: multi
+  domain: behavior
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.multi.dws_fox_boc_behavior_log_d.source_table
+  review_status: null
+  source_files:
+  - 2.dws.dws_fox_boc_behavior_log_d介绍.md
+  - schema_dws_dws_fox_boc_behavior_log_d.csv
+- asset_id: field.multi.dws_user_renewal_loan_seg_d.cur_loan_cnt
+  asset_type: catalog_field
+  country: multi
+  domain: lifecycle
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.multi.dws_user_renewal_loan_seg_d.cur_loan_cnt
+  review_status: null
+  source_files:
+  - 1.dws.dws_user_renewal_loan_seg_d 介绍.md
+  - schema_dws_dws_user_renewal_loan_seg_d.csv
+- asset_id: field.multi.dws_user_renewal_loan_seg_d.dt
+  asset_type: catalog_field
+  country: multi
+  domain: lifecycle
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.multi.dws_user_renewal_loan_seg_d.dt
+  review_status: null
+  source_files:
+  - 1.dws.dws_user_renewal_loan_seg_d 介绍.md
+  - schema_dws_dws_user_renewal_loan_seg_d.csv
+- asset_id: field.multi.dws_user_renewal_loan_seg_d.first_grant_time
+  asset_type: catalog_field
+  country: multi
+  domain: lifecycle
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.multi.dws_user_renewal_loan_seg_d.first_grant_time
+  review_status: null
+  source_files:
+  - 1.dws.dws_user_renewal_loan_seg_d 介绍.md
+  - schema_dws_dws_user_renewal_loan_seg_d.csv
+- asset_id: field.multi.dws_user_renewal_loan_seg_d.last_finish_time
+  asset_type: catalog_field
+  country: multi
+  domain: lifecycle
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.multi.dws_user_renewal_loan_seg_d.last_finish_time
+  review_status: null
+  source_files:
+  - 1.dws.dws_user_renewal_loan_seg_d 介绍.md
+  - schema_dws_dws_user_renewal_loan_seg_d.csv
+- asset_id: field.multi.dws_user_renewal_loan_seg_d.mob_code
+  asset_type: catalog_field
+  country: multi
+  domain: lifecycle
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.multi.dws_user_renewal_loan_seg_d.mob_code
+  review_status: null
+  source_files:
+  - 1.dws.dws_user_renewal_loan_seg_d 介绍.md
+  - schema_dws_dws_user_renewal_loan_seg_d.csv
+- asset_id: field.multi.dws_user_renewal_loan_seg_d.user_uuid
+  asset_type: catalog_field
+  country: multi
+  domain: lifecycle
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.multi.dws_user_renewal_loan_seg_d.user_uuid
+  review_status: null
+  source_files:
+  - 1.dws.dws_user_renewal_loan_seg_d 介绍.md
+  - schema_dws_dws_user_renewal_loan_seg_d.csv
+- asset_id: field.mx.dwb_b1_data_burying_point.dt
+  asset_type: catalog_field
+  country: mx
+  domain: behavior
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.mx.dwb_b1_data_burying_point.dt
+  review_status: null
+  source_files:
+  - few.md
+  - all_examples .md
+- asset_id: field.mx.dwb_b1_data_burying_point.eventname
+  asset_type: catalog_field
+  country: mx
+  domain: behavior
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.mx.dwb_b1_data_burying_point.eventname
+  review_status: null
+  source_files:
+  - few.md
+  - all_examples .md
+- asset_id: field.mx.dwb_b1_data_burying_point.extend
+  asset_type: catalog_field
+  country: mx
+  domain: behavior
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.mx.dwb_b1_data_burying_point.extend
+  review_status: null
+  source_files:
+  - few.md
+- asset_id: field.mx.dwb_b1_data_burying_point.servertimestamp
+  asset_type: catalog_field
+  country: mx
+  domain: behavior
+  confidence: medium
+  runtime_allowed: sanitized_only
+  promotion_decision: defer_needs_review
+  seed_import_decision: not_imported
+  source_namespace: m2b_legacy_v1
+  source_key: field.mx.dwb_b1_data_burying_point.servertimestamp
+  review_status: null
+  source_files:
+  - few.md
+  - all_examples .md
+- asset_id: field.mx.dwb_b1_data_burying_point.timestamp_
+  asset_type: catalog_field
+  country: mx
+  domain: behavior
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.mx.dwb_b1_data_burying_point.timestamp_
+  review_status: null
+  source_files:
+  - few.md
+  - all_examples .md
+- asset_id: field.mx.dwb_b1_data_burying_point.uid
+  asset_type: catalog_field
+  country: mx
+  domain: behavior
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.mx.dwb_b1_data_burying_point.uid
+  review_status: null
+  source_files:
+  - few.md
+  - all_examples .md
+- asset_id: field.mx.dwb_r_apply.apply_created_at
+  asset_type: catalog_field
+  country: mx
+  domain: credit
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.mx.dwb_r_apply.apply_created_at
+  review_status: null
+  source_files:
+  - 🚀 征信所需表格结构
+- asset_id: field.mx.dwb_r_apply.apply_id
+  asset_type: catalog_field
+  country: mx
+  domain: credit
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.mx.dwb_r_apply.apply_id
+  review_status: null
+  source_files:
+  - 🚀 征信所需表格结构
+- asset_id: field.mx.dwb_r_apply.apply_status
+  asset_type: catalog_field
+  country: mx
+  domain: credit
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.mx.dwb_r_apply.apply_status
+  review_status: null
+  source_files:
+  - 🚀 征信所需表格结构
+- asset_id: field.mx.dwb_r_apply.apply_user_uuid
+  asset_type: catalog_field
+  country: mx
+  domain: credit
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.mx.dwb_r_apply.apply_user_uuid
+  review_status: null
+  source_files:
+  - 🚀 征信所需表格结构
+- asset_id: field.mx.dwb_r_apply.apply_uuid
+  asset_type: catalog_field
+  country: mx
+  domain: credit
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.mx.dwb_r_apply.apply_uuid
+  review_status: null
+  source_files:
+  - 🚀 征信所需表格结构
+- asset_id: field.mx.dwd_w_apply.apply_create_at
+  asset_type: catalog_field
+  country: mx
+  domain: loan
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.mx.dwd_w_apply.apply_create_at
+  review_status: null
+  source_files:
+  - scheme.md
+  - 多国业务逻辑.md
+- asset_id: field.mx.dwd_w_apply.apply_status
+  asset_type: catalog_field
+  country: mx
+  domain: loan
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.mx.dwd_w_apply.apply_status
+  review_status: null
+  source_files:
+  - scheme.md
+  - 🚀 征信所需表格结构
+- asset_id: field.mx.dwd_w_apply.apply_uuid
+  asset_type: catalog_field
+  country: mx
+  domain: loan
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.mx.dwd_w_apply.apply_uuid
+  review_status: null
+  source_files:
+  - scheme.md
+- asset_id: field.mx.dwd_w_apply.ask_loan_uuid
+  asset_type: catalog_field
+  country: mx
+  domain: loan
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.mx.dwd_w_apply.ask_loan_uuid
+  review_status: null
+  source_files:
+  - scheme.md
+- asset_id: field.mx.dwd_w_apply.asset_finish_at
+  asset_type: catalog_field
+  country: mx
+  domain: loan
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.mx.dwd_w_apply.asset_finish_at
+  review_status: null
+  source_files:
+  - scheme.md
+  - 多国业务逻辑.md
+- asset_id: field.mx.dwd_w_apply.asset_grant_at
+  asset_type: catalog_field
+  country: mx
+  domain: loan
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.mx.dwd_w_apply.asset_grant_at
+  review_status: null
+  source_files:
+  - scheme.md
+  - 多国业务逻辑.md
+- asset_id: field.mx.dwd_w_apply.asset_overdue_days
+  asset_type: catalog_field
+  country: mx
+  domain: loan
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.mx.dwd_w_apply.asset_overdue_days
+  review_status: null
+  source_files:
+  - scheme.md
+- asset_id: field.mx.dwd_w_apply.customer_type
+  asset_type: catalog_field
+  country: mx
+  domain: loan
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.mx.dwd_w_apply.customer_type
+  review_status: null
+  source_files:
+  - scheme.md
+  - 多国业务逻辑.md
+- asset_id: field.mx.dwd_w_apply.dt
+  asset_type: catalog_field
+  country: mx
+  domain: loan
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.mx.dwd_w_apply.dt
+  review_status: null
+  source_files:
+  - scheme.md
+- asset_id: field.mx.dwd_w_apply.real_overdue_days
+  asset_type: catalog_field
+  country: mx
+  domain: loan
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.mx.dwd_w_apply.real_overdue_days
+  review_status: null
+  source_files:
+  - scheme.md
+- asset_id: field.mx.dwd_w_apply.user_uuid
+  asset_type: catalog_field
+  country: mx
+  domain: loan
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.mx.dwd_w_apply.user_uuid
+  review_status: null
+  source_files:
+  - scheme.md
+- asset_id: field.mx.dwd_w_apply.withdraw_uuid
+  asset_type: catalog_field
+  country: mx
+  domain: loan
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.mx.dwd_w_apply.withdraw_uuid
+  review_status: null
+  source_files:
+  - scheme.md
+  - 多国业务逻辑.md
+- asset_id: field.mx.dwd_w_user.apply_source
+  asset_type: catalog_field
+  country: mx
+  domain: user
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.mx.dwd_w_user.apply_source
+  review_status: null
+  source_files:
+  - scheme.md
+- asset_id: field.mx.dwd_w_user.dt
+  asset_type: catalog_field
+  country: mx
+  domain: user
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.mx.dwd_w_user.dt
+  review_status: null
+  source_files:
+  - scheme.md
+- asset_id: field.mx.dwd_w_user.individual_uuid
+  asset_type: catalog_field
+  country: mx
+  domain: user
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.mx.dwd_w_user.individual_uuid
+  review_status: null
+  source_files:
+  - scheme.md
+- asset_id: field.mx.dwd_w_user.user_create_time
+  asset_type: catalog_field
+  country: mx
+  domain: user
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.mx.dwd_w_user.user_create_time
+  review_status: null
+  source_files:
+  - scheme.md
+- asset_id: field.mx.dwd_w_user.user_source
+  asset_type: catalog_field
+  country: mx
+  domain: user
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.mx.dwd_w_user.user_source
+  review_status: null
+  source_files:
+  - scheme.md
+- asset_id: field.mx.dwd_w_user.user_uuid
+  asset_type: catalog_field
+  country: mx
+  domain: user
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.mx.dwd_w_user.user_uuid
+  review_status: null
+  source_files:
+  - scheme.md
+- asset_id: field.mx.ods_f_market_app_categories.ai_category_level_1
+  asset_type: catalog_field
+  country: mx
+  domain: app_profile
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.mx.ods_f_market_app_categories.ai_category_level_1
+  review_status: null
+  source_files:
+  - 🚀 正在提取表上下文 app所需表结构.ods_f_market_app_categories
+- asset_id: field.mx.ods_f_market_app_categories.ai_category_level_1_cn
+  asset_type: catalog_field
+  country: mx
+  domain: app_profile
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.mx.ods_f_market_app_categories.ai_category_level_1_cn
+  review_status: null
+  source_files:
+  - 🚀 正在提取表上下文 app所需表结构.ods_f_market_app_categories
+- asset_id: field.mx.ods_f_market_app_categories.app_name
+  asset_type: catalog_field
+  country: mx
+  domain: app_profile
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.mx.ods_f_market_app_categories.app_name
+  review_status: null
+  source_files:
+  - 🚀 正在提取表上下文 app所需表结构.ods_f_market_app_categories
+- asset_id: field.mx.ods_f_market_app_categories.app_package
+  asset_type: catalog_field
+  country: mx
+  domain: app_profile
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.mx.ods_f_market_app_categories.app_package
+  review_status: null
+  source_files:
+  - 🚀 正在提取表上下文 app所需表结构.ods_f_market_app_categories
+- asset_id: field.mx.ods_f_market_app_categories.gp_category
+  asset_type: catalog_field
+  country: mx
+  domain: app_profile
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.mx.ods_f_market_app_categories.gp_category
+  review_status: null
+  source_files:
+  - 🚀 正在提取表上下文 app所需表结构.ods_f_market_app_categories
+- asset_id: field.mx.ods_f_market_app_categories.year_day
+  asset_type: catalog_field
+  country: mx
+  domain: app_profile
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.mx.ods_f_market_app_categories.year_day
+  review_status: null
+  source_files:
+  - 🚀 正在提取表上下文 app所需表结构.ods_f_market_app_categories
+- asset_id: field.th.dwt_asset_info_base_snap.apply_uuid
+  asset_type: catalog_field
+  country: th
+  domain: asset
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.th.dwt_asset_info_base_snap.apply_uuid
+  review_status: null
+  source_files:
+  - (泰国)dwt_asset_info_base_snap.md
+- asset_id: field.th.dwt_asset_info_base_snap.asset_id
+  asset_type: catalog_field
+  country: th
+  domain: asset
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.th.dwt_asset_info_base_snap.asset_id
+  review_status: null
+  source_files:
+  - (泰国)dwt_asset_info_base_snap.md
+- asset_id: field.th.dwt_asset_info_base_snap.finish_time
+  asset_type: catalog_field
+  country: th
+  domain: asset
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.th.dwt_asset_info_base_snap.finish_time
+  review_status: null
+  source_files:
+  - (泰国)dwt_asset_info_base_snap.md
+- asset_id: field.th.dwt_asset_info_base_snap.user_uuid
+  asset_type: catalog_field
+  country: th
+  domain: asset
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.th.dwt_asset_info_base_snap.user_uuid
+  review_status: null
+  source_files:
+  - (泰国)dwt_asset_info_base_snap.md
+- asset_id: field.th.dwt_rsk_apply_info_base_d.apply_create_at
+  asset_type: catalog_field
+  country: th
+  domain: risk
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.th.dwt_rsk_apply_info_base_d.apply_create_at
+  review_status: null
+  source_files:
+  - (泰国风控域)dwt_rsk_apply_info_base_d.md
+- asset_id: field.th.dwt_rsk_apply_info_base_d.apply_uuid
+  asset_type: catalog_field
+  country: th
+  domain: risk
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.th.dwt_rsk_apply_info_base_d.apply_uuid
+  review_status: null
+  source_files:
+  - (泰国风控域)dwt_rsk_apply_info_base_d.md
+- asset_id: field.th.dwt_rsk_apply_info_base_d.ask_loan_uuid
+  asset_type: catalog_field
+  country: th
+  domain: risk
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.th.dwt_rsk_apply_info_base_d.ask_loan_uuid
+  review_status: null
+  source_files:
+  - (泰国风控域)dwt_rsk_apply_info_base_d.md
+- asset_id: field.th.dwt_rsk_apply_info_base_d.user_loan_label
+  asset_type: catalog_field
+  country: th
+  domain: risk
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.th.dwt_rsk_apply_info_base_d.user_loan_label
+  review_status: null
+  source_files:
+  - (泰国风控域)dwt_rsk_apply_info_base_d.md
+- asset_id: field.th.dwt_rsk_apply_info_base_d.user_uuid
+  asset_type: catalog_field
+  country: th
+  domain: risk
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.th.dwt_rsk_apply_info_base_d.user_uuid
+  review_status: null
+  source_files:
+  - (泰国风控域)dwt_rsk_apply_info_base_d.md
+- asset_id: field.th.dwt_rsk_ask_loan_info_base_d.apply_uuid
+  asset_type: catalog_field
+  country: th
+  domain: risk
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.th.dwt_rsk_ask_loan_info_base_d.apply_uuid
+  review_status: null
+  source_files:
+  - (泰国风控域)dwt_rsk_ask_loan_info_base_d.md
+- asset_id: field.th.dwt_rsk_ask_loan_info_base_d.ask_loan_uuid
+  asset_type: catalog_field
+  country: th
+  domain: risk
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.th.dwt_rsk_ask_loan_info_base_d.ask_loan_uuid
+  review_status: null
+  source_files:
+  - (泰国风控域)dwt_rsk_ask_loan_info_base_d.md
+- asset_id: field.th.dwt_rsk_ask_loan_info_base_d.from_system
+  asset_type: catalog_field
+  country: th
+  domain: risk
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.th.dwt_rsk_ask_loan_info_base_d.from_system
+  review_status: null
+  source_files:
+  - (泰国风控域)dwt_rsk_ask_loan_info_base_d.md
+- asset_id: field.th.dwt_rsk_ask_loan_info_base_d.pre_user_loan_label
+  asset_type: catalog_field
+  country: th
+  domain: risk
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.th.dwt_rsk_ask_loan_info_base_d.pre_user_loan_label
+  review_status: null
+  source_files:
+  - (泰国风控域)dwt_rsk_ask_loan_info_base_d.md
+- asset_id: field.th.dwt_rsk_ask_loan_info_base_d.refuse_reason
+  asset_type: catalog_field
+  country: th
+  domain: risk
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.th.dwt_rsk_ask_loan_info_base_d.refuse_reason
+  review_status: null
+  source_files:
+  - (泰国风控域)dwt_rsk_ask_loan_info_base_d.md
+- asset_id: field.th.dwt_rsk_ask_loan_info_base_d.user_uuid
+  asset_type: catalog_field
+  country: th
+  domain: risk
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: field.th.dwt_rsk_ask_loan_info_base_d.user_uuid
+  review_status: null
+  source_files:
+  - (泰国风控域)dwt_rsk_ask_loan_info_base_d.md
+- asset_id: field.th.third_party_sources.parse_table_name
+  asset_type: catalog_field
+  country: th
+  domain: third_party
+  confidence: medium
+  runtime_allowed: sanitized_only
+  promotion_decision: defer_needs_review
+  seed_import_decision: not_imported
+  source_namespace: m2b_legacy_v1
+  source_key: field.th.third_party_sources.parse_table_name
+  review_status: null
+  source_files:
+  - hive_泰国三方域.md
+- asset_id: field.th.third_party_sources.product_name
+  asset_type: catalog_field
+  country: th
+  domain: third_party
+  confidence: medium
+  runtime_allowed: sanitized_only
+  promotion_decision: defer_needs_review
+  seed_import_decision: not_imported
+  source_namespace: m2b_legacy_v1
+  source_key: field.th.third_party_sources.product_name
+  review_status: null
+  source_files:
+  - hive_泰国三方域.md
+- asset_id: field.th.third_party_sources.supplier_name
+  asset_type: catalog_field
+  country: th
+  domain: third_party
+  confidence: medium
+  runtime_allowed: sanitized_only
+  promotion_decision: defer_needs_review
+  seed_import_decision: not_imported
+  source_namespace: m2b_legacy_v1
+  source_key: field.th.third_party_sources.supplier_name
+  review_status: null
+  source_files:
+  - hive_泰国三方域.md
+- asset_id: glossary.common.first_loan
+  asset_type: glossary_term
+  country: common
+  domain: lifecycle
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: glossary.common.first_loan
+  review_status: null
+  source_files:
+  - 多国业务逻辑.md
+- asset_id: glossary.common.fully_settled
+  asset_type: glossary_term
+  country: common
+  domain: lifecycle
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: glossary.common.fully_settled
+  review_status: null
+  source_files:
+  - 多国业务逻辑.md
+- asset_id: glossary.common.mob1
+  asset_type: glossary_term
+  country: common
+  domain: lifecycle
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: glossary.common.mob1
+  review_status: null
+  source_files:
+  - 多国业务逻辑.md
+  - 1.dws.dws_user_renewal_loan_seg_d 介绍.md
+- asset_id: glossary.common.never_overdue
+  asset_type: glossary_term
+  country: common
+  domain: lifecycle
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: glossary.common.never_overdue
+  review_status: null
+  source_files:
+  - 多国业务逻辑.md
+  - scheme.md
+- asset_id: glossary.common.seven_day_no_reborrow_churn
+  asset_type: glossary_term
+  country: common
+  domain: lifecycle
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: glossary.common.seven_day_no_reborrow_churn
+  review_status: null
+  source_files:
+  - 多国业务逻辑.md
+- asset_id: glossary.multi.collection_behavior
+  asset_type: glossary_term
+  country: multi
+  domain: behavior
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: glossary.multi.collection_behavior
+  review_status: null
+  source_files:
+  - 2.dws.dws_fox_boc_behavior_log_d介绍.md
+- asset_id: glossary.multi.contact_outcome
+  asset_type: glossary_term
+  country: multi
+  domain: behavior
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: glossary.multi.contact_outcome
+  review_status: null
+  source_files:
+  - 2.dws.dws_fox_boc_behavior_log_d介绍.md
+- asset_id: glossary.multi.settled_over_3m
+  asset_type: glossary_term
+  country: multi
+  domain: lifecycle
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: glossary.multi.settled_over_3m
+  review_status: null
+  source_files:
+  - 1.dws.dws_user_renewal_loan_seg_d 介绍.md
+  - schema_dws_dws_user_renewal_loan_seg_d.csv
+- asset_id: glossary.mx.app_profile
+  asset_type: glossary_term
+  country: mx
+  domain: app_profile
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: glossary.mx.app_profile
+  review_status: null
+  source_files:
+  - 🚀 正在提取表上下文 app所需表结构.ods_f_market_app_categories
+- asset_id: glossary.mx.credit_profile
+  asset_type: glossary_term
+  country: mx
+  domain: credit
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: glossary.mx.credit_profile
+  review_status: null
+  source_files:
+  - 🚀 征信所需表格结构
+- asset_id: glossary.mx.high_risk
+  asset_type: glossary_term
+  country: mx
+  domain: risk
+  confidence: medium
+  runtime_allowed: sanitized_only
+  promotion_decision: defer_needs_review
+  seed_import_decision: not_imported
+  source_namespace: m2b_legacy_v1
+  source_key: glossary.mx.high_risk
+  review_status: null
+  source_files:
+  - scheme.md
+  - gem prompt.md
+- asset_id: glossary.mx.no_apply
+  asset_type: glossary_term
+  country: mx
+  domain: lifecycle
+  confidence: medium
+  runtime_allowed: sanitized_only
+  promotion_decision: defer_needs_review
+  seed_import_decision: not_imported
+  source_namespace: m2b_legacy_v1
+  source_key: glossary.mx.no_apply
+  review_status: null
+  source_files:
+  - few.md
+  - all_examples .md
+- asset_id: glossary.mx.no_withdraw
+  asset_type: glossary_term
+  country: mx
+  domain: lifecycle
+  confidence: medium
+  runtime_allowed: sanitized_only
+  promotion_decision: defer_needs_review
+  seed_import_decision: not_imported
+  source_namespace: m2b_legacy_v1
+  source_key: glossary.mx.no_withdraw
+  review_status: null
+  source_files:
+  - few.md
+  - all_examples .md
+  - 多国业务逻辑.md
+- asset_id: glossary.mx.recent_30d
+  asset_type: glossary_term
+  country: mx
+  domain: time_window
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: glossary.mx.recent_30d
+  review_status: null
+  source_files:
+  - few.md
+  - all_examples .md
+- asset_id: glossary.mx.recent_7d
+  asset_type: glossary_term
+  country: mx
+  domain: time_window
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: glossary.mx.recent_7d
+  review_status: null
+  source_files:
+  - 多国业务逻辑.md
+  - few.md
+  - all_examples .md
+- asset_id: glossary.mx.successful_withdraw
+  asset_type: glossary_term
+  country: mx
+  domain: lifecycle
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: glossary.mx.successful_withdraw
+  review_status: null
+  source_files:
+  - 多国业务逻辑.md
+  - scheme.md
+- asset_id: glossary.mx.uid_cohort_required
+  asset_type: glossary_term
+  country: mx
+  domain: behavior
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: glossary.mx.uid_cohort_required
+  review_status: null
+  source_files:
+  - few.md
+  - all_examples .md
+- asset_id: glossary.mx.writeback_behavior
+  asset_type: glossary_term
+  country: mx
+  domain: behavior
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: glossary.mx.writeback_behavior
+  review_status: null
+  source_files:
+  - few.md
+  - all_examples .md
+- asset_id: glossary.th.ask_loan_risk
+  asset_type: glossary_term
+  country: th
+  domain: risk
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: glossary.th.ask_loan_risk
+  review_status: null
+  source_files:
+  - (泰国风控域)dwt_rsk_ask_loan_info_base_d.md
+  - BI数仓_2. 风控域定义.md
+- asset_id: glossary.th.asset_snapshot
+  asset_type: glossary_term
+  country: th
+  domain: asset
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: glossary.th.asset_snapshot
+  review_status: null
+  source_files:
+  - (泰国)dwt_asset_info_base_snap.md
+  - BI数仓_1. 资产域定义.md
+- asset_id: glossary.th.credit_report
+  asset_type: glossary_term
+  country: th
+  domain: third_party
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: glossary.th.credit_report
+  review_status: null
+  source_files:
+  - hive_泰国三方域.md
+- asset_id: glossary.th.risk_apply
+  asset_type: glossary_term
+  country: th
+  domain: risk
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: glossary.th.risk_apply
+  review_status: null
+  source_files:
+  - (泰国风控域)dwt_rsk_apply_info_base_d.md
+  - BI数仓_2. 风控域定义.md
+- asset_id: glossary.th.third_party_risk
+  asset_type: glossary_term
+  country: th
+  domain: third_party
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: glossary.th.third_party_risk
+  review_status: null
+  source_files:
+  - hive_泰国三方域.md
+- asset_id: rule.common.full_settlement
+  asset_type: business_rule
+  country: common
+  domain: lifecycle
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: manifest_only
+  source_namespace: m2b_legacy_v1
+  source_key: rule.common.full_settlement
+  review_status: null
+  source_files:
+  - 多国业务逻辑.md
+- asset_id: rule.common.partition_not_business_time
+  asset_type: business_rule
+  country: common
+  domain: canonical_policy
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: manifest_only
+  source_namespace: m2b_legacy_v1
+  source_key: rule.common.partition_not_business_time
+  review_status: null
+  source_files:
+  - scheme.md
+  - 1.dws.dws_user_renewal_loan_seg_d 介绍.md
+- asset_id: rule.common.settlement_over_7d_observation
+  asset_type: business_rule
+  country: common
+  domain: lifecycle
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: manifest_only
+  source_namespace: m2b_legacy_v1
+  source_key: rule.common.settlement_over_7d_observation
+  review_status: null
+  source_files:
+  - 多国业务逻辑.md
+- asset_id: rule.common.seven_day_no_reborrow
+  asset_type: business_rule
+  country: common
+  domain: lifecycle
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: manifest_only
+  source_namespace: m2b_legacy_v1
+  source_key: rule.common.seven_day_no_reborrow
+  review_status: null
+  source_files:
+  - 多国业务逻辑.md
+- asset_id: rule.common.true_withdraw
+  asset_type: business_rule
+  country: common
+  domain: loan
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: manifest_only
+  source_namespace: m2b_legacy_v1
+  source_key: rule.common.true_withdraw
+  review_status: null
+  source_files:
+  - 多国业务逻辑.md
+  - scheme.md
+- asset_id: rule.mx.behavior_cohort_required
+  asset_type: business_rule
+  country: mx
+  domain: behavior
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: manifest_only
+  source_namespace: m2b_legacy_v1
+  source_key: rule.mx.behavior_cohort_required
+  review_status: null
+  source_files:
+  - few.md
+  - all_examples .md
+- asset_id: sql_pattern.mx.behavior_writeback_target_cohort
+  asset_type: sql_example_pattern
+  country: mx
+  domain: behavior
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: sql_pattern.mx.behavior_writeback_target_cohort
+  review_status: null
+  source_files:
+  - few.md
+  - all_examples .md
+- asset_id: sql_pattern.mx.mob1_churn_cte
+  asset_type: sql_example_pattern
+  country: mx
+  domain: lifecycle
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: sql_pattern.mx.mob1_churn_cte
+  review_status: null
+  source_files:
+  - 多国业务逻辑.md
+  - all_examples .md
+- asset_id: sql_pattern.mx.no_apply_absence_logic
+  asset_type: sql_example_pattern
+  country: mx
+  domain: lifecycle
+  confidence: medium
+  runtime_allowed: sanitized_only
+  promotion_decision: defer_needs_review
+  seed_import_decision: not_imported
+  source_namespace: m2b_legacy_v1
+  source_key: sql_pattern.mx.no_apply_absence_logic
+  review_status: null
+  source_files:
+  - few.md
+  - all_examples .md
+- asset_id: sql_pattern.mx.no_withdraw_status_logic
+  asset_type: sql_example_pattern
+  country: mx
+  domain: lifecycle
+  confidence: medium
+  runtime_allowed: sanitized_only
+  promotion_decision: defer_needs_review
+  seed_import_decision: not_imported
+  source_namespace: m2b_legacy_v1
+  source_key: sql_pattern.mx.no_withdraw_status_logic
+  review_status: null
+  source_files:
+  - few.md
+  - all_examples .md
+- asset_id: table.multi.dws_fox_boc_behavior_log_d
+  asset_type: catalog_table
+  country: multi
+  domain: behavior
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: table.multi.dws_fox_boc_behavior_log_d
+  review_status: null
+  source_files:
+  - 2.dws.dws_fox_boc_behavior_log_d介绍.md
+  - schema_dws_dws_fox_boc_behavior_log_d.csv
+- asset_id: table.multi.dws_user_renewal_loan_seg_d
+  asset_type: catalog_table
+  country: multi
+  domain: lifecycle
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: table.multi.dws_user_renewal_loan_seg_d
+  review_status: null
+  source_files:
+  - 1.dws.dws_user_renewal_loan_seg_d 介绍.md
+  - schema_dws_dws_user_renewal_loan_seg_d.csv
+- asset_id: table.mx.dwb_b1_data_burying_point
+  asset_type: catalog_table
+  country: mx
+  domain: behavior
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: table.mx.dwb_b1_data_burying_point
+  review_status: null
+  source_files:
+  - scheme.md
+  - few.md
+  - all_examples .md
+- asset_id: table.mx.dwb_r_apply
+  asset_type: catalog_table
+  country: mx
+  domain: credit
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: table.mx.dwb_r_apply
+  review_status: null
+  source_files:
+  - 🚀 征信所需表格结构
+- asset_id: table.mx.dwd_w_apply
+  asset_type: catalog_table
+  country: mx
+  domain: loan
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: table.mx.dwd_w_apply
+  review_status: null
+  source_files:
+  - scheme.md
+  - 多国业务逻辑.md
+- asset_id: table.mx.dwd_w_user
+  asset_type: catalog_table
+  country: mx
+  domain: user
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: table.mx.dwd_w_user
+  review_status: null
+  source_files:
+  - scheme.md
+- asset_id: table.mx.ods_f_market_app_categories
+  asset_type: catalog_table
+  country: mx
+  domain: app_profile
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: table.mx.ods_f_market_app_categories
+  review_status: null
+  source_files:
+  - 🚀 正在提取表上下文 app所需表结构.ods_f_market_app_categories
+- asset_id: table.th.dwt_asset_info_base_snap
+  asset_type: catalog_table
+  country: th
+  domain: asset
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: table.th.dwt_asset_info_base_snap
+  review_status: null
+  source_files:
+  - (泰国)dwt_asset_info_base_snap.md
+  - BI数仓_1. 资产域定义.md
+- asset_id: table.th.dwt_rsk_apply_info_base_d
+  asset_type: catalog_table
+  country: th
+  domain: risk
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: table.th.dwt_rsk_apply_info_base_d
+  review_status: null
+  source_files:
+  - (泰国风控域)dwt_rsk_apply_info_base_d.md
+  - BI数仓_2. 风控域定义.md
+- asset_id: table.th.dwt_rsk_ask_loan_info_base_d
+  asset_type: catalog_table
+  country: th
+  domain: risk
+  confidence: high
+  runtime_allowed: sanitized_only
+  promotion_decision: promote_now
+  seed_import_decision: import_now
+  source_namespace: m2b_legacy_v1
+  source_key: table.th.dwt_rsk_ask_loan_info_base_d
+  review_status: null
+  source_files:
+  - (泰国风控域)dwt_rsk_ask_loan_info_base_d.md
+  - BI数仓_2. 风控域定义.md
+- asset_id: table.th.third_party_sources
+  asset_type: catalog_table
+  country: th
+  domain: third_party
+  confidence: medium
+  runtime_allowed: sanitized_only
+  promotion_decision: defer_needs_review
+  seed_import_decision: not_imported
+  source_namespace: m2b_legacy_v1
+  source_key: table.th.third_party_sources
+  review_status: null
+  source_files:
+  - hive_泰国三方域.md

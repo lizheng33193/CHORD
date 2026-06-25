@@ -5,6 +5,31 @@
 - 整体架构：单体 FastAPI 后端，五层（API → 编排 → Skill 执行 → 数据访问 → 外部服务）
 - 入口文件：`app/main.py`
 
+## 2026-06-25 M2B-2 Seed Promotion & Deterministic Retrieval Baseline
+
+- `M2B-1` 已完成，当前进入 `M2B-2 Seed Promotion & Deterministic Retrieval Baseline`：
+  - `docs/plans/m2b-2-seed-promotion-deterministic-baseline-plan.md`
+  - `docs/reviews/m2b-2-seed-promotion-review.md`
+  - `docs/reviews/m2b-2-deterministic-baseline-results.md`
+  - `docs/reviews/m2b-2-golden-set-deterministic-coverage.md`
+- 本阶段只做：
+  - `M2B-1` candidate assets 的 promotion review
+  - 独立 seed patch `data_knowledge_seed/m2b/m2b_legacy_v1.yaml`
+  - 隔离临时 DB 中的 deterministic retrieval baseline
+- 当前 runtime 仓库事实保持不变：
+  - 公开 seed bundle 仍只有 `mx / ph / common`
+  - 正式 runtime seed family 仍只有 `catalog / glossary / sql_examples / error_cases`
+  - `business_rule / cohort_definition / canonical_field_policy` 暂不直接进入 runtime seed schema
+- 本阶段明确不做：
+  - embedding / vector index / hybrid retrieval
+  - `app/data_knowledge/retriever.py` scoring/top-k/filtering 改造
+  - `app/data_agent/service.py` / `app/data_agent/sql_plan.py` / SQL HITL / orchestrator bridge 改造
+  - raw docs 进入 prompt 或 runtime retrieval
+- `data_knowledge_seed/m2b/` 在本阶段的身份固定为 isolated evaluation namespace：
+  - 不自动加入公开 `mx/ph/common` bundle
+  - 只用于 seed promotion 评估与 deterministic baseline
+  - baseline 若仍明显缺表、缺字段、缺 glossary grounding，则下一步进入 `M2B-2.1`，而不是直接进入 `M2B-3`
+
 ## 2026-06-25 M2B-1 Structured Knowledge Extraction
 
 - `M2B-0` 已完成，当前进入 `M2B-1 Structured Knowledge Extraction`：
