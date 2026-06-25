@@ -1,0 +1,59 @@
+- asset_id: canonical.mx.apply_business_time
+  asset_type: canonical_field_policy
+  country: mx
+  domain: loan
+  business_semantic: apply_business_time
+  table_name: hive.dwd.dwd_w_apply
+  preferred_fields: [apply_create_at]
+  alternative_fields: [dt]
+  avoid_as_business_time: [dt]
+  rationale: apply_create_at is the business timestamp for application events, while dt is mainly a partition field.
+  review_status: needs_human_review
+  source_files: [scheme.md, gem prompt.md]
+  confidence: medium
+  runtime_allowed: sanitized_only
+
+- asset_id: canonical.mx.credit_user_identifier
+  asset_type: canonical_field_policy
+  country: mx
+  domain: credit
+  business_semantic: user_identifier
+  table_name: hive.dwb.dwb_r_apply
+  preferred_fields: [apply_user_uuid]
+  alternative_fields: []
+  avoid_as_business_time: []
+  rationale: The physical field family uses apply_user_uuid, but downstream prompts may ask for generic user_uuid wording.
+  review_status: needs_human_review
+  source_files: [🚀 征信所需表格结构, gem prompt.md]
+  confidence: medium
+  runtime_allowed: sanitized_only
+
+- asset_id: canonical.mx.behavior_event_time
+  asset_type: canonical_field_policy
+  country: mx
+  domain: behavior
+  business_semantic: behavior_event_time
+  table_name: hive.dwb.dwb_b1_data_burying_point
+  preferred_fields: [timestamp_]
+  alternative_fields: [servertimestamp, dt]
+  avoid_as_business_time: [dt]
+  rationale: timestamp_ is the primary event-time field for behavior replay; dt should only prune partitions.
+  review_status: needs_human_review
+  source_files: [few.md, all_examples .md]
+  confidence: medium
+  runtime_allowed: sanitized_only
+
+- asset_id: canonical.th.ask_loan_vs_apply_time
+  asset_type: canonical_field_policy
+  country: th
+  domain: risk
+  business_semantic: risk_request_business_time
+  table_name: hive.dwt.dwt_rsk_ask_loan_info_base_d
+  preferred_fields: [ask_loan_create_time]
+  alternative_fields: [apply_uuid]
+  avoid_as_business_time: [dt]
+  rationale: Thailand ask-loan risk queries should prefer ask-loan stage timing, but historical prompts sometimes collapse this into generic apply time.
+  review_status: needs_human_review
+  source_files: [(泰国风控域)dwt_rsk_ask_loan_info_base_d.md, BI数仓_2. 风控域定义.md]
+  confidence: medium
+  runtime_allowed: sanitized_only

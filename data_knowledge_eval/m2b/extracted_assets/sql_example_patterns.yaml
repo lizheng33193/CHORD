@@ -1,0 +1,60 @@
+- asset_id: sql_pattern.mx.behavior_writeback_target_cohort
+  asset_type: sql_example_pattern
+  country: mx
+  domain: behavior
+  scenario: behavior_writeback_pattern
+  pattern_summary:
+    - build target_users CTE first
+    - join behavior table by uid or mapped user identifier
+    - keep event window relative to request or cohort business event
+    - return only the required behavior payload columns
+  required_output_fields: [uid, timestamp_, eventname]
+  forbidden_copy: [fixed_historical_date, historical_source_filter, temporary_table_name, unresolved_uid_placeholder]
+  source_files: [few.md, all_examples .md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: sql_pattern.mx.mob1_churn_cte
+  asset_type: sql_example_pattern
+  country: mx
+  domain: lifecycle
+  scenario: mob1_churn_pattern
+  pattern_summary:
+    - build first-loan cohort in a dedicated CTE
+    - aggregate settlement state before churn labeling
+    - apply a seven-day observation guard before anti-join reborrow exclusion
+  required_output_fields: [user_uuid, withdraw_uuid, asset_finish_at]
+  forbidden_copy: [fixed_historical_date, temporary_table_name]
+  source_files: [多国业务逻辑.md, all_examples .md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: sql_pattern.mx.no_apply_absence_logic
+  asset_type: sql_example_pattern
+  country: mx
+  domain: lifecycle
+  scenario: no_apply_absence_pattern
+  pattern_summary:
+    - start from base user cohort
+    - left join or anti-join apply records within the requested window
+    - keep partition pruning separate from business-time filtering
+  required_output_fields: [user_uuid]
+  forbidden_copy: [fixed_historical_date, historical_source_filter]
+  source_files: [few.md, all_examples .md]
+  confidence: medium
+  runtime_allowed: sanitized_only
+
+- asset_id: sql_pattern.mx.no_withdraw_status_logic
+  asset_type: sql_example_pattern
+  country: mx
+  domain: lifecycle
+  scenario: no_withdraw_pattern
+  pattern_summary:
+    - compute apply presence and true-withdraw status separately
+    - distinguish apply status from real withdrawal status
+    - aggregate by user before final cohort selection
+  required_output_fields: [user_uuid, apply_status, withdraw_uuid]
+  forbidden_copy: [fixed_historical_date, temporary_table_name]
+  source_files: [few.md, all_examples .md]
+  confidence: medium
+  runtime_allowed: sanitized_only

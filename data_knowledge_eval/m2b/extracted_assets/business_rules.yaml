@@ -1,0 +1,94 @@
+- asset_id: rule.common.full_settlement
+  asset_type: business_rule
+  country: common
+  domain: lifecycle
+  name: full_settlement
+  description: 分期订单完全结清判定规则。
+  rule_summary:
+    - require period count greater than zero
+    - require all periods to satisfy settled condition
+    - use the latest finish time as the settlement anchor
+  forbidden_omissions:
+    - missing_all_periods_settled_check
+    - missing_non_empty_period_guard
+  source_files: [多国业务逻辑.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: rule.common.settlement_over_7d_observation
+  asset_type: business_rule
+  country: common
+  domain: lifecycle
+  name: settlement_over_7d_observation
+  description: 流失观察前必须保证结清时间已超过七天。
+  rule_summary:
+    - latest settlement time must be at least seven days before current request date
+    - observation guard is required before churn labeling
+  forbidden_omissions:
+    - missing_7d_observation_guard
+  source_files: [多国业务逻辑.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: rule.common.seven_day_no_reborrow
+  asset_type: business_rule
+  country: common
+  domain: lifecycle
+  name: seven_day_no_reborrow
+  description: 结清后七天内无真实复借，才能判定为 mob1 流失。
+  rule_summary:
+    - use settlement finish time as the window start
+    - exclude users with a new true withdrawal within seven days
+    - implement with anti-join or equivalent exclusion logic
+  forbidden_omissions:
+    - missing_reborrow_anti_join
+  source_files: [多国业务逻辑.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: rule.common.true_withdraw
+  asset_type: business_rule
+  country: common
+  domain: loan
+  name: true_withdraw
+  description: 只有产生真实提现流水号或放款事件，才算真实借款。
+  rule_summary:
+    - require withdraw identifier or grant event
+    - do not treat apply-only records as successful withdrawal
+  forbidden_omissions:
+    - apply_only_without_true_withdraw
+  source_files: [多国业务逻辑.md, scheme.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: rule.mx.behavior_cohort_required
+  asset_type: business_rule
+  country: mx
+  domain: behavior
+  name: behavior_cohort_required
+  description: behavior writeback 必须先构造目标 cohort 或 uid 集合。
+  rule_summary:
+    - build target cohort before querying event table
+    - join behavior data by uid or mapped user identifier
+    - keep time boundaries relative to cohort or request context
+  forbidden_omissions:
+    - broad_behavior_scan
+    - unresolved_uid_placeholder
+  source_files: [few.md, all_examples .md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: rule.common.partition_not_business_time
+  asset_type: business_rule
+  country: common
+  domain: canonical_policy
+  name: partition_not_business_time
+  description: dt 字段默认用于分区裁剪，不应直接替代业务时间字段。
+  rule_summary:
+    - use dt for partition pruning
+    - prefer explicit business timestamps when the request asks for event timing
+  forbidden_omissions:
+    - dt_as_business_time
+  source_files: [scheme.md, 1.dws.dws_user_renewal_loan_seg_d 介绍.md]
+  confidence: high
+  runtime_allowed: sanitized_only

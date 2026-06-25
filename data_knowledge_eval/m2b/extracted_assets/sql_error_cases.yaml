@@ -1,0 +1,116 @@
+- asset_id: error_case.common.fixed_historical_date_copy
+  asset_type: sql_error_case
+  country: common
+  domain: sql_generation
+  scenario: historical_template_drift
+  bad_pattern_category: fixed_historical_date_copy
+  risk: 模型复制历史 SQL 的固定日期，导致请求窗口错误。
+  expected_fix: 使用当前请求中的相对时间窗口和业务时间字段。
+  warning_categories: [PLAN_DATE_DRIFT]
+  source_files: [few.md, all_examples .md]
+  confidence: high
+  runtime_allowed: eval_only
+
+- asset_id: error_case.common.historical_source_filter_copy
+  asset_type: sql_error_case
+  country: common
+  domain: sql_generation
+  scenario: source_filter_drift
+  bad_pattern_category: historical_source_filter_copy
+  risk: 继承历史 source filter 会把当前请求绑定到旧业务包。
+  expected_fix: 仅在当前请求明确指定时才使用 source filter。
+  warning_categories: [PLAN_SOURCE_DRIFT]
+  source_files: [few.md, all_examples .md]
+  confidence: high
+  runtime_allowed: eval_only
+
+- asset_id: error_case.common.temporary_table_name_copy
+  asset_type: sql_error_case
+  country: common
+  domain: sql_generation
+  scenario: temp_table_literal_copy
+  bad_pattern_category: temporary_table_name_copy
+  risk: 复制历史临时表名会把查询绑定到旧实验表或 analyst 私有表。
+  expected_fix: 用 request-driven CTE 或受控人群表替代历史临时表名。
+  warning_categories: [PLAN_TEMPLATE_DRIFT]
+  source_files: [few.md, all_examples .md]
+  confidence: high
+  runtime_allowed: eval_only
+
+- asset_id: error_case.common.unresolved_uid_placeholder
+  asset_type: sql_error_case
+  country: common
+  domain: sql_generation
+  scenario: unresolved_uid_placeholder
+  bad_pattern_category: unresolved_uid_placeholder
+  risk: 未解析的 uid 占位符会生成不可执行或不可审计的行为 SQL。
+  expected_fix: 先圈 cohort 或通过 CTE/参数化集合显式提供 uid。
+  warning_categories: [PLAN_PLACEHOLDER_DRIFT]
+  source_files: [few.md, all_examples .md]
+  confidence: high
+  runtime_allowed: eval_only
+
+- asset_id: error_case.mx.broad_behavior_scan
+  asset_type: sql_error_case
+  country: mx
+  domain: behavior
+  scenario: broad_behavior_scan
+  bad_pattern_category: broad_behavior_scan
+  risk: 未先圈定 uid 或 cohort 就全表扫埋点，容易造成 OOM 与无关数据污染。
+  expected_fix: 先构造 target_users，再按 uid 与时间窗口约束行为表。
+  warning_categories: [PLAN_BROAD_SCAN]
+  source_files: [多国业务逻辑.md, few.md, all_examples .md]
+  confidence: high
+  runtime_allowed: eval_only
+
+- asset_id: error_case.common.missing_reborrow_anti_join
+  asset_type: sql_error_case
+  country: common
+  domain: lifecycle
+  scenario: mob1_churn_omission
+  bad_pattern_category: missing_reborrow_anti_join
+  risk: 只判断结清而不剔除七天内复借，会把非流失用户误标为流失。
+  expected_fix: 用 anti-join 或等价排除逻辑检查观察窗口内新借款。
+  warning_categories: [PLAN_COHORT_OMISSION]
+  source_files: [多国业务逻辑.md]
+  confidence: high
+  runtime_allowed: eval_only
+
+- asset_id: error_case.common.missing_settlement_7d_observation
+  asset_type: sql_error_case
+  country: common
+  domain: lifecycle
+  scenario: observation_guard_omission
+  bad_pattern_category: missing_settlement_7d_observation
+  risk: 未加入结清满七天观察保护会造成右偏误判。
+  expected_fix: 在进入流失判定前增加 settlement over 7d guard。
+  warning_categories: [PLAN_OBSERVATION_GUARD]
+  source_files: [多国业务逻辑.md]
+  confidence: high
+  runtime_allowed: eval_only
+
+- asset_id: error_case.ph.withdraw_uuid_negative_mismatch
+  asset_type: sql_error_case
+  country: ph
+  domain: lifecycle
+  scenario: ph_negative_example
+  bad_pattern_category: withdraw_uuid_negative_mismatch
+  risk: 在菲律宾首贷从未逾期场景错误套用 withdraw_uuid 字段族会导致字段漂移。
+  expected_fix: 回到国家特定字段族，不要沿用墨西哥 withdraw 逻辑。
+  warning_categories: [PLAN_FIELD_DRIFT]
+  source_files: [all_examples .md]
+  confidence: medium
+  runtime_allowed: eval_only
+
+- asset_id: error_case.common.cross_country_table_leak
+  asset_type: sql_error_case
+  country: common
+  domain: retrieval_grounding
+  scenario: cross_country_table_leak
+  bad_pattern_category: cross_country_table_leak
+  risk: 跨国家复用表会让泰国请求错误落到墨西哥或其他国家表。
+  expected_fix: 先锁定 country pack，再选本地化 domain table。
+  warning_categories: [PLAN_COUNTRY_LEAK]
+  source_files: [BI数仓_1. 资产域定义.md, BI数仓_2. 风控域定义.md, hive_泰国三方域.md]
+  confidence: high
+  runtime_allowed: eval_only

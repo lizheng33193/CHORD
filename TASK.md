@@ -35,7 +35,7 @@
 - [x] E1 单用户埋点深度解析 → docs/plans/trace-analyzer-plan.md（2026-05-01）
 
 ## 当前进行中的功能
-- [ ] M2B-0：Knowledge Inventory & Retrieval Baseline — 进行中（2026-06-25）
+- [x] M2B-0：Knowledge Inventory & Retrieval Baseline — 已完成（2026-06-25）
   - design / plan：
     - `docs/specs/m2b-hybrid-retrieval-grounding-design.md`
     - `docs/specs/m2b-knowledge-asset-taxonomy.md`
@@ -54,6 +54,31 @@
     - 不提交 raw docs
   - 下一步：
     - 进入 `M2B-1 Structured Knowledge Extraction`
+
+- [x] M2B-1：Structured Knowledge Extraction — 第一批 candidate assets 完成（2026-06-25）
+  - plan / results：
+    - `docs/plans/m2b-1-structured-knowledge-extraction-plan.md`
+    - `docs/reviews/m2b-1-structured-knowledge-extraction-results.md`
+    - `docs/reviews/m2b-1-golden-set-coverage.md`
+  - 本阶段产出：
+    - `data_knowledge_eval/m2b/extracted_assets/` 第一批去敏结构化资产
+    - `asset_source_map.yaml` 覆盖全部有效 raw source files
+    - `scripts/validate_m2b_extracted_assets.py`
+    - `tests/test_m2b_extracted_assets.py`
+  - 本轮结果：
+    - 128 条 candidate structured assets 已落地
+    - 26 个有效 source files 已登记 extracted / partial / deferred / inventory_only 状态
+    - priority golden cases 中有 14 个达到 `partial` 或更高 coverage
+    - raw docs 仍未进入 Git，runtime retrieval / Data Agent runtime 文件保持不变
+  - 保持不变：
+    - 不做 seed import
+    - 不做 embedding / vector index / hybrid retrieval
+    - 不改 `app/data_knowledge/retriever.py`
+    - 不改 `app/data_agent/service.py`
+    - 不改 `app/data_agent/sql_plan.py`
+    - 不改 SQL HITL / approve / execute / orchestrator bridge
+  - 下一步：
+    - 进入 `M2B-2 Seed Import / Knowledge Store Update`
 
 - [x] M2A-Runtime Quality：Data Agent 运行时质量收敛 — 第一轮完成 + RQ-FU1 completed（2026-06-24）
   - plan / baseline：
