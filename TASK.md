@@ -35,6 +35,35 @@
 - [x] E1 单用户埋点深度解析 → docs/plans/trace-analyzer-plan.md（2026-05-01）
 
 ## 当前进行中的功能
+- [x] M2B-3：Embedding Text Builder — 已完成（2026-06-25）
+  - plan / results：
+    - `docs/plans/m2b-3-embedding-text-builder-plan.md`
+    - `docs/reviews/m2b-3-embedding-text-builder-results.md`
+  - 本阶段产出：
+    - `data_knowledge_eval/m2b/embedding_records.m2b_legacy_v3.jsonl`
+    - `data_knowledge_eval/m2b/embedding_manifest.m2b_legacy_v3.yaml`
+    - `data_knowledge_eval/m2b/embedding_preview.m2b_legacy_v3.md`
+    - `scripts/build_m2b_embedding_text.py`
+    - `tests/test_m2b_embedding_text_builder.py`
+  - 本轮结果：
+    - 输入固定为 `data_knowledge_seed/m2b/m2b_legacy_v3.yaml`
+    - `record_count=101`
+    - `catalog_table=10`
+    - `catalog_field=61`
+    - `glossary_term=28`
+    - `sql_example=2`
+    - `sql_error_case=0`
+    - `sql_example` records 已明确标记 non-executable
+    - preview 已覆盖 `mob1 / withdraw_uuid / user_uuid / asset_finish_at / credit_profile`
+  - 保持不变：
+    - 不调用 embedding API
+    - 不生成 vector / index
+    - 不改 runtime retriever
+    - 不改 Data Agent runtime / SQL HITL / orchestrator bridge
+    - 不读取 `docs/knowledge-base` raw docs
+  - 下一步：
+    - 进入 `M2B-4 Vector Index Prototype`
+
 - [x] M2B-2.2：Targeted Deterministic Grounding Patch — 已完成（2026-06-25）
   - plan / reviews：
     - `docs/plans/m2b-2-2-targeted-deterministic-grounding-patch-plan.md`
