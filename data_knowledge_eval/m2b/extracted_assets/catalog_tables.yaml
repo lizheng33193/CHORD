@@ -1,0 +1,187 @@
+- asset_id: table.mx.dwd_w_user
+  asset_type: catalog_table
+  country: mx
+  domain: user
+  table_name: hive.dwd.dwd_w_user
+  description: 墨西哥用户主表，承载注册来源、申请来源和注册时间等用户基础属性。
+  grain: user_uuid
+  primary_entities: [user]
+  join_keys: [user_uuid, individual_uuid]
+  time_fields: [user_create_time, identity_create_time]
+  partition_fields: [dt, year]
+  source_files: [scheme.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+  notes:
+    - dt is a partition field and should not replace user_create_time for business-time filtering.
+
+- asset_id: table.mx.dwd_w_apply
+  asset_type: catalog_table
+  country: mx
+  domain: loan
+  table_name: hive.dwd.dwd_w_apply
+  description: 墨西哥申请、提现、放款、逾期和结清核心明细表。
+  grain: apply_uuid with loan and withdrawal context
+  primary_entities: [user, apply, ask_loan, withdraw, asset]
+  join_keys: [apply_uuid, ask_loan_uuid, user_uuid, withdraw_uuid]
+  time_fields: [apply_create_at, withdraw_created_at, asset_grant_at, asset_finish_at]
+  partition_fields: [dt, month]
+  source_files: [scheme.md, 多国业务逻辑.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+  notes:
+    - This table is the main grounding source for first-loan, true-withdraw, settlement, and overdue semantics.
+    - dt is mainly for partition pruning.
+
+- asset_id: table.mx.dwb_b1_data_burying_point
+  asset_type: catalog_table
+  country: mx
+  domain: behavior
+  table_name: hive.dwb.dwb_b1_data_burying_point
+  description: 客户端埋点事件表，用于行为回溯、writeback 和反欺诈行为分析。
+  grain: uid plus event timestamp
+  primary_entities: [user, behavior_event]
+  join_keys: [uid]
+  time_fields: [timestamp_, servertimestamp]
+  partition_fields: [dt]
+  source_files: [scheme.md, few.md, all_examples .md]
+  confidence: high
+  runtime_allowed: sanitized_only
+  notes:
+    - Behavior retrieval must stay cohort-constrained and avoid broad scans.
+
+- asset_id: table.mx.dwb_r_apply
+  asset_type: catalog_table
+  country: mx
+  domain: credit
+  table_name: hive.dwb.dwb_r_apply
+  description: 征信与审核申请宽表，承载申请状态与审核时间字段。
+  grain: apply_uuid
+  primary_entities: [apply, user]
+  join_keys: [apply_uuid, apply_user_uuid, apply_ask_loan_uuid]
+  time_fields: [apply_created_at, apply_finish_at, apply_updated_at]
+  partition_fields: [dt]
+  source_files: [🚀 征信所需表格结构]
+  confidence: high
+  runtime_allowed: sanitized_only
+  notes:
+    - The physical user field family is apply_user_uuid and may require canonical review against generic user_uuid wording.
+
+- asset_id: table.mx.ods_f_market_app_categories
+  asset_type: catalog_table
+  country: mx
+  domain: app_profile
+  table_name: hive.ods.ods_f_market_app_categories
+  description: 应用分类映射表，提供安装包、应用名称和 AI 类目标签。
+  grain: app_package plus year_day snapshot
+  primary_entities: [app]
+  join_keys: [app_package]
+  time_fields: [year_day, create_at, update_at]
+  partition_fields: [dt]
+  source_files: [🚀 正在提取表上下文 app所需表结构.ods_f_market_app_categories]
+  confidence: high
+  runtime_allowed: sanitized_only
+  notes:
+    - year_day is the business snapshot field for category extraction.
+
+- asset_id: table.th.dwt_asset_info_base_snap
+  asset_type: catalog_table
+  country: th
+  domain: asset
+  table_name: hive.dwt.dwt_asset_info_base_snap
+  description: 泰国资产粒度快照宽表，覆盖资产、用户、产品、风险和账务全量信息。
+  grain: asset_item_no plus snap date
+  primary_entities: [asset, user, apply]
+  join_keys: [asset_item_no, asset_id, user_uuid, apply_uuid]
+  time_fields: [apply_create_time, asset_create_time, grant_time, finish_time]
+  partition_fields: [snap_dt]
+  source_files: [(泰国)dwt_asset_info_base_snap.md, BI数仓_1. 资产域定义.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+  notes:
+    - This table is the preferred Thailand asset snapshot grounding source for historical state queries.
+
+- asset_id: table.th.dwt_rsk_apply_info_base_d
+  asset_type: catalog_table
+  country: th
+  domain: risk
+  table_name: hive.dwt.dwt_rsk_apply_info_base_d
+  description: 泰国正审风控宽表，承载进件、预审关联、产品信息和首续贷标签。
+  grain: apply_uuid
+  primary_entities: [apply, ask_loan, user]
+  join_keys: [apply_uuid, ask_loan_uuid, user_uuid]
+  time_fields: [apply_create_at]
+  partition_fields: [dt]
+  source_files: [(泰国风控域)dwt_rsk_apply_info_base_d.md, BI数仓_2. 风控域定义.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+  notes:
+    - user_loan_label is a reusable first-loan vs renewal grounding field in Thailand risk scenarios.
+
+- asset_id: table.th.dwt_rsk_ask_loan_info_base_d
+  asset_type: catalog_table
+  country: th
+  domain: risk
+  table_name: hive.dwt.dwt_rsk_ask_loan_info_base_d
+  description: 泰国预审风控宽表，承载预审结果、拒绝原因、系统来源和预审时用户标签。
+  grain: ask_loan_uuid
+  primary_entities: [ask_loan, apply, user]
+  join_keys: [ask_loan_uuid, apply_uuid, user_uuid]
+  time_fields: [ask_loan_create_time]
+  partition_fields: [dt]
+  source_files: [(泰国风控域)dwt_rsk_ask_loan_info_base_d.md, BI数仓_2. 风控域定义.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+  notes:
+    - This is the preferred Thailand pre-review risk grounding source.
+
+- asset_id: table.multi.dws_user_renewal_loan_seg_d
+  asset_type: catalog_table
+  country: multi
+  domain: lifecycle
+  table_name: dws.dws_user_renewal_loan_seg_d
+  description: 续贷用户每日分层状态表，用于 MOB、结清、在贷、逾期和可经营分层。
+  grain: user_uuid plus dt
+  primary_entities: [user]
+  join_keys: [user_uuid]
+  time_fields: [dt, first_grant_time, last_finish_time]
+  partition_fields: [dt]
+  source_files: [1.dws.dws_user_renewal_loan_seg_d 介绍.md, schema_dws_dws_user_renewal_loan_seg_d.csv]
+  confidence: high
+  runtime_allowed: sanitized_only
+  notes:
+    - This table is for daily renewal-state segmentation and should not be used as a pure new-user source.
+
+- asset_id: table.multi.dws_fox_boc_behavior_log_d
+  asset_type: catalog_table
+  country: multi
+  domain: behavior
+  table_name: dws.dws_fox_boc_behavior_log_d
+  description: 催收与触达行为日志宽表，承载触达工具、接通状态和行为时长等字段。
+  grain: dt plus debtor_id plus behavior_type plus source_id
+  primary_entities: [debtor, behavior_event, collection_contact]
+  join_keys: [debtor_id, asset_id, asset_item_no, source_id]
+  time_fields: [behavior_time]
+  partition_fields: [dt]
+  source_files: [2.dws.dws_fox_boc_behavior_log_d介绍.md, schema_dws_dws_fox_boc_behavior_log_d.csv]
+  confidence: high
+  runtime_allowed: sanitized_only
+  notes:
+    - This table is suitable for collection behavior semantics, not generic app-event writeback.
+
+- asset_id: table.th.third_party_sources
+  asset_type: catalog_table
+  country: th
+  domain: third_party
+  table_name: hive.third_party.thailand_sources
+  description: 泰国三方供应商与产品映射资产，用于风险与征信供应商 grounding。
+  grain: supplier_name plus product_name
+  primary_entities: [supplier, product]
+  join_keys: [supplier_name, product_name, parse_table_name]
+  time_fields: []
+  partition_fields: []
+  source_files: [hive_泰国三方域.md]
+  confidence: medium
+  runtime_allowed: sanitized_only
+  notes:
+    - This is a curated catalog asset derived from supplier documentation rather than a runtime fact table.

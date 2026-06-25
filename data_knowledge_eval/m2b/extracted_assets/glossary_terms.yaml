@@ -1,0 +1,275 @@
+- asset_id: glossary.common.mob1
+  asset_type: glossary_term
+  country: common
+  domain: lifecycle
+  term: mob1
+  aliases: [mob1客群, mob1提取]
+  definition: 首贷、完全结清、结清满七天且七天内无复借的流失客群语义。
+  related_rules: [rule.common.full_settlement, rule.common.seven_day_no_reborrow]
+  source_files: [多国业务逻辑.md, 1.dws.dws_user_renewal_loan_seg_d 介绍.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: glossary.common.first_loan
+  asset_type: glossary_term
+  country: common
+  domain: lifecycle
+  term: first_loan
+  aliases: [首贷, first loan]
+  definition: 用户借款序列中的第一笔真实借款，需要优先使用行内顺序或首贷标签判定。
+  related_rules: [rule.common.true_withdraw]
+  source_files: [多国业务逻辑.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: glossary.common.fully_settled
+  asset_type: glossary_term
+  country: common
+  domain: lifecycle
+  term: fully_settled
+  aliases: [完全结清, 全部结清]
+  definition: 所有分期都满足结清条件，且最后结清时间可用于后续观察窗口。
+  related_rules: [rule.common.full_settlement]
+  source_files: [多国业务逻辑.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: glossary.common.seven_day_no_reborrow_churn
+  asset_type: glossary_term
+  country: common
+  domain: lifecycle
+  term: seven_day_no_reborrow_churn
+  aliases: [结清七天未复借流失, 7天未复借流失]
+  definition: 在结清时间后的七天观察窗口内没有产生新的真实借款。
+  related_rules: [rule.common.seven_day_no_reborrow]
+  source_files: [多国业务逻辑.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: glossary.common.never_overdue
+  asset_type: glossary_term
+  country: common
+  domain: lifecycle
+  term: never_overdue
+  aliases: [从未逾期, never overdue]
+  definition: 在观察范围内没有出现逾期天数大于零的记录。
+  related_rules: []
+  source_files: [多国业务逻辑.md, scheme.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: glossary.mx.high_risk
+  asset_type: glossary_term
+  country: mx
+  domain: risk
+  term: high_risk
+  aliases: [高风险, 风险等级较高]
+  definition: 面向风险等级、模型分或风险分层较高的用户圈选语义。
+  related_rules: []
+  source_files: [scheme.md, gem prompt.md]
+  confidence: medium
+  runtime_allowed: sanitized_only
+
+- asset_id: glossary.mx.recent_7d
+  asset_type: glossary_term
+  country: mx
+  domain: time_window
+  term: recent_7d
+  aliases: [最近7天, 近7天]
+  definition: 相对当前请求时间的七天滚动窗口，不应复制历史固定日期。
+  related_rules: []
+  source_files: [多国业务逻辑.md, few.md, all_examples .md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: glossary.mx.recent_30d
+  asset_type: glossary_term
+  country: mx
+  domain: time_window
+  term: recent_30d
+  aliases: [最近30天, 近30天]
+  definition: 相对当前请求时间的三十天滚动窗口。
+  related_rules: []
+  source_files: [few.md, all_examples .md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: glossary.mx.writeback_behavior
+  asset_type: glossary_term
+  country: mx
+  domain: behavior
+  term: writeback_behavior
+  aliases: [behavior写回, 补齐behavior数据]
+  definition: 先确定目标人群，再按 uid 或 cohort 约束补齐行为数据。
+  related_rules: [rule.mx.behavior_cohort_required]
+  source_files: [few.md, all_examples .md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: glossary.mx.uid_cohort_required
+  asset_type: glossary_term
+  country: mx
+  domain: behavior
+  term: uid_cohort_required
+  aliases: [需要uid圈人, 需要cohort约束]
+  definition: behavior writeback 必须先有目标用户集合，不能直接全表扫描。
+  related_rules: [rule.mx.behavior_cohort_required]
+  source_files: [few.md, all_examples .md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: glossary.mx.no_apply
+  asset_type: glossary_term
+  country: mx
+  domain: lifecycle
+  term: no_apply
+  aliases: [没有申请, 未进件]
+  definition: 用户在指定窗口内没有申请记录。
+  related_rules: []
+  source_files: [few.md, all_examples .md]
+  confidence: medium
+  runtime_allowed: sanitized_only
+
+- asset_id: glossary.mx.no_withdraw
+  asset_type: glossary_term
+  country: mx
+  domain: lifecycle
+  term: no_withdraw
+  aliases: [没有提现, 申请未提现]
+  definition: 用户有申请记录，但没有真实提现流水号或放款事件。
+  related_rules: [rule.common.true_withdraw]
+  source_files: [few.md, all_examples .md, 多国业务逻辑.md]
+  confidence: medium
+  runtime_allowed: sanitized_only
+
+- asset_id: glossary.mx.successful_withdraw
+  asset_type: glossary_term
+  country: mx
+  domain: lifecycle
+  term: successful_withdraw
+  aliases: [成功提现, 已放款]
+  definition: 用户存在真实提现流水号或明确放款事件。
+  related_rules: [rule.common.true_withdraw]
+  source_files: [多国业务逻辑.md, scheme.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: glossary.mx.app_profile
+  asset_type: glossary_term
+  country: mx
+  domain: app_profile
+  term: app_profile
+  aliases: [app画像, app安装分类]
+  definition: 用户安装包与应用类目相关的画像查询语义。
+  related_rules: []
+  source_files: [🚀 正在提取表上下文 app所需表结构.ods_f_market_app_categories]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: glossary.mx.credit_profile
+  asset_type: glossary_term
+  country: mx
+  domain: credit
+  term: credit_profile
+  aliases: [征信画像, 审核申请字段]
+  definition: 面向征信、审核申请、审核结果与申请状态字段的查询语义。
+  related_rules: []
+  source_files: [🚀 征信所需表格结构]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: glossary.th.asset_snapshot
+  asset_type: glossary_term
+  country: th
+  domain: asset
+  term: asset_snapshot
+  aliases: [资产快照, 资产宽表快照]
+  definition: 泰国资产域按快照日期保留历史状态的宽表语义。
+  related_rules: []
+  source_files: [(泰国)dwt_asset_info_base_snap.md, BI数仓_1. 资产域定义.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: glossary.th.risk_apply
+  asset_type: glossary_term
+  country: th
+  domain: risk
+  term: risk_apply
+  aliases: [正审风控, 风控正审]
+  definition: 泰国正审风控宽表语义，聚焦 apply 侧风险与产品字段。
+  related_rules: []
+  source_files: [(泰国风控域)dwt_rsk_apply_info_base_d.md, BI数仓_2. 风控域定义.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: glossary.th.ask_loan_risk
+  asset_type: glossary_term
+  country: th
+  domain: risk
+  term: ask_loan_risk
+  aliases: [预审风控, ask loan 风控]
+  definition: 泰国预审风控宽表语义，聚焦 ask_loan 阶段结果与拒绝原因。
+  related_rules: []
+  source_files: [(泰国风控域)dwt_rsk_ask_loan_info_base_d.md, BI数仓_2. 风控域定义.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: glossary.th.third_party_risk
+  asset_type: glossary_term
+  country: th
+  domain: third_party
+  term: third_party_risk
+  aliases: [三方风险, 三方供应商风险]
+  definition: 泰国三方供应商、黑名单、多头、设备指纹和信用分产品的查询语义。
+  related_rules: []
+  source_files: [hive_泰国三方域.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: glossary.th.credit_report
+  asset_type: glossary_term
+  country: th
+  domain: third_party
+  term: credit_report
+  aliases: [征信报告, 征信供应商]
+  definition: 泰国征信报告、信用分与报告类供应商产品语义。
+  related_rules: []
+  source_files: [hive_泰国三方域.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: glossary.multi.collection_behavior
+  asset_type: glossary_term
+  country: multi
+  domain: behavior
+  term: collection_behavior
+  aliases: [催收行为, 触达行为]
+  definition: 贷后催收与触达过程中的行为日志语义。
+  related_rules: []
+  source_files: [2.dws.dws_fox_boc_behavior_log_d介绍.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: glossary.multi.contact_outcome
+  asset_type: glossary_term
+  country: multi
+  domain: behavior
+  term: contact_outcome
+  aliases: [触达结果, 接通结果]
+  definition: 触达状态名称、接通与未接通等结果语义。
+  related_rules: []
+  source_files: [2.dws.dws_fox_boc_behavior_log_d介绍.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: glossary.multi.settled_over_3m
+  asset_type: glossary_term
+  country: multi
+  domain: lifecycle
+  term: settled_over_3m
+  aliases: [结清超过3个月, 结清满3个月]
+  definition: 用户最近一次结清时间距离当前快照已超过三个月。
+  related_rules: []
+  source_files: [1.dws.dws_user_renewal_loan_seg_d 介绍.md, schema_dws_dws_user_renewal_loan_seg_d.csv]
+  confidence: high
+  runtime_allowed: sanitized_only

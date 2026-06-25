@@ -5,6 +5,28 @@
 - 整体架构：单体 FastAPI 后端，五层（API → 编排 → Skill 执行 → 数据访问 → 外部服务）
 - 入口文件：`app/main.py`
 
+## 2026-06-25 M2B-1 Structured Knowledge Extraction
+
+- `M2B-0` 已完成，当前进入 `M2B-1 Structured Knowledge Extraction`：
+  - `docs/plans/m2b-1-structured-knowledge-extraction-plan.md`
+  - `docs/reviews/m2b-1-structured-knowledge-extraction-results.md`
+  - `docs/reviews/m2b-1-golden-set-coverage.md`
+- 本阶段只做 first-batch、golden-set-driven、high-confidence candidate asset extraction：
+  - 将 `docs/knowledge-base/` 的 legacy raw docs 抽取成 `data_knowledge_eval/m2b/extracted_assets/`
+  - 产出 `catalog_table` / `catalog_field` / `glossary_term` / `business_rule` / `cohort_definition`
+  - 产出 sanitized `sql_example_pattern` / `sql_error_case` / `canonical_field_policy`
+  - 新增 asset validator 与 golden-set coverage report
+- 本阶段明确不做：
+  - seed import / runtime integration
+  - `app/data_knowledge/retriever.py` 改造
+  - `app/data_agent/service.py` / `app/data_agent/sql_plan.py` 改造
+  - embedding / vector index / reranker / hybrid retrieval
+  - raw docs 直接进入 prompt 或 runtime retrieval
+- `data_knowledge_eval/m2b/extracted_assets/` 在本阶段的身份固定为 `candidate structured assets`：
+  - 允许提交去敏后的结构化资产与 coverage 产物
+  - 不代表已经写入 runtime knowledge store
+  - `M2B-2` 才考虑 seed promotion 与 Data Knowledge Store update
+
 ## 2026-06-25 M2B-0 Knowledge Inventory & Retrieval Baseline
 
 - `M2A-RQ-FU7` 已确认后续进入 `M2B Hybrid Retrieval`，但 `M2B` 的第一个子阶段固定为 `M2B-0`：

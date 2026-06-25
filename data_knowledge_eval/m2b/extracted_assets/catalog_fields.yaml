@@ -1,0 +1,1169 @@
+- asset_id: field.mx.dwd_w_user.user_uuid
+  asset_type: catalog_field
+  country: mx
+  domain: user
+  table_name: hive.dwd.dwd_w_user
+  field_name: user_uuid
+  field_type: bigint
+  semantic: user_identifier
+  description: 用户唯一 ID。
+  aliases: [uid]
+  usage: [cohort_join, user_level_grouping]
+  is_join_key: true
+  is_partition_field: false
+  is_business_time: false
+  source_files: [scheme.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.mx.dwd_w_user.individual_uuid
+  asset_type: catalog_field
+  country: mx
+  domain: user
+  table_name: hive.dwd.dwd_w_user
+  field_name: individual_uuid
+  field_type: varchar
+  semantic: person_identifier
+  description: 人维度标识，可用于用户与人维度映射。
+  aliases: []
+  usage: [person_linking]
+  is_join_key: true
+  is_partition_field: false
+  is_business_time: false
+  source_files: [scheme.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.mx.dwd_w_user.user_source
+  asset_type: catalog_field
+  country: mx
+  domain: user
+  table_name: hive.dwd.dwd_w_user
+  field_name: user_source
+  field_type: varchar
+  semantic: registration_source
+  description: 用户注册来源包。
+  aliases: []
+  usage: [source_segmentation]
+  is_join_key: false
+  is_partition_field: false
+  is_business_time: false
+  source_files: [scheme.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.mx.dwd_w_user.apply_source
+  asset_type: catalog_field
+  country: mx
+  domain: user
+  table_name: hive.dwd.dwd_w_user
+  field_name: apply_source
+  field_type: varchar
+  semantic: risk_apply_source
+  description: 风控进件来源包。
+  aliases: []
+  usage: [source_segmentation]
+  is_join_key: false
+  is_partition_field: false
+  is_business_time: false
+  source_files: [scheme.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.mx.dwd_w_user.user_create_time
+  asset_type: catalog_field
+  country: mx
+  domain: user
+  table_name: hive.dwd.dwd_w_user
+  field_name: user_create_time
+  field_type: varchar
+  semantic: register_business_time
+  description: 用户注册时间。
+  aliases: [register_at]
+  usage: [registration_window]
+  is_join_key: false
+  is_partition_field: false
+  is_business_time: true
+  source_files: [scheme.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.mx.dwd_w_user.dt
+  asset_type: catalog_field
+  country: mx
+  domain: user
+  table_name: hive.dwd.dwd_w_user
+  field_name: dt
+  field_type: varchar
+  semantic: partition_date
+  description: 分区日期字段。
+  aliases: []
+  usage: [partition_pruning]
+  is_join_key: false
+  is_partition_field: true
+  is_business_time: false
+  source_files: [scheme.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.mx.dwd_w_apply.apply_uuid
+  asset_type: catalog_field
+  country: mx
+  domain: loan
+  table_name: hive.dwd.dwd_w_apply
+  field_name: apply_uuid
+  field_type: bigint
+  semantic: apply_identifier
+  description: 进件 ID。
+  aliases: []
+  usage: [apply_join]
+  is_join_key: true
+  is_partition_field: false
+  is_business_time: false
+  source_files: [scheme.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.mx.dwd_w_apply.ask_loan_uuid
+  asset_type: catalog_field
+  country: mx
+  domain: loan
+  table_name: hive.dwd.dwd_w_apply
+  field_name: ask_loan_uuid
+  field_type: bigint
+  semantic: ask_loan_identifier
+  description: 预审 ID。
+  aliases: []
+  usage: [ask_loan_join]
+  is_join_key: true
+  is_partition_field: false
+  is_business_time: false
+  source_files: [scheme.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.mx.dwd_w_apply.user_uuid
+  asset_type: catalog_field
+  country: mx
+  domain: loan
+  table_name: hive.dwd.dwd_w_apply
+  field_name: user_uuid
+  field_type: bigint
+  semantic: user_identifier
+  description: 用户 ID。
+  aliases: [uid]
+  usage: [cohort_join, user_level_grouping]
+  is_join_key: true
+  is_partition_field: false
+  is_business_time: false
+  source_files: [scheme.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.mx.dwd_w_apply.customer_type
+  asset_type: catalog_field
+  country: mx
+  domain: loan
+  table_name: hive.dwd.dwd_w_apply
+  field_name: customer_type
+  field_type: varchar
+  semantic: customer_segment
+  description: 新老客标签字段。
+  aliases: []
+  usage: [first_loan_hint, cohort_filtering]
+  is_join_key: false
+  is_partition_field: false
+  is_business_time: false
+  source_files: [scheme.md, 多国业务逻辑.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.mx.dwd_w_apply.apply_status
+  asset_type: catalog_field
+  country: mx
+  domain: loan
+  table_name: hive.dwd.dwd_w_apply
+  field_name: apply_status
+  field_type: varchar
+  semantic: apply_decision_status
+  description: 申请状态字段。
+  aliases: []
+  usage: [apply_status_filtering]
+  is_join_key: false
+  is_partition_field: false
+  is_business_time: false
+  source_files: [scheme.md, 🚀 征信所需表格结构]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.mx.dwd_w_apply.apply_create_at
+  asset_type: catalog_field
+  country: mx
+  domain: loan
+  table_name: hive.dwd.dwd_w_apply
+  field_name: apply_create_at
+  field_type: varchar
+  semantic: apply_business_time
+  description: 申请业务时间。
+  aliases: [apply_time]
+  usage: [apply_time_filtering, cohort_windowing]
+  is_join_key: false
+  is_partition_field: false
+  is_business_time: true
+  source_files: [scheme.md, 多国业务逻辑.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.mx.dwd_w_apply.asset_grant_at
+  asset_type: catalog_field
+  country: mx
+  domain: loan
+  table_name: hive.dwd.dwd_w_apply
+  field_name: asset_grant_at
+  field_type: varchar
+  semantic: grant_time
+  description: 放款时间。
+  aliases: []
+  usage: [true_withdraw_validation, lifecycle_windowing]
+  is_join_key: false
+  is_partition_field: false
+  is_business_time: true
+  source_files: [scheme.md, 多国业务逻辑.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.mx.dwd_w_apply.asset_finish_at
+  asset_type: catalog_field
+  country: mx
+  domain: loan
+  table_name: hive.dwd.dwd_w_apply
+  field_name: asset_finish_at
+  field_type: varchar
+  semantic: settlement_time
+  description: 资产或分期结清时间。
+  aliases: [final_finish_at]
+  usage: [settlement_windowing, churn_observation]
+  is_join_key: false
+  is_partition_field: false
+  is_business_time: true
+  source_files: [scheme.md, 多国业务逻辑.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.mx.dwd_w_apply.asset_overdue_days
+  asset_type: catalog_field
+  country: mx
+  domain: loan
+  table_name: hive.dwd.dwd_w_apply
+  field_name: asset_overdue_days
+  field_type: int
+  semantic: asset_overdue_days
+  description: 资产逾期天数字段。
+  aliases: [overdue_days]
+  usage: [never_overdue_detection, overdue_segmentation]
+  is_join_key: false
+  is_partition_field: false
+  is_business_time: false
+  source_files: [scheme.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.mx.dwd_w_apply.real_overdue_days
+  asset_type: catalog_field
+  country: mx
+  domain: loan
+  table_name: hive.dwd.dwd_w_apply
+  field_name: real_overdue_days
+  field_type: int
+  semantic: real_overdue_days
+  description: 实际逾期天数字段。
+  aliases: []
+  usage: [overdue_segmentation]
+  is_join_key: false
+  is_partition_field: false
+  is_business_time: false
+  source_files: [scheme.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.mx.dwd_w_apply.withdraw_uuid
+  asset_type: catalog_field
+  country: mx
+  domain: loan
+  table_name: hive.dwd.dwd_w_apply
+  field_name: withdraw_uuid
+  field_type: varchar
+  semantic: withdraw_identifier
+  description: 提现流水号，真实借款判定核心字段。
+  aliases: []
+  usage: [true_withdraw_detection, reborrow_detection]
+  is_join_key: true
+  is_partition_field: false
+  is_business_time: false
+  source_files: [scheme.md, 多国业务逻辑.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.mx.dwd_w_apply.dt
+  asset_type: catalog_field
+  country: mx
+  domain: loan
+  table_name: hive.dwd.dwd_w_apply
+  field_name: dt
+  field_type: varchar
+  semantic: partition_date
+  description: 申请分区日期字段。
+  aliases: []
+  usage: [partition_pruning]
+  is_join_key: false
+  is_partition_field: true
+  is_business_time: false
+  source_files: [scheme.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.mx.dwb_b1_data_burying_point.uid
+  asset_type: catalog_field
+  country: mx
+  domain: behavior
+  table_name: hive.dwb.dwb_b1_data_burying_point
+  field_name: uid
+  field_type: varchar
+  semantic: event_user_identifier
+  description: 埋点用户标识。
+  aliases: [user_uuid]
+  usage: [behavior_join]
+  is_join_key: true
+  is_partition_field: false
+  is_business_time: false
+  source_files: [few.md, all_examples .md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.mx.dwb_b1_data_burying_point.timestamp_
+  asset_type: catalog_field
+  country: mx
+  domain: behavior
+  table_name: hive.dwb.dwb_b1_data_burying_point
+  field_name: timestamp_
+  field_type: bigint
+  semantic: event_client_time
+  description: 客户端事件时间戳。
+  aliases: []
+  usage: [event_windowing]
+  is_join_key: false
+  is_partition_field: false
+  is_business_time: true
+  source_files: [few.md, all_examples .md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.mx.dwb_b1_data_burying_point.servertimestamp
+  asset_type: catalog_field
+  country: mx
+  domain: behavior
+  table_name: hive.dwb.dwb_b1_data_burying_point
+  field_name: servertimestamp
+  field_type: bigint
+  semantic: event_server_time
+  description: 服务端事件时间戳。
+  aliases: []
+  usage: [event_ordering]
+  is_join_key: false
+  is_partition_field: false
+  is_business_time: true
+  source_files: [few.md, all_examples .md]
+  confidence: medium
+  runtime_allowed: sanitized_only
+
+- asset_id: field.mx.dwb_b1_data_burying_point.eventname
+  asset_type: catalog_field
+  country: mx
+  domain: behavior
+  table_name: hive.dwb.dwb_b1_data_burying_point
+  field_name: eventname
+  field_type: varchar
+  semantic: event_name
+  description: 埋点事件名称。
+  aliases: []
+  usage: [behavior_filtering, feature_building]
+  is_join_key: false
+  is_partition_field: false
+  is_business_time: false
+  source_files: [few.md, all_examples .md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.mx.dwb_b1_data_burying_point.extend
+  asset_type: catalog_field
+  country: mx
+  domain: behavior
+  table_name: hive.dwb.dwb_b1_data_burying_point
+  field_name: extend
+  field_type: varchar
+  semantic: event_payload
+  description: 事件扩展载荷字段。
+  aliases: [extend_json]
+  usage: [parameter_parsing]
+  is_join_key: false
+  is_partition_field: false
+  is_business_time: false
+  source_files: [few.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.mx.dwb_b1_data_burying_point.dt
+  asset_type: catalog_field
+  country: mx
+  domain: behavior
+  table_name: hive.dwb.dwb_b1_data_burying_point
+  field_name: dt
+  field_type: varchar
+  semantic: partition_date
+  description: 埋点分区日期。
+  aliases: []
+  usage: [partition_pruning]
+  is_join_key: false
+  is_partition_field: true
+  is_business_time: false
+  source_files: [few.md, all_examples .md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.mx.dwb_r_apply.apply_id
+  asset_type: catalog_field
+  country: mx
+  domain: credit
+  table_name: hive.dwb.dwb_r_apply
+  field_name: apply_id
+  field_type: int
+  semantic: apply_record_id
+  description: 自增申请记录 ID。
+  aliases: []
+  usage: [credit_join]
+  is_join_key: true
+  is_partition_field: false
+  is_business_time: false
+  source_files: [🚀 征信所需表格结构]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.mx.dwb_r_apply.apply_uuid
+  asset_type: catalog_field
+  country: mx
+  domain: credit
+  table_name: hive.dwb.dwb_r_apply
+  field_name: apply_uuid
+  field_type: bigint
+  semantic: apply_identifier
+  description: 订单唯一 uuid。
+  aliases: []
+  usage: [credit_join]
+  is_join_key: true
+  is_partition_field: false
+  is_business_time: false
+  source_files: [🚀 征信所需表格结构]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.mx.dwb_r_apply.apply_user_uuid
+  asset_type: catalog_field
+  country: mx
+  domain: credit
+  table_name: hive.dwb.dwb_r_apply
+  field_name: apply_user_uuid
+  field_type: bigint
+  semantic: user_identifier
+  description: 申请记录上的用户 uuid。
+  aliases: [user_uuid]
+  usage: [credit_user_join]
+  is_join_key: true
+  is_partition_field: false
+  is_business_time: false
+  source_files: [🚀 征信所需表格结构]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.mx.dwb_r_apply.apply_status
+  asset_type: catalog_field
+  country: mx
+  domain: credit
+  table_name: hive.dwb.dwb_r_apply
+  field_name: apply_status
+  field_type: bigint
+  semantic: credit_apply_status
+  description: 审核状态。
+  aliases: []
+  usage: [credit_status_filtering]
+  is_join_key: false
+  is_partition_field: false
+  is_business_time: false
+  source_files: [🚀 征信所需表格结构]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.mx.dwb_r_apply.apply_created_at
+  asset_type: catalog_field
+  country: mx
+  domain: credit
+  table_name: hive.dwb.dwb_r_apply
+  field_name: apply_created_at
+  field_type: varchar
+  semantic: apply_business_time
+  description: 审核申请创建时间。
+  aliases: [apply_time]
+  usage: [credit_time_filtering]
+  is_join_key: false
+  is_partition_field: false
+  is_business_time: true
+  source_files: [🚀 征信所需表格结构]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.mx.ods_f_market_app_categories.app_package
+  asset_type: catalog_field
+  country: mx
+  domain: app_profile
+  table_name: hive.ods.ods_f_market_app_categories
+  field_name: app_package
+  field_type: varchar
+  semantic: app_package_name
+  description: 应用包名。
+  aliases: []
+  usage: [app_join]
+  is_join_key: true
+  is_partition_field: false
+  is_business_time: false
+  source_files: [🚀 正在提取表上下文 app所需表结构.ods_f_market_app_categories]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.mx.ods_f_market_app_categories.app_name
+  asset_type: catalog_field
+  country: mx
+  domain: app_profile
+  table_name: hive.ods.ods_f_market_app_categories
+  field_name: app_name
+  field_type: varchar
+  semantic: app_display_name
+  description: 应用名称。
+  aliases: []
+  usage: [app_reporting]
+  is_join_key: false
+  is_partition_field: false
+  is_business_time: false
+  source_files: [🚀 正在提取表上下文 app所需表结构.ods_f_market_app_categories]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.mx.ods_f_market_app_categories.gp_category
+  asset_type: catalog_field
+  country: mx
+  domain: app_profile
+  table_name: hive.ods.ods_f_market_app_categories
+  field_name: gp_category
+  field_type: varchar
+  semantic: app_store_category
+  description: 应用商店原始类目。
+  aliases: [category_name]
+  usage: [category_mapping]
+  is_join_key: false
+  is_partition_field: false
+  is_business_time: false
+  source_files: [🚀 正在提取表上下文 app所需表结构.ods_f_market_app_categories]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.mx.ods_f_market_app_categories.ai_category_level_1
+  asset_type: catalog_field
+  country: mx
+  domain: app_profile
+  table_name: hive.ods.ods_f_market_app_categories
+  field_name: ai_category_level_1
+  field_type: varchar
+  semantic: ai_category_level_1
+  description: AI 一级类目编码。
+  aliases: [category_level]
+  usage: [category_grouping]
+  is_join_key: false
+  is_partition_field: false
+  is_business_time: false
+  source_files: [🚀 正在提取表上下文 app所需表结构.ods_f_market_app_categories]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.mx.ods_f_market_app_categories.ai_category_level_1_cn
+  asset_type: catalog_field
+  country: mx
+  domain: app_profile
+  table_name: hive.ods.ods_f_market_app_categories
+  field_name: ai_category_level_1_cn
+  field_type: varchar
+  semantic: ai_category_level_1_cn
+  description: AI 一级类目中文名。
+  aliases: []
+  usage: [category_display]
+  is_join_key: false
+  is_partition_field: false
+  is_business_time: false
+  source_files: [🚀 正在提取表上下文 app所需表结构.ods_f_market_app_categories]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.mx.ods_f_market_app_categories.year_day
+  asset_type: catalog_field
+  country: mx
+  domain: app_profile
+  table_name: hive.ods.ods_f_market_app_categories
+  field_name: year_day
+  field_type: int
+  semantic: category_snapshot_day
+  description: 类目业务快照日期。
+  aliases: []
+  usage: [snapshot_filtering]
+  is_join_key: false
+  is_partition_field: false
+  is_business_time: true
+  source_files: [🚀 正在提取表上下文 app所需表结构.ods_f_market_app_categories]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.th.dwt_asset_info_base_snap.asset_id
+  asset_type: catalog_field
+  country: th
+  domain: asset
+  table_name: hive.dwt.dwt_asset_info_base_snap
+  field_name: asset_id
+  field_type: bigint
+  semantic: asset_identifier
+  description: 资产 ID。
+  aliases: []
+  usage: [asset_join]
+  is_join_key: true
+  is_partition_field: false
+  is_business_time: false
+  source_files: [(泰国)dwt_asset_info_base_snap.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.th.dwt_asset_info_base_snap.user_uuid
+  asset_type: catalog_field
+  country: th
+  domain: asset
+  table_name: hive.dwt.dwt_asset_info_base_snap
+  field_name: user_uuid
+  field_type: bigint
+  semantic: user_identifier
+  description: 用户 ID。
+  aliases: []
+  usage: [user_level_grouping]
+  is_join_key: true
+  is_partition_field: false
+  is_business_time: false
+  source_files: [(泰国)dwt_asset_info_base_snap.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.th.dwt_asset_info_base_snap.apply_uuid
+  asset_type: catalog_field
+  country: th
+  domain: asset
+  table_name: hive.dwt.dwt_asset_info_base_snap
+  field_name: apply_uuid
+  field_type: bigint
+  semantic: apply_identifier
+  description: 正审 ID。
+  aliases: []
+  usage: [risk_asset_join]
+  is_join_key: true
+  is_partition_field: false
+  is_business_time: false
+  source_files: [(泰国)dwt_asset_info_base_snap.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.th.dwt_asset_info_base_snap.finish_time
+  asset_type: catalog_field
+  country: th
+  domain: asset
+  table_name: hive.dwt.dwt_asset_info_base_snap
+  field_name: finish_time
+  field_type: string
+  semantic: settlement_time
+  description: 资产结清时间。
+  aliases: []
+  usage: [asset_state_history]
+  is_join_key: false
+  is_partition_field: false
+  is_business_time: true
+  source_files: [(泰国)dwt_asset_info_base_snap.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.th.dwt_rsk_apply_info_base_d.apply_uuid
+  asset_type: catalog_field
+  country: th
+  domain: risk
+  table_name: hive.dwt.dwt_rsk_apply_info_base_d
+  field_name: apply_uuid
+  field_type: bigint
+  semantic: apply_identifier
+  description: 正审进件 ID。
+  aliases: []
+  usage: [risk_apply_join]
+  is_join_key: true
+  is_partition_field: false
+  is_business_time: false
+  source_files: [(泰国风控域)dwt_rsk_apply_info_base_d.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.th.dwt_rsk_apply_info_base_d.user_uuid
+  asset_type: catalog_field
+  country: th
+  domain: risk
+  table_name: hive.dwt.dwt_rsk_apply_info_base_d
+  field_name: user_uuid
+  field_type: bigint
+  semantic: user_identifier
+  description: 用户 ID。
+  aliases: []
+  usage: [risk_user_join]
+  is_join_key: true
+  is_partition_field: false
+  is_business_time: false
+  source_files: [(泰国风控域)dwt_rsk_apply_info_base_d.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.th.dwt_rsk_apply_info_base_d.ask_loan_uuid
+  asset_type: catalog_field
+  country: th
+  domain: risk
+  table_name: hive.dwt.dwt_rsk_apply_info_base_d
+  field_name: ask_loan_uuid
+  field_type: bigint
+  semantic: ask_loan_identifier
+  description: 预审 ID。
+  aliases: []
+  usage: [risk_apply_join]
+  is_join_key: true
+  is_partition_field: false
+  is_business_time: false
+  source_files: [(泰国风控域)dwt_rsk_apply_info_base_d.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.th.dwt_rsk_apply_info_base_d.apply_create_at
+  asset_type: catalog_field
+  country: th
+  domain: risk
+  table_name: hive.dwt.dwt_rsk_apply_info_base_d
+  field_name: apply_create_at
+  field_type: string
+  semantic: apply_business_time
+  description: 正审进件时间。
+  aliases: [apply_time]
+  usage: [risk_time_filtering]
+  is_join_key: false
+  is_partition_field: false
+  is_business_time: true
+  source_files: [(泰国风控域)dwt_rsk_apply_info_base_d.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.th.dwt_rsk_apply_info_base_d.user_loan_label
+  asset_type: catalog_field
+  country: th
+  domain: risk
+  table_name: hive.dwt.dwt_rsk_apply_info_base_d
+  field_name: user_loan_label
+  field_type: string
+  semantic: first_vs_renewal_label
+  description: 首续贷标签。
+  aliases: []
+  usage: [risk_segmentation]
+  is_join_key: false
+  is_partition_field: false
+  is_business_time: false
+  source_files: [(泰国风控域)dwt_rsk_apply_info_base_d.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.th.dwt_rsk_ask_loan_info_base_d.ask_loan_uuid
+  asset_type: catalog_field
+  country: th
+  domain: risk
+  table_name: hive.dwt.dwt_rsk_ask_loan_info_base_d
+  field_name: ask_loan_uuid
+  field_type: bigint
+  semantic: ask_loan_identifier
+  description: 预审 ID。
+  aliases: []
+  usage: [ask_loan_join]
+  is_join_key: true
+  is_partition_field: false
+  is_business_time: false
+  source_files: [(泰国风控域)dwt_rsk_ask_loan_info_base_d.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.th.dwt_rsk_ask_loan_info_base_d.user_uuid
+  asset_type: catalog_field
+  country: th
+  domain: risk
+  table_name: hive.dwt.dwt_rsk_ask_loan_info_base_d
+  field_name: user_uuid
+  field_type: bigint
+  semantic: user_identifier
+  description: 用户 ID。
+  aliases: []
+  usage: [ask_loan_user_join]
+  is_join_key: true
+  is_partition_field: false
+  is_business_time: false
+  source_files: [(泰国风控域)dwt_rsk_ask_loan_info_base_d.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.th.dwt_rsk_ask_loan_info_base_d.apply_uuid
+  asset_type: catalog_field
+  country: th
+  domain: risk
+  table_name: hive.dwt.dwt_rsk_ask_loan_info_base_d
+  field_name: apply_uuid
+  field_type: bigint
+  semantic: apply_identifier
+  description: 与预审关联的正审 ID。
+  aliases: []
+  usage: [ask_loan_apply_join]
+  is_join_key: true
+  is_partition_field: false
+  is_business_time: false
+  source_files: [(泰国风控域)dwt_rsk_ask_loan_info_base_d.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.th.dwt_rsk_ask_loan_info_base_d.refuse_reason
+  asset_type: catalog_field
+  country: th
+  domain: risk
+  table_name: hive.dwt.dwt_rsk_ask_loan_info_base_d
+  field_name: refuse_reason
+  field_type: int
+  semantic: refusal_reason_code
+  description: 预审拒绝原因编码。
+  aliases: []
+  usage: [risk_refusal_analysis]
+  is_join_key: false
+  is_partition_field: false
+  is_business_time: false
+  source_files: [(泰国风控域)dwt_rsk_ask_loan_info_base_d.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.th.dwt_rsk_ask_loan_info_base_d.from_system
+  asset_type: catalog_field
+  country: th
+  domain: risk
+  table_name: hive.dwt.dwt_rsk_ask_loan_info_base_d
+  field_name: from_system
+  field_type: string
+  semantic: ask_loan_source_system
+  description: 预审来源系统标签。
+  aliases: []
+  usage: [system_segmentation]
+  is_join_key: false
+  is_partition_field: false
+  is_business_time: false
+  source_files: [(泰国风控域)dwt_rsk_ask_loan_info_base_d.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.th.dwt_rsk_ask_loan_info_base_d.pre_user_loan_label
+  asset_type: catalog_field
+  country: th
+  domain: risk
+  table_name: hive.dwt.dwt_rsk_ask_loan_info_base_d
+  field_name: pre_user_loan_label
+  field_type: string
+  semantic: first_vs_renewal_label
+  description: 预审时用户在贷标签。
+  aliases: [user_loan_label]
+  usage: [ask_loan_risk_segmentation]
+  is_join_key: false
+  is_partition_field: false
+  is_business_time: false
+  source_files: [(泰国风控域)dwt_rsk_ask_loan_info_base_d.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.multi.dws_user_renewal_loan_seg_d.user_uuid
+  asset_type: catalog_field
+  country: multi
+  domain: lifecycle
+  table_name: dws.dws_user_renewal_loan_seg_d
+  field_name: user_uuid
+  field_type: bigint
+  semantic: user_identifier
+  description: 用户 UUID。
+  aliases: []
+  usage: [renewal_segmentation]
+  is_join_key: true
+  is_partition_field: false
+  is_business_time: false
+  source_files: [1.dws.dws_user_renewal_loan_seg_d 介绍.md, schema_dws_dws_user_renewal_loan_seg_d.csv]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.multi.dws_user_renewal_loan_seg_d.dt
+  asset_type: catalog_field
+  country: multi
+  domain: lifecycle
+  table_name: dws.dws_user_renewal_loan_seg_d
+  field_name: dt
+  field_type: date
+  semantic: snapshot_date
+  description: 统计日期。
+  aliases: []
+  usage: [daily_snapshot_filtering]
+  is_join_key: false
+  is_partition_field: true
+  is_business_time: true
+  source_files: [1.dws.dws_user_renewal_loan_seg_d 介绍.md, schema_dws_dws_user_renewal_loan_seg_d.csv]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.multi.dws_user_renewal_loan_seg_d.first_grant_time
+  asset_type: catalog_field
+  country: multi
+  domain: lifecycle
+  table_name: dws.dws_user_renewal_loan_seg_d
+  field_name: first_grant_time
+  field_type: datetime
+  semantic: first_grant_time
+  description: 首次放款时间。
+  aliases: []
+  usage: [mob_calculation]
+  is_join_key: false
+  is_partition_field: false
+  is_business_time: true
+  source_files: [1.dws.dws_user_renewal_loan_seg_d 介绍.md, schema_dws_dws_user_renewal_loan_seg_d.csv]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.multi.dws_user_renewal_loan_seg_d.mob_code
+  asset_type: catalog_field
+  country: multi
+  domain: lifecycle
+  table_name: dws.dws_user_renewal_loan_seg_d
+  field_name: mob_code
+  field_type: varchar
+  semantic: mob_bucket
+  description: MOB 分类标签。
+  aliases: []
+  usage: [lifecycle_segmentation]
+  is_join_key: false
+  is_partition_field: false
+  is_business_time: false
+  source_files: [1.dws.dws_user_renewal_loan_seg_d 介绍.md, schema_dws_dws_user_renewal_loan_seg_d.csv]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.multi.dws_user_renewal_loan_seg_d.last_finish_time
+  asset_type: catalog_field
+  country: multi
+  domain: lifecycle
+  table_name: dws.dws_user_renewal_loan_seg_d
+  field_name: last_finish_time
+  field_type: datetime
+  semantic: last_settlement_time
+  description: 最近一次结清时间。
+  aliases: []
+  usage: [settlement_recency]
+  is_join_key: false
+  is_partition_field: false
+  is_business_time: true
+  source_files: [1.dws.dws_user_renewal_loan_seg_d 介绍.md, schema_dws_dws_user_renewal_loan_seg_d.csv]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.multi.dws_user_renewal_loan_seg_d.cur_loan_cnt
+  asset_type: catalog_field
+  country: multi
+  domain: lifecycle
+  table_name: dws.dws_user_renewal_loan_seg_d
+  field_name: cur_loan_cnt
+  field_type: int
+  semantic: current_loan_count
+  description: 当前在贷笔数。
+  aliases: []
+  usage: [loan_burden_segmentation]
+  is_join_key: false
+  is_partition_field: false
+  is_business_time: false
+  source_files: [1.dws.dws_user_renewal_loan_seg_d 介绍.md, schema_dws_dws_user_renewal_loan_seg_d.csv]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.multi.dws_fox_boc_behavior_log_d.debtor_id
+  asset_type: catalog_field
+  country: multi
+  domain: behavior
+  table_name: dws.dws_fox_boc_behavior_log_d
+  field_name: debtor_id
+  field_type: bigint
+  semantic: debtor_identifier
+  description: 借款人 ID。
+  aliases: []
+  usage: [debtor_behavior_join]
+  is_join_key: true
+  is_partition_field: false
+  is_business_time: false
+  source_files: [2.dws.dws_fox_boc_behavior_log_d介绍.md, schema_dws_dws_fox_boc_behavior_log_d.csv]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.multi.dws_fox_boc_behavior_log_d.behavior_type
+  asset_type: catalog_field
+  country: multi
+  domain: behavior
+  table_name: dws.dws_fox_boc_behavior_log_d
+  field_name: behavior_type
+  field_type: varchar
+  semantic: collection_behavior_type
+  description: 行为大类。
+  aliases: []
+  usage: [behavior_classification]
+  is_join_key: false
+  is_partition_field: false
+  is_business_time: false
+  source_files: [2.dws.dws_fox_boc_behavior_log_d介绍.md, schema_dws_dws_fox_boc_behavior_log_d.csv]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.multi.dws_fox_boc_behavior_log_d.source_table
+  asset_type: catalog_field
+  country: multi
+  domain: behavior
+  table_name: dws.dws_fox_boc_behavior_log_d
+  field_name: source_table
+  field_type: varchar
+  semantic: lineage_source_table
+  description: 行为来源表。
+  aliases: []
+  usage: [lineage_trace]
+  is_join_key: false
+  is_partition_field: false
+  is_business_time: false
+  source_files: [2.dws.dws_fox_boc_behavior_log_d介绍.md, schema_dws_dws_fox_boc_behavior_log_d.csv]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.multi.dws_fox_boc_behavior_log_d.behavior_time
+  asset_type: catalog_field
+  country: multi
+  domain: behavior
+  table_name: dws.dws_fox_boc_behavior_log_d
+  field_name: behavior_time
+  field_type: datetime
+  semantic: behavior_business_time
+  description: 行为发生时间。
+  aliases: []
+  usage: [contact_sequence_analysis]
+  is_join_key: false
+  is_partition_field: false
+  is_business_time: true
+  source_files: [2.dws.dws_fox_boc_behavior_log_d介绍.md, schema_dws_dws_fox_boc_behavior_log_d.csv]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.multi.dws_fox_boc_behavior_log_d.contact_type
+  asset_type: catalog_field
+  country: multi
+  domain: behavior
+  table_name: dws.dws_fox_boc_behavior_log_d
+  field_name: contact_type
+  field_type: varchar
+  semantic: contact_actor_type
+  description: 触达主体类型。
+  aliases: []
+  usage: [contact_channel_analysis]
+  is_join_key: false
+  is_partition_field: false
+  is_business_time: false
+  source_files: [2.dws.dws_fox_boc_behavior_log_d介绍.md, schema_dws_dws_fox_boc_behavior_log_d.csv]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.multi.dws_fox_boc_behavior_log_d.behavior_status_name
+  asset_type: catalog_field
+  country: multi
+  domain: behavior
+  table_name: dws.dws_fox_boc_behavior_log_d
+  field_name: behavior_status_name
+  field_type: varchar
+  semantic: contact_outcome
+  description: 行为状态名称，例如是否接通。
+  aliases: []
+  usage: [contact_outcome_analysis]
+  is_join_key: false
+  is_partition_field: false
+  is_business_time: false
+  source_files: [2.dws.dws_fox_boc_behavior_log_d介绍.md, schema_dws_dws_fox_boc_behavior_log_d.csv]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: field.th.third_party_sources.supplier_name
+  asset_type: catalog_field
+  country: th
+  domain: third_party
+  table_name: hive.third_party.thailand_sources
+  field_name: supplier_name
+  field_type: string
+  semantic: supplier_name
+  description: 三方供应商名称。
+  aliases: []
+  usage: [supplier_lookup]
+  is_join_key: true
+  is_partition_field: false
+  is_business_time: false
+  source_files: [hive_泰国三方域.md]
+  confidence: medium
+  runtime_allowed: sanitized_only
+
+- asset_id: field.th.third_party_sources.product_name
+  asset_type: catalog_field
+  country: th
+  domain: third_party
+  table_name: hive.third_party.thailand_sources
+  field_name: product_name
+  field_type: string
+  semantic: product_name
+  description: 三方产品名称。
+  aliases: []
+  usage: [product_lookup]
+  is_join_key: true
+  is_partition_field: false
+  is_business_time: false
+  source_files: [hive_泰国三方域.md]
+  confidence: medium
+  runtime_allowed: sanitized_only
+
+- asset_id: field.th.third_party_sources.parse_table_name
+  asset_type: catalog_field
+  country: th
+  domain: third_party
+  table_name: hive.third_party.thailand_sources
+  field_name: parse_table_name
+  field_type: string
+  semantic: parser_table_name
+  description: 解析表名或产品解析标识。
+  aliases: []
+  usage: [parser_lineage_lookup]
+  is_join_key: true
+  is_partition_field: false
+  is_business_time: false
+  source_files: [hive_泰国三方域.md]
+  confidence: medium
+  runtime_allowed: sanitized_only

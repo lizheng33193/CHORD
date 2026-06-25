@@ -1,0 +1,101 @@
+- asset_id: cohort.mx.high_risk_recent_7d
+  asset_type: cohort_definition
+  country: mx
+  domain: risk
+  name: high_risk_recent_7d
+  definition: 墨西哥最近七天高风险用户圈选。
+  required_conditions:
+    - high_risk
+    - recent_7d
+    - apply_time_window
+  required_tables: [hive.dwd.dwd_w_apply]
+  required_fields: [user_uuid, apply_create_at, dt]
+  forbidden_patterns: [fixed_historical_date_copy, historical_source_filter_copy]
+  source_files: [scheme.md, few.md, all_examples .md]
+  confidence: medium
+  runtime_allowed: sanitized_only
+
+- asset_id: cohort.mx.first_loan_never_overdue
+  asset_type: cohort_definition
+  country: mx
+  domain: lifecycle
+  name: first_loan_never_overdue
+  definition: 墨西哥首贷且从未逾期用户。
+  required_conditions:
+    - first_loan
+    - true_withdraw
+    - never_overdue
+  required_tables: [hive.dwd.dwd_w_apply]
+  required_fields: [user_uuid, withdraw_uuid, asset_overdue_days]
+  forbidden_patterns: [withdraw_uuid_negative_mismatch]
+  source_files: [多国业务逻辑.md, scheme.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: cohort.mx.mob1_settled_7d_churn
+  asset_type: cohort_definition
+  country: mx
+  domain: lifecycle
+  name: mob1_settled_7d_churn
+  definition: 墨西哥首贷完全结清后七天内无复借的流失用户。
+  required_conditions:
+    - first_loan
+    - full_settlement
+    - settlement_over_7d
+    - no_reborrow_within_7d
+  required_tables: [hive.dwd.dwd_w_apply]
+  required_fields: [user_uuid, withdraw_uuid, apply_create_at, asset_finish_at, asset_grant_at]
+  forbidden_patterns: [missing_reborrow_anti_join, missing_settlement_7d_observation]
+  source_files: [多国业务逻辑.md, scheme.md]
+  confidence: high
+  runtime_allowed: sanitized_only
+
+- asset_id: cohort.mx.no_apply_recent_30d
+  asset_type: cohort_definition
+  country: mx
+  domain: lifecycle
+  name: no_apply_recent_30d
+  definition: 最近三十天没有申请记录的用户。
+  required_conditions:
+    - recent_30d
+    - no_apply
+    - anti_join_absence_logic
+  required_tables: [hive.dwd.dwd_w_user, hive.dwd.dwd_w_apply]
+  required_fields: [user_uuid, user_create_time, apply_create_at]
+  forbidden_patterns: [missing_anti_join]
+  source_files: [few.md, all_examples .md, scheme.md]
+  confidence: medium
+  runtime_allowed: sanitized_only
+
+- asset_id: cohort.mx.no_withdraw_after_apply
+  asset_type: cohort_definition
+  country: mx
+  domain: lifecycle
+  name: no_withdraw_after_apply
+  definition: 申请过但没有成功提现的用户。
+  required_conditions:
+    - apply_exists
+    - no_true_withdraw
+  required_tables: [hive.dwd.dwd_w_apply]
+  required_fields: [user_uuid, apply_status, withdraw_uuid]
+  forbidden_patterns: [apply_only_without_true_withdraw]
+  source_files: [few.md, all_examples .md, scheme.md]
+  confidence: medium
+  runtime_allowed: sanitized_only
+
+- asset_id: cohort.mx.behavior_writeback_target
+  asset_type: cohort_definition
+  country: mx
+  domain: behavior
+  name: behavior_writeback_target
+  definition: 面向 writeback 的目标 cohort，需要先圈定用户再查询行为事件。
+  required_conditions:
+    - target_users_cte
+    - uid_cohort_required
+    - behavior_time_window
+  required_tables: [hive.dwb.dwb_b1_data_burying_point]
+  required_fields: [uid, timestamp_, eventname]
+  forbidden_patterns: [broad_behavior_scan, unresolved_uid_placeholder]
+  source_files: [few.md, all_examples .md]
+  confidence: high
+  runtime_allowed: sanitized_only

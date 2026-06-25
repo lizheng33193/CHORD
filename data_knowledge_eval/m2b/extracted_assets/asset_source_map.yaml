@@ -1,0 +1,205 @@
+- source_file: (泰国)dwt_asset_info_base_snap.md
+  source_group: thai_domain_doc
+  extraction_status: extracted
+  extracted_asset_types: [catalog_table, catalog_field, glossary_term]
+  risk_level: medium
+  runtime_policy: sanitized_only
+
+- source_file: (泰国)dwt_asset_period_info_base_snap.md
+  source_group: thai_domain_doc
+  extraction_status: deferred
+  extracted_asset_types: []
+  risk_level: medium
+  runtime_policy: sanitized_only
+  deferred_reason: Not required by first-batch golden set priority cases.
+  planned_phase: M2B later extraction
+
+- source_file: (泰国风控域)dwt_rsk_apply_info_base_d.md
+  source_group: thai_domain_doc
+  extraction_status: extracted
+  extracted_asset_types: [catalog_table, catalog_field, glossary_term]
+  risk_level: medium
+  runtime_policy: sanitized_only
+
+- source_file: (泰国风控域)dwt_rsk_ask_loan_info_base_d.md
+  source_group: thai_domain_doc
+  extraction_status: extracted
+  extracted_asset_types: [catalog_table, catalog_field, glossary_term, canonical_field_policy]
+  risk_level: medium
+  runtime_policy: sanitized_only
+
+- source_file: 1.dws.dws_user_renewal_loan_seg_d 介绍.md
+  source_group: dws_table_doc
+  extraction_status: extracted
+  extracted_asset_types: [catalog_table, catalog_field, glossary_term]
+  risk_level: low
+  runtime_policy: sanitized_only
+
+- source_file: 2.dws.dws_fox_boc_behavior_log_d介绍.md
+  source_group: dws_table_doc
+  extraction_status: extracted
+  extracted_asset_types: [catalog_table, catalog_field, glossary_term]
+  risk_level: low
+  runtime_policy: sanitized_only
+
+- source_file: BI数仓_1. 资产域定义.md
+  source_group: thai_domain_doc
+  extraction_status: partial
+  extracted_asset_types: [catalog_table, glossary_term]
+  risk_level: low
+  runtime_policy: sanitized_only
+  planned_phase: M2B-1
+
+- source_file: BI数仓_2. 风控域定义.md
+  source_group: thai_domain_doc
+  extraction_status: partial
+  extracted_asset_types: [catalog_table, glossary_term, canonical_field_policy]
+  risk_level: low
+  runtime_policy: sanitized_only
+  planned_phase: M2B-1
+
+- source_file: BI数仓_3. 用户域定义.md
+  source_group: thai_domain_doc
+  extraction_status: deferred
+  extracted_asset_types: []
+  risk_level: low
+  runtime_policy: sanitized_only
+  deferred_reason: Not required by first-batch golden set priority cases.
+  planned_phase: M2B later extraction
+
+- source_file: all_examples .md
+  source_group: sql_pattern_doc
+  extraction_status: partial
+  extracted_asset_types: [sql_example_pattern, sql_error_case]
+  risk_level: high
+  runtime_policy: sanitized_only
+  planned_phase: M2B-1
+
+- source_file: dwb层数据字典目录（泰国）.md
+  source_group: thai_domain_doc
+  extraction_status: deferred
+  extracted_asset_types: []
+  risk_level: low
+  runtime_policy: sanitized_only
+  deferred_reason: Directory-level dictionary is broader than the first-batch extraction scope.
+  planned_phase: M2B-1.x
+
+- source_file: dwd层数据字典目录（泰国）.md
+  source_group: thai_domain_doc
+  extraction_status: deferred
+  extracted_asset_types: []
+  risk_level: low
+  runtime_policy: sanitized_only
+  deferred_reason: Directory-level dictionary is broader than the first-batch extraction scope.
+  planned_phase: M2B-1.x
+
+- source_file: dws层数据字典目录（泰国）.md
+  source_group: thai_domain_doc
+  extraction_status: partial
+  extracted_asset_types: [catalog_table]
+  risk_level: low
+  runtime_policy: sanitized_only
+  planned_phase: M2B-1
+
+- source_file: dwt_user_behavior_base_snap(泰国用户域).md
+  source_group: thai_domain_doc
+  extraction_status: deferred
+  extracted_asset_types: []
+  risk_level: low
+  runtime_policy: sanitized_only
+  deferred_reason: Useful for later user risk/history expansion but not required by the first-batch priority cases.
+  planned_phase: M2B later extraction
+
+- source_file: dwt_user_info_base_snap (泰国用户域).md
+  source_group: thai_domain_doc
+  extraction_status: deferred
+  extracted_asset_types: []
+  risk_level: medium
+  runtime_policy: sanitized_only
+  deferred_reason: Contains user-base and KYC breadth beyond current first-batch scope.
+  planned_phase: M2B later extraction
+
+- source_file: dwt_user_market_tag_d（泰国用户域）.md
+  source_group: thai_domain_doc
+  extraction_status: deferred
+  extracted_asset_types: []
+  risk_level: low
+  runtime_policy: sanitized_only
+  deferred_reason: Not required by first-batch golden set priority cases.
+  planned_phase: M2B later extraction
+
+- source_file: few.md
+  source_group: sql_pattern_doc
+  extraction_status: partial
+  extracted_asset_types: [sql_example_pattern, sql_error_case]
+  risk_level: high
+  runtime_policy: sanitized_only
+  planned_phase: M2B-1
+
+- source_file: gem prompt.md
+  source_group: schema_doc
+  extraction_status: inventory_only
+  extracted_asset_types: []
+  risk_level: medium
+  runtime_policy: no_raw_runtime
+  planned_phase: M2B design reference only
+
+- source_file: hive_泰国三方域.md
+  source_group: third_party_domain_doc
+  extraction_status: extracted
+  extracted_asset_types: [catalog_table, catalog_field, glossary_term]
+  risk_level: low
+  runtime_policy: sanitized_only
+
+- source_file: hive_用户域与风控域.md
+  source_group: thai_domain_doc
+  extraction_status: deferred
+  extracted_asset_types: []
+  risk_level: low
+  runtime_policy: sanitized_only
+  deferred_reason: Supplemental domain context is recorded but not needed for the first extraction batch.
+  planned_phase: M2B later extraction
+
+- source_file: schema_dws_dws_fox_boc_behavior_log_d.csv
+  source_group: dws_table_doc
+  extraction_status: partial
+  extracted_asset_types: [catalog_field]
+  risk_level: low
+  runtime_policy: sanitized_only
+  planned_phase: M2B-1
+
+- source_file: schema_dws_dws_user_renewal_loan_seg_d.csv
+  source_group: dws_table_doc
+  extraction_status: partial
+  extracted_asset_types: [catalog_field, glossary_term]
+  risk_level: low
+  runtime_policy: sanitized_only
+  planned_phase: M2B-1
+
+- source_file: scheme.md
+  source_group: schema_doc
+  extraction_status: extracted
+  extracted_asset_types: [catalog_table, catalog_field, business_rule, cohort_definition, canonical_field_policy]
+  risk_level: medium
+  runtime_policy: sanitized_only
+
+- source_file: 多国业务逻辑.md
+  source_group: business_logic
+  extraction_status: extracted
+  extracted_asset_types: [glossary_term, business_rule, cohort_definition]
+  risk_level: medium
+  runtime_policy: no_raw_runtime
+
+- source_file: 🚀 征信所需表格结构
+  source_group: credit_schema_doc
+  extraction_status: extracted
+  extracted_asset_types: [catalog_table, catalog_field, glossary_term, canonical_field_policy]
+  risk_level: medium
+  runtime_policy: sanitized_only
+
+- source_file: 🚀 正在提取表上下文 app所需表结构.ods_f_market_app_categories
+  source_group: app_schema_doc
+  extraction_status: extracted
+  extracted_asset_types: [catalog_table, catalog_field, glossary_term]
+  risk_level: low
+  runtime_policy: sanitized_only
