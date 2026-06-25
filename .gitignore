@@ -28,6 +28,16 @@ data/**/*.txt
 New data/
 new data/
 
+# M2B legacy raw knowledge sources may contain credentials or internal data.
+docs/knowledge-base/*
+!docs/knowledge-base/README.md
+__MACOSX/
+._*
+*.swp
+*.swo
+*.tmp
+*.temp
+
 # State files
 data/**/.split_state.json
 data/**/.join_state.json

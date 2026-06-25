@@ -5,6 +5,31 @@
 - 整体架构：单体 FastAPI 后端，五层（API → 编排 → Skill 执行 → 数据访问 → 外部服务）
 - 入口文件：`app/main.py`
 
+## 2026-06-25 M2B-0 Knowledge Inventory & Retrieval Baseline
+
+- `M2A-RQ-FU7` 已确认后续进入 `M2B Hybrid Retrieval`，但 `M2B` 的第一个子阶段固定为 `M2B-0`：
+  - `docs/specs/m2b-hybrid-retrieval-grounding-design.md`
+  - `docs/specs/m2b-knowledge-asset-taxonomy.md`
+  - `docs/plans/m2b-0-knowledge-inventory-baseline-plan.md`
+  - `docs/reviews/m2b-legacy-knowledge-inventory.md`
+  - `docs/evals/m2b-retrieval-golden-set.md`
+  - `docs/reviews/m2b-retrieval-baseline-results.md`
+- 本阶段只做知识治理与评估框架，不做 runtime 检索改造：
+  - 扫描 `docs/knowledge-base/` 原始文档
+  - 生成 inventory / taxonomy / golden set / baseline template
+  - 新增 template-only baseline runner stub
+- 本阶段明确不做：
+  - real retriever execution
+  - `app/data_knowledge/retriever.py` 改造
+  - embedding / vector index / reranker
+  - SQL HITL、approve / execute、orchestrator bridge 改造
+  - raw docs 直接进入 prompt 或 RAG
+- `docs/knowledge-base/` 在本阶段的身份固定为 `legacy raw knowledge sources`：
+  - 只允许本地 inventory 使用
+  - 可能包含敏感连接信息与高风险历史 SQL 模板
+  - 不允许直接作为 runtime knowledge store
+  - 只允许提交脱敏后的 inventory、taxonomy、golden set、baseline 等派生产物
+
 ## 2026-06-24 M2A-Runtime Quality
 
 - `M2A` 与 `M2A-Verify Seed Patch 1/1.1` 已完成，当前进入独立 follow-up 阶段 `M2A-Runtime Quality`：

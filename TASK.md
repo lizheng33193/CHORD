@@ -35,6 +35,26 @@
 - [x] E1 单用户埋点深度解析 → docs/plans/trace-analyzer-plan.md（2026-05-01）
 
 ## 当前进行中的功能
+- [ ] M2B-0：Knowledge Inventory & Retrieval Baseline — 进行中（2026-06-25）
+  - design / plan：
+    - `docs/specs/m2b-hybrid-retrieval-grounding-design.md`
+    - `docs/specs/m2b-knowledge-asset-taxonomy.md`
+    - `docs/plans/m2b-0-knowledge-inventory-baseline-plan.md`
+  - 本阶段目标：
+    - 盘点 `docs/knowledge-base/` 原始知识文档
+    - 定义可抽取的知识资产分类
+    - 建立 retrieval golden set
+    - 建立 template-only baseline 输出格式与 runner stub
+  - 保持不变：
+    - 不跑 real retriever
+    - 不改 `app/data_knowledge/retriever.py`
+    - 不改 SQL HITL / approve / execute
+    - 不改 `M1.5` orchestrator bridge
+    - 不做 embedding / vector index / reranker
+    - 不提交 raw docs
+  - 下一步：
+    - 进入 `M2B-1 Structured Knowledge Extraction`
+
 - [x] M2A-Runtime Quality：Data Agent 运行时质量收敛 — 第一轮完成 + RQ-FU1 completed（2026-06-24）
   - plan / baseline：
     - `docs/plans/m2a-runtime-quality-plan.md`
@@ -619,7 +639,8 @@
 ## 下一步建议
 
 - [ ] M2B Hybrid Retrieval
-  - 重点收敛 `mx-high-risk-cohort` 暴露的 grounding / canonical retrieval gap
+  - 先完成 `M2B-0 Knowledge Inventory & Retrieval Baseline`
+  - 后续优先进入 `M2B-1 Structured Knowledge Extraction`
   - 保持 FU7 的 generation 前 structured plan gate 不变
 
 ## 阻塞项

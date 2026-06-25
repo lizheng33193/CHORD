@@ -1,0 +1,293 @@
+{
+  "schema_version": "m2b_baseline_template_v1",
+  "generated_at": "template",
+  "run_mode": "template",
+  "retriever": "not_connected",
+  "cases": [
+    {
+      "case_id": "mx-high-risk-cohort",
+      "request": "找最近 7 天高风险用户",
+      "retrieved_tables": [],
+      "retrieved_fields": [],
+      "retrieved_glossary_terms": [],
+      "retrieved_examples": [],
+      "retrieved_error_cases": [],
+      "missing_expected": [
+        "TODO: fill after real retriever baseline"
+      ],
+      "unexpected": [],
+      "judgment": "todo",
+      "notes": "Template only. Real retriever adapter is intentionally out of M2B-0 scope."
+    },
+    {
+      "case_id": "mx-recent-7d-risk-users",
+      "request": "提取墨西哥最近 7 天风险等级较高的用户",
+      "retrieved_tables": [],
+      "retrieved_fields": [],
+      "retrieved_glossary_terms": [],
+      "retrieved_examples": [],
+      "retrieved_error_cases": [],
+      "missing_expected": [
+        "TODO: fill after real retriever baseline"
+      ],
+      "unexpected": [],
+      "judgment": "todo",
+      "notes": "Template only. Real retriever adapter is intentionally out of M2B-0 scope."
+    },
+    {
+      "case_id": "mx-first-loan-never-overdue",
+      "request": "找出墨西哥首贷且从未逾期的用户",
+      "retrieved_tables": [],
+      "retrieved_fields": [],
+      "retrieved_glossary_terms": [],
+      "retrieved_examples": [],
+      "retrieved_error_cases": [],
+      "missing_expected": [
+        "TODO: fill after real retriever baseline"
+      ],
+      "unexpected": [],
+      "judgment": "todo",
+      "notes": "Template only. Real retriever adapter is intentionally out of M2B-0 scope."
+    },
+    {
+      "case_id": "mx-mob1-settled-7d-churn",
+      "request": "提取墨西哥 mob1 首贷结清 7 天未复借流失用户",
+      "retrieved_tables": [],
+      "retrieved_fields": [],
+      "retrieved_glossary_terms": [],
+      "retrieved_examples": [],
+      "retrieved_error_cases": [],
+      "missing_expected": [
+        "TODO: fill after real retriever baseline"
+      ],
+      "unexpected": [],
+      "judgment": "todo",
+      "notes": "Template only. Real retriever adapter is intentionally out of M2B-0 scope."
+    },
+    {
+      "case_id": "mx-behavior-writeback",
+      "request": "用 Data Agent 补齐这些用户的 behavior 数据并写回 behavior",
+      "retrieved_tables": [],
+      "retrieved_fields": [],
+      "retrieved_glossary_terms": [],
+      "retrieved_examples": [],
+      "retrieved_error_cases": [],
+      "missing_expected": [
+        "TODO: fill after real retriever baseline"
+      ],
+      "unexpected": [],
+      "judgment": "todo",
+      "notes": "Template only. Real retriever adapter is intentionally out of M2B-0 scope."
+    },
+    {
+      "case_id": "mx-glossary-combo-writeback",
+      "request": "先找最近 7 天高风险用户，再补齐这些用户的 behavior 数据并写回 behavior",
+      "retrieved_tables": [],
+      "retrieved_fields": [],
+      "retrieved_glossary_terms": [],
+      "retrieved_examples": [],
+      "retrieved_error_cases": [],
+      "missing_expected": [
+        "TODO: fill after real retriever baseline"
+      ],
+      "unexpected": [],
+      "judgment": "todo",
+      "notes": "Template only. Real retriever adapter is intentionally out of M2B-0 scope."
+    },
+    {
+      "case_id": "mx-no-apply-cohort",
+      "request": "找出最近 30 天没有申请记录的墨西哥用户",
+      "retrieved_tables": [],
+      "retrieved_fields": [],
+      "retrieved_glossary_terms": [],
+      "retrieved_examples": [],
+      "retrieved_error_cases": [],
+      "missing_expected": [
+        "TODO: fill after real retriever baseline"
+      ],
+      "unexpected": [],
+      "judgment": "todo",
+      "notes": "Template only. Real retriever adapter is intentionally out of M2B-0 scope."
+    },
+    {
+      "case_id": "mx-no-withdraw-cohort",
+      "request": "找出申请过但没有成功提现的墨西哥用户",
+      "retrieved_tables": [],
+      "retrieved_fields": [],
+      "retrieved_glossary_terms": [],
+      "retrieved_examples": [],
+      "retrieved_error_cases": [],
+      "missing_expected": [
+        "TODO: fill after real retriever baseline"
+      ],
+      "unexpected": [],
+      "judgment": "todo",
+      "notes": "Template only. Real retriever adapter is intentionally out of M2B-0 scope."
+    },
+    {
+      "case_id": "mx-withdraw-cohort",
+      "request": "找出最近成功提现的墨西哥用户",
+      "retrieved_tables": [],
+      "retrieved_fields": [],
+      "retrieved_glossary_terms": [],
+      "retrieved_examples": [],
+      "retrieved_error_cases": [],
+      "missing_expected": [
+        "TODO: fill after real retriever baseline"
+      ],
+      "unexpected": [],
+      "judgment": "todo",
+      "notes": "Template only. Real retriever adapter is intentionally out of M2B-0 scope."
+    },
+    {
+      "case_id": "mx-app-profile-query",
+      "request": "查询墨西哥用户的 app 安装分类信息",
+      "retrieved_tables": [],
+      "retrieved_fields": [],
+      "retrieved_glossary_terms": [],
+      "retrieved_examples": [],
+      "retrieved_error_cases": [],
+      "missing_expected": [
+        "TODO: fill after real retriever baseline"
+      ],
+      "unexpected": [],
+      "judgment": "todo",
+      "notes": "Template only. Real retriever adapter is intentionally out of M2B-0 scope."
+    },
+    {
+      "case_id": "mx-credit-profile-query",
+      "request": "查询墨西哥征信相关申请字段",
+      "retrieved_tables": [],
+      "retrieved_fields": [],
+      "retrieved_glossary_terms": [],
+      "retrieved_examples": [],
+      "retrieved_error_cases": [],
+      "missing_expected": [
+        "TODO: fill after real retriever baseline"
+      ],
+      "unexpected": [],
+      "judgment": "todo",
+      "notes": "Template only. Real retriever adapter is intentionally out of M2B-0 scope."
+    },
+    {
+      "case_id": "ph-first-loan-never-overdue",
+      "request": "找出菲律宾首贷且从未逾期的用户",
+      "retrieved_tables": [],
+      "retrieved_fields": [],
+      "retrieved_glossary_terms": [],
+      "retrieved_examples": [],
+      "retrieved_error_cases": [],
+      "missing_expected": [
+        "TODO: fill after real retriever baseline"
+      ],
+      "unexpected": [],
+      "judgment": "todo",
+      "notes": "Template only. Real retriever adapter is intentionally out of M2B-0 scope."
+    },
+    {
+      "case_id": "ph-withdraw-uuid-negative",
+      "request": "修复菲律宾首贷从未逾期 SQL，避免使用 withdraw_uuid",
+      "retrieved_tables": [],
+      "retrieved_fields": [],
+      "retrieved_glossary_terms": [],
+      "retrieved_examples": [],
+      "retrieved_error_cases": [],
+      "missing_expected": [
+        "TODO: fill after real retriever baseline"
+      ],
+      "unexpected": [],
+      "judgment": "todo",
+      "notes": "Template only. Real retriever adapter is intentionally out of M2B-0 scope."
+    },
+    {
+      "case_id": "th-asset-snapshot-query",
+      "request": "查询泰国资产快照宽表字段",
+      "retrieved_tables": [],
+      "retrieved_fields": [],
+      "retrieved_glossary_terms": [],
+      "retrieved_examples": [],
+      "retrieved_error_cases": [],
+      "missing_expected": [
+        "TODO: fill after real retriever baseline"
+      ],
+      "unexpected": [],
+      "judgment": "todo",
+      "notes": "Template only. Real retriever adapter is intentionally out of M2B-0 scope."
+    },
+    {
+      "case_id": "th-risk-apply-query",
+      "request": "查询泰国正审风控宽表字段",
+      "retrieved_tables": [],
+      "retrieved_fields": [],
+      "retrieved_glossary_terms": [],
+      "retrieved_examples": [],
+      "retrieved_error_cases": [],
+      "missing_expected": [
+        "TODO: fill after real retriever baseline"
+      ],
+      "unexpected": [],
+      "judgment": "todo",
+      "notes": "Template only. Real retriever adapter is intentionally out of M2B-0 scope."
+    },
+    {
+      "case_id": "th-ask-loan-risk-query",
+      "request": "查询泰国预审 ask loan 风控表",
+      "retrieved_tables": [],
+      "retrieved_fields": [],
+      "retrieved_glossary_terms": [],
+      "retrieved_examples": [],
+      "retrieved_error_cases": [],
+      "missing_expected": [
+        "TODO: fill after real retriever baseline"
+      ],
+      "unexpected": [],
+      "judgment": "todo",
+      "notes": "Template only. Real retriever adapter is intentionally out of M2B-0 scope."
+    },
+    {
+      "case_id": "th-third-party-risk-query",
+      "request": "查询泰国三方风险和征信供应商信息",
+      "retrieved_tables": [],
+      "retrieved_fields": [],
+      "retrieved_glossary_terms": [],
+      "retrieved_examples": [],
+      "retrieved_error_cases": [],
+      "missing_expected": [
+        "TODO: fill after real retriever baseline"
+      ],
+      "unexpected": [],
+      "judgment": "todo",
+      "notes": "Template only. Real retriever adapter is intentionally out of M2B-0 scope."
+    },
+    {
+      "case_id": "dws-renewal-loan-segment-query",
+      "request": "查询 dws_user_renewal_loan_seg_d 的续贷和 mob 分层字段",
+      "retrieved_tables": [],
+      "retrieved_fields": [],
+      "retrieved_glossary_terms": [],
+      "retrieved_examples": [],
+      "retrieved_error_cases": [],
+      "missing_expected": [
+        "TODO: fill after real retriever baseline"
+      ],
+      "unexpected": [],
+      "judgment": "todo",
+      "notes": "Template only. Real retriever adapter is intentionally out of M2B-0 scope."
+    },
+    {
+      "case_id": "dws-fox-boc-behavior-query",
+      "request": "查询 dws_fox_boc_behavior_log_d 的行为字段和催收触达含义",
+      "retrieved_tables": [],
+      "retrieved_fields": [],
+      "retrieved_glossary_terms": [],
+      "retrieved_examples": [],
+      "retrieved_error_cases": [],
+      "missing_expected": [
+        "TODO: fill after real retriever baseline"
+      ],
+      "unexpected": [],
+      "judgment": "todo",
+      "notes": "Template only. Real retriever adapter is intentionally out of M2B-0 scope."
+    }
+  ]
+}
