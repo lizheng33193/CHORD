@@ -35,6 +35,36 @@
 - [x] E1 单用户埋点深度解析 → docs/plans/trace-analyzer-plan.md（2026-05-01）
 
 ## 当前进行中的功能
+- [x] M2B-2.1：Seed / Alias / Deterministic Grounding Patch — 已完成（2026-06-25）
+  - plan / reviews：
+    - `docs/plans/m2b-2-1-seed-alias-deterministic-grounding-patch-plan.md`
+    - `docs/reviews/m2b-2-1-deterministic-grounding-results.md`
+    - `docs/reviews/m2b-2-1-v1-v2-baseline-comparison.md`
+  - 本阶段产出：
+    - `data_knowledge_seed/m2b/m2b_legacy_v2.yaml`
+    - `data_knowledge_eval/m2b/seed_promotion_manifest.v2.yaml`
+    - `data_knowledge_eval/m2b/baseline_results.m2b_legacy_v1.deterministic.json`
+    - `data_knowledge_eval/m2b/baseline_results.m2b_legacy_v2.deterministic.json`
+    - `data_knowledge_eval/m2b/deterministic_coverage.m2b_legacy_v1.yaml`
+    - `data_knowledge_eval/m2b/deterministic_coverage.m2b_legacy_v2.yaml`
+    - `scripts/promote_m2b_extracted_assets.py`
+    - `scripts/run_m2b_retrieval_baseline.py`
+  - 本轮结果：
+    - `m2b_legacy_v2` 保持 isolated evaluation namespace，不叠加导入 `v1`
+    - v1 baseline：`18 partial / 1 fail / 0 pass`
+    - v2 baseline：`16 partial / 3 pass / 0 fail`
+    - `mx-credit-profile-query`：`fail -> pass`
+    - `mx-high-risk-cohort`：`partial -> pass`
+    - `mx-recent-7d-risk-users`：`partial -> pass`
+    - comparison report 已生成并记录 remaining gaps / regression risk
+  - 保持不变：
+    - 不做 embedding / vector index / hybrid retrieval
+    - 不改 Data Agent runtime
+    - 不改 SQL HITL / approve / execute / orchestrator bridge
+    - 不改 `app/data_knowledge/retriever.py` scoring/top-k/filtering
+  - 下一步：
+    - 进入 `M2B-2.2 Seed / Alias / Deterministic Grounding Patch Round 2`
+
 - [x] M2B-2：Seed Promotion & Deterministic Retrieval Baseline — 已完成（2026-06-25）
   - plan / reviews：
     - `docs/plans/m2b-2-seed-promotion-deterministic-baseline-plan.md`

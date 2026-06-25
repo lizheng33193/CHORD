@@ -1,0 +1,808 @@
+{
+  "schema_version": "m2b_baseline_result_v1",
+  "generated_at": "2026-06-25T00:00:00Z",
+  "run_mode": "deterministic",
+  "retriever": "DataKnowledgeRetriever",
+  "seed_namespaces": [
+    "mx",
+    "ph",
+    "common",
+    "m2b_legacy_v2"
+  ],
+  "seed_patch": "data_knowledge_seed/m2b/m2b_legacy_v2.yaml",
+  "cases": [
+    {
+      "case_id": "mx-high-risk-cohort",
+      "request": "找最近 7 天高风险用户",
+      "retrieved_tables": [
+        "dwd_w_apply",
+        "dwb_r_apply"
+      ],
+      "retrieved_fields": [
+        "apply_time",
+        "user_uuid",
+        "risk_level",
+        "apply_create_at",
+        "dt",
+        "apply_created_at",
+        "apply_id",
+        "apply_status",
+        "apply_user_uuid"
+      ],
+      "retrieved_glossary_terms": [
+        "high_risk",
+        "recent_7d",
+        "高风险用户",
+        "最近7天",
+        "credit_profile"
+      ],
+      "retrieved_examples": [
+        "example:first-loan-never-overdue",
+        "sql_pattern.mx.mob1_churn_cte"
+      ],
+      "retrieved_error_cases": [],
+      "matched_expected": [
+        "table:hive.dwd.dwd_w_apply",
+        "field:user_uuid",
+        "field:risk_level",
+        "field:apply_time",
+        "field:dt",
+        "glossary:high_risk",
+        "glossary:recent_7d"
+      ],
+      "missing_expected": [],
+      "unexpected": [],
+      "judgment": "pass",
+      "notes": [
+        "not_runtime_imported_in_m2b_2_1:cohort.mx.high_risk_recent_7d",
+        "not_runtime_imported_in_m2b_2_1:canonical.mx.apply_business_time"
+      ]
+    },
+    {
+      "case_id": "mx-recent-7d-risk-users",
+      "request": "提取墨西哥最近 7 天风险等级较高的用户",
+      "retrieved_tables": [
+        "dwd_w_apply",
+        "dwb_r_apply"
+      ],
+      "retrieved_fields": [
+        "apply_time",
+        "user_uuid",
+        "risk_level",
+        "apply_create_at",
+        "dt",
+        "apply_created_at",
+        "apply_id",
+        "apply_status",
+        "apply_user_uuid",
+        "loan_count"
+      ],
+      "retrieved_glossary_terms": [
+        "high_risk",
+        "recent_7d",
+        "最近7天",
+        "credit_profile",
+        "首贷"
+      ],
+      "retrieved_examples": [
+        "example:first-loan-never-overdue",
+        "sql_pattern.mx.mob1_churn_cte"
+      ],
+      "retrieved_error_cases": [],
+      "matched_expected": [
+        "table:hive.dwd.dwd_w_apply",
+        "field:user_uuid",
+        "field:risk_level",
+        "field:apply_time",
+        "glossary:high_risk",
+        "glossary:recent_7d"
+      ],
+      "missing_expected": [],
+      "unexpected": [],
+      "judgment": "pass",
+      "notes": []
+    },
+    {
+      "case_id": "mx-first-loan-never-overdue",
+      "request": "找出墨西哥首贷且从未逾期的用户",
+      "retrieved_tables": [
+        "dwd_w_apply",
+        "dwb_r_apply"
+      ],
+      "retrieved_fields": [
+        "user_uuid",
+        "dt",
+        "apply_created_at",
+        "apply_create_at",
+        "max_overdue_days",
+        "apply_id",
+        "apply_status",
+        "apply_user_uuid",
+        "risk_level",
+        "loan_count"
+      ],
+      "retrieved_glossary_terms": [
+        "recent_7d",
+        "从未逾期",
+        "credit_profile",
+        "high_risk",
+        "首贷"
+      ],
+      "retrieved_examples": [
+        "example:first-loan-never-overdue",
+        "sql_pattern.mx.mob1_churn_cte"
+      ],
+      "retrieved_error_cases": [],
+      "matched_expected": [
+        "table:hive.dwd.dwd_w_apply",
+        "field:user_uuid",
+        "field:apply_time",
+        "glossary:first_loan",
+        "glossary:never_overdue"
+      ],
+      "missing_expected": [
+        "field:withdraw_uuid",
+        "field:overdue_days"
+      ],
+      "unexpected": [],
+      "judgment": "partial",
+      "notes": [
+        "not_runtime_imported_in_m2b_2_1:cohort.mx.first_loan_never_overdue"
+      ]
+    },
+    {
+      "case_id": "mx-mob1-settled-7d-churn",
+      "request": "提取墨西哥 mob1 首贷结清 7 天未复借流失用户",
+      "retrieved_tables": [
+        "dwd_w_apply",
+        "dwb_r_apply"
+      ],
+      "retrieved_fields": [
+        "user_uuid",
+        "dt",
+        "apply_created_at",
+        "apply_create_at",
+        "apply_id",
+        "apply_status",
+        "apply_user_uuid",
+        "risk_level",
+        "loan_count",
+        "max_overdue_days"
+      ],
+      "retrieved_glossary_terms": [
+        "recent_7d",
+        "credit_profile",
+        "high_risk",
+        "首贷",
+        "从未逾期"
+      ],
+      "retrieved_examples": [
+        "sql_pattern.mx.mob1_churn_cte",
+        "example:first-loan-never-overdue"
+      ],
+      "retrieved_error_cases": [],
+      "matched_expected": [
+        "table:hive.dwd.dwd_w_apply",
+        "field:user_uuid",
+        "field:apply_create_at",
+        "glossary:first_loan"
+      ],
+      "missing_expected": [
+        "field:withdraw_uuid",
+        "field:asset_finish_at",
+        "field:asset_grant_at",
+        "glossary:mob1",
+        "glossary:fully_settled",
+        "glossary:seven_day_no_reborrow_churn",
+        "example:mob1_churn_pattern"
+      ],
+      "unexpected": [],
+      "judgment": "partial",
+      "notes": [
+        "not_runtime_imported_in_m2b_2_1:rule.common.full_settlement",
+        "not_runtime_imported_in_m2b_2_1:rule.common.seven_day_no_reborrow",
+        "not_runtime_imported_in_m2b_2_1:cohort.mx.mob1_settled_7d_churn"
+      ]
+    },
+    {
+      "case_id": "mx-behavior-writeback",
+      "request": "用 Data Agent 补齐这些用户的 behavior 数据并写回 behavior",
+      "retrieved_tables": [
+        "dwb_b1_data_burying_point",
+        "dwd_w_apply",
+        "dwb_r_apply"
+      ],
+      "retrieved_fields": [
+        "uid",
+        "eventname",
+        "timestamp_",
+        "dt",
+        "apply_created_at",
+        "apply_create_at",
+        "apply_id",
+        "apply_status",
+        "apply_user_uuid"
+      ],
+      "retrieved_glossary_terms": [
+        "写回 behavior",
+        "writeback_behavior",
+        "uid_cohort_required",
+        "recent_7d",
+        "credit_profile"
+      ],
+      "retrieved_examples": [
+        "example:behavior-writeback",
+        "sql_pattern.mx.behavior_writeback_target_cohort"
+      ],
+      "retrieved_error_cases": [],
+      "matched_expected": [
+        "table:hive.dwb.dwb_b1_data_burying_point",
+        "field:uid",
+        "field:timestamp_",
+        "field:eventname",
+        "glossary:writeback_behavior",
+        "glossary:uid_cohort_required"
+      ],
+      "missing_expected": [
+        "example:behavior_writeback_pattern"
+      ],
+      "unexpected": [],
+      "judgment": "partial",
+      "notes": []
+    },
+    {
+      "case_id": "mx-glossary-combo-writeback",
+      "request": "先找最近 7 天高风险用户，再补齐这些用户的 behavior 数据并写回 behavior",
+      "retrieved_tables": [
+        "dwb_b1_data_burying_point",
+        "dwd_w_apply",
+        "dwb_r_apply"
+      ],
+      "retrieved_fields": [
+        "uid",
+        "eventname",
+        "timestamp_",
+        "risk_level",
+        "apply_create_at",
+        "user_uuid",
+        "dt",
+        "apply_created_at"
+      ],
+      "retrieved_glossary_terms": [
+        "写回 behavior",
+        "writeback_behavior",
+        "uid_cohort_required",
+        "high_risk",
+        "recent_7d"
+      ],
+      "retrieved_examples": [
+        "example:behavior-writeback",
+        "sql_pattern.mx.behavior_writeback_target_cohort"
+      ],
+      "retrieved_error_cases": [],
+      "matched_expected": [
+        "table:hive.dwd.dwd_w_apply",
+        "table:hive.dwb.dwb_b1_data_burying_point",
+        "field:user_uuid",
+        "field:risk_level",
+        "field:apply_time",
+        "field:uid",
+        "field:timestamp_",
+        "field:eventname",
+        "glossary:high_risk",
+        "glossary:recent_7d",
+        "glossary:writeback_behavior"
+      ],
+      "missing_expected": [
+        "example:behavior_writeback_pattern"
+      ],
+      "unexpected": [],
+      "judgment": "partial",
+      "notes": []
+    },
+    {
+      "case_id": "mx-no-apply-cohort",
+      "request": "找出最近 30 天没有申请记录的墨西哥用户",
+      "retrieved_tables": [
+        "dwd_w_apply",
+        "dwb_r_apply"
+      ],
+      "retrieved_fields": [
+        "apply_time",
+        "user_uuid",
+        "dt",
+        "apply_created_at",
+        "apply_create_at",
+        "apply_id",
+        "apply_status",
+        "apply_user_uuid",
+        "risk_level"
+      ],
+      "retrieved_glossary_terms": [
+        "recent_7d",
+        "recent_30d",
+        "最近7天",
+        "credit_profile",
+        "high_risk"
+      ],
+      "retrieved_examples": [
+        "example:first-loan-never-overdue",
+        "sql_pattern.mx.mob1_churn_cte"
+      ],
+      "retrieved_error_cases": [],
+      "matched_expected": [
+        "table:hive.dwd.dwd_w_apply",
+        "field:user_uuid",
+        "field:apply_time",
+        "glossary:recent_30d"
+      ],
+      "missing_expected": [
+        "table:hive.dwd.dwd_w_user",
+        "glossary:no_apply"
+      ],
+      "unexpected": [],
+      "judgment": "partial",
+      "notes": []
+    },
+    {
+      "case_id": "mx-no-withdraw-cohort",
+      "request": "找出申请过但没有成功提现的墨西哥用户",
+      "retrieved_tables": [
+        "dwd_w_apply",
+        "dwb_r_apply"
+      ],
+      "retrieved_fields": [
+        "user_uuid",
+        "dt",
+        "apply_created_at",
+        "apply_create_at",
+        "apply_id",
+        "apply_status",
+        "apply_user_uuid",
+        "risk_level",
+        "loan_count",
+        "max_overdue_days"
+      ],
+      "retrieved_glossary_terms": [
+        "recent_7d",
+        "credit_profile",
+        "high_risk",
+        "首贷",
+        "从未逾期"
+      ],
+      "retrieved_examples": [
+        "example:first-loan-never-overdue",
+        "sql_pattern.mx.mob1_churn_cte"
+      ],
+      "retrieved_error_cases": [],
+      "matched_expected": [
+        "table:hive.dwd.dwd_w_apply",
+        "field:user_uuid",
+        "field:apply_time"
+      ],
+      "missing_expected": [
+        "field:withdraw_uuid",
+        "glossary:no_withdraw"
+      ],
+      "unexpected": [],
+      "judgment": "partial",
+      "notes": []
+    },
+    {
+      "case_id": "mx-withdraw-cohort",
+      "request": "找出最近成功提现的墨西哥用户",
+      "retrieved_tables": [
+        "dwd_w_apply",
+        "dwb_r_apply"
+      ],
+      "retrieved_fields": [
+        "apply_time",
+        "user_uuid",
+        "dt",
+        "apply_created_at",
+        "apply_create_at",
+        "apply_id",
+        "apply_status",
+        "apply_user_uuid",
+        "risk_level",
+        "loan_count"
+      ],
+      "retrieved_glossary_terms": [
+        "recent_7d",
+        "最近7天",
+        "credit_profile",
+        "high_risk",
+        "首贷"
+      ],
+      "retrieved_examples": [
+        "example:first-loan-never-overdue",
+        "sql_pattern.mx.mob1_churn_cte"
+      ],
+      "retrieved_error_cases": [],
+      "matched_expected": [
+        "table:hive.dwd.dwd_w_apply",
+        "field:user_uuid",
+        "glossary:recent_7d"
+      ],
+      "missing_expected": [
+        "field:withdraw_uuid",
+        "field:asset_grant_at",
+        "glossary:successful_withdraw"
+      ],
+      "unexpected": [],
+      "judgment": "partial",
+      "notes": []
+    },
+    {
+      "case_id": "mx-app-profile-query",
+      "request": "查询墨西哥用户的 app 安装分类信息",
+      "retrieved_tables": [
+        "dwd_w_apply",
+        "dwb_r_apply",
+        "ods_f_market_app_categories"
+      ],
+      "retrieved_fields": [
+        "user_uuid",
+        "uid",
+        "loan_count",
+        "max_overdue_days",
+        "risk_level",
+        "app_package",
+        "dt",
+        "apply_created_at",
+        "apply_create_at",
+        "apply_id",
+        "apply_status",
+        "apply_user_uuid"
+      ],
+      "retrieved_glossary_terms": [
+        "app_profile",
+        "recent_7d",
+        "credit_profile",
+        "high_risk",
+        "首贷"
+      ],
+      "retrieved_examples": [
+        "example:first-loan-never-overdue",
+        "sql_pattern.mx.mob1_churn_cte"
+      ],
+      "retrieved_error_cases": [],
+      "matched_expected": [
+        "table:hive.ods.ods_f_market_app_categories",
+        "field:app_package",
+        "glossary:app_profile"
+      ],
+      "missing_expected": [
+        "field:category_name",
+        "field:year_day"
+      ],
+      "unexpected": [],
+      "judgment": "partial",
+      "notes": []
+    },
+    {
+      "case_id": "mx-credit-profile-query",
+      "request": "查询墨西哥征信相关申请字段",
+      "retrieved_tables": [
+        "dwd_w_apply",
+        "dwb_r_apply"
+      ],
+      "retrieved_fields": [
+        "dt",
+        "apply_created_at",
+        "apply_create_at",
+        "apply_id",
+        "apply_status",
+        "apply_user_uuid",
+        "risk_level",
+        "user_uuid",
+        "loan_count",
+        "max_overdue_days"
+      ],
+      "retrieved_glossary_terms": [
+        "recent_7d",
+        "credit_profile",
+        "high_risk",
+        "首贷",
+        "从未逾期"
+      ],
+      "retrieved_examples": [
+        "example:first-loan-never-overdue",
+        "sql_pattern.mx.mob1_churn_cte"
+      ],
+      "retrieved_error_cases": [],
+      "matched_expected": [
+        "table:hive.dwb.dwb_r_apply",
+        "field:apply_id",
+        "field:user_uuid",
+        "field:apply_status",
+        "glossary:credit_profile"
+      ],
+      "missing_expected": [],
+      "unexpected": [],
+      "judgment": "pass",
+      "notes": []
+    },
+    {
+      "case_id": "ph-first-loan-never-overdue",
+      "request": "找出菲律宾首贷且从未逾期的用户",
+      "retrieved_tables": [
+        "ph_apply_orders"
+      ],
+      "retrieved_fields": [
+        "history_overdue_count",
+        "loan_count"
+      ],
+      "retrieved_glossary_terms": [
+        "从未逾期",
+        "首贷",
+        "never_overdue",
+        "first_loan",
+        "seven_day_no_reborrow_churn"
+      ],
+      "retrieved_examples": [
+        "example:ph-first-loan-never-overdue"
+      ],
+      "retrieved_error_cases": [
+        "case:ph-withdraw-uuid"
+      ],
+      "matched_expected": [
+        "table:ph_apply_orders",
+        "field:loan_count",
+        "glossary:first_loan",
+        "glossary:never_overdue"
+      ],
+      "missing_expected": [
+        "field:user_uuid",
+        "field:overdue_days"
+      ],
+      "unexpected": [],
+      "judgment": "partial",
+      "notes": []
+    },
+    {
+      "case_id": "ph-withdraw-uuid-negative",
+      "request": "修复菲律宾首贷从未逾期 SQL，避免使用 withdraw_uuid",
+      "retrieved_tables": [
+        "ph_apply_orders"
+      ],
+      "retrieved_fields": [
+        "uid",
+        "history_overdue_count",
+        "loan_count"
+      ],
+      "retrieved_glossary_terms": [
+        "从未逾期",
+        "首贷",
+        "first_loan",
+        "seven_day_no_reborrow_churn",
+        "never_overdue"
+      ],
+      "retrieved_examples": [
+        "example:ph-first-loan-never-overdue"
+      ],
+      "retrieved_error_cases": [
+        "case:ph-withdraw-uuid"
+      ],
+      "matched_expected": [
+        "table:ph_apply_orders",
+        "field:loan_count",
+        "glossary:never_overdue"
+      ],
+      "missing_expected": [
+        "field:user_uuid"
+      ],
+      "unexpected": [],
+      "judgment": "partial",
+      "notes": []
+    },
+    {
+      "case_id": "th-asset-snapshot-query",
+      "request": "查询泰国资产快照宽表字段",
+      "retrieved_tables": [
+        "dwt_rsk_ask_loan_info_base_d",
+        "dwt_rsk_apply_info_base_d"
+      ],
+      "retrieved_fields": [
+        "asset_id"
+      ],
+      "retrieved_glossary_terms": [
+        "ask_loan_risk",
+        "asset_snapshot",
+        "risk_apply",
+        "third_party_risk",
+        "never_overdue"
+      ],
+      "retrieved_examples": [],
+      "retrieved_error_cases": [],
+      "matched_expected": [
+        "field:asset_id",
+        "glossary:asset_snapshot"
+      ],
+      "missing_expected": [
+        "table:hive.dwt.dwt_asset_info_base_snap",
+        "field:user_uuid",
+        "field:finish_time"
+      ],
+      "unexpected": [],
+      "judgment": "partial",
+      "notes": []
+    },
+    {
+      "case_id": "th-risk-apply-query",
+      "request": "查询泰国正审风控宽表字段",
+      "retrieved_tables": [
+        "dwt_rsk_apply_info_base_d",
+        "dwt_rsk_ask_loan_info_base_d"
+      ],
+      "retrieved_fields": [
+        "apply_uuid",
+        "user_uuid"
+      ],
+      "retrieved_glossary_terms": [
+        "ask_loan_risk",
+        "risk_apply",
+        "third_party_risk",
+        "never_overdue",
+        "first_loan"
+      ],
+      "retrieved_examples": [],
+      "retrieved_error_cases": [],
+      "matched_expected": [
+        "table:hive.dwt.dwt_rsk_apply_info_base_d",
+        "field:apply_uuid",
+        "glossary:risk_apply"
+      ],
+      "missing_expected": [
+        "field:ask_loan_uuid",
+        "field:user_loan_label"
+      ],
+      "unexpected": [],
+      "judgment": "partial",
+      "notes": []
+    },
+    {
+      "case_id": "th-ask-loan-risk-query",
+      "request": "查询泰国预审 ask loan 风控表",
+      "retrieved_tables": [
+        "dwt_rsk_apply_info_base_d",
+        "dwt_rsk_ask_loan_info_base_d"
+      ],
+      "retrieved_fields": [
+        "ask_loan_uuid",
+        "apply_uuid",
+        "from_system",
+        "pre_user_loan_label",
+        "user_uuid"
+      ],
+      "retrieved_glossary_terms": [
+        "ask_loan_risk",
+        "risk_apply",
+        "third_party_risk",
+        "first_loan",
+        "never_overdue"
+      ],
+      "retrieved_examples": [],
+      "retrieved_error_cases": [],
+      "matched_expected": [
+        "table:hive.dwt.dwt_rsk_ask_loan_info_base_d",
+        "field:ask_loan_uuid",
+        "field:user_uuid",
+        "glossary:ask_loan_risk"
+      ],
+      "missing_expected": [
+        "field:apply_create_at"
+      ],
+      "unexpected": [],
+      "judgment": "partial",
+      "notes": []
+    },
+    {
+      "case_id": "th-third-party-risk-query",
+      "request": "查询泰国三方风险和征信供应商信息",
+      "retrieved_tables": [
+        "dwt_rsk_ask_loan_info_base_d",
+        "dwt_rsk_apply_info_base_d"
+      ],
+      "retrieved_fields": [],
+      "retrieved_glossary_terms": [
+        "third_party_risk",
+        "credit_report",
+        "ask_loan_risk",
+        "risk_apply",
+        "never_overdue"
+      ],
+      "retrieved_examples": [],
+      "retrieved_error_cases": [],
+      "matched_expected": [
+        "glossary:third_party_risk",
+        "glossary:credit_report"
+      ],
+      "missing_expected": [
+        "table:hive.third_party.thailand_sources",
+        "field:supplier_name",
+        "field:product_name",
+        "field:parse_table_name"
+      ],
+      "unexpected": [],
+      "judgment": "partial",
+      "notes": []
+    },
+    {
+      "case_id": "dws-renewal-loan-segment-query",
+      "request": "查询 dws_user_renewal_loan_seg_d 的续贷和 mob 分层字段",
+      "retrieved_tables": [
+        "dws_user_renewal_loan_seg_d"
+      ],
+      "retrieved_fields": [
+        "mob_code",
+        "first_grant_time",
+        "cur_loan_cnt",
+        "dt",
+        "last_finish_time",
+        "user_uuid"
+      ],
+      "retrieved_glossary_terms": [
+        "never_overdue",
+        "first_loan",
+        "seven_day_no_reborrow_churn",
+        "fully_settled",
+        "mob1"
+      ],
+      "retrieved_examples": [],
+      "retrieved_error_cases": [],
+      "matched_expected": [
+        "table:dws.dws_user_renewal_loan_seg_d",
+        "field:user_uuid",
+        "field:mob_code",
+        "field:last_finish_time",
+        "field:cur_loan_cnt",
+        "glossary:mob1"
+      ],
+      "missing_expected": [
+        "glossary:settled_over_3m"
+      ],
+      "unexpected": [],
+      "judgment": "partial",
+      "notes": []
+    },
+    {
+      "case_id": "dws-fox-boc-behavior-query",
+      "request": "查询 dws_fox_boc_behavior_log_d 的行为字段和催收触达含义",
+      "retrieved_tables": [
+        "dws_fox_boc_behavior_log_d"
+      ],
+      "retrieved_fields": [
+        "behavior_status_name",
+        "behavior_time",
+        "behavior_type",
+        "contact_type",
+        "debtor_id",
+        "user_uuid"
+      ],
+      "retrieved_glossary_terms": [
+        "never_overdue",
+        "first_loan",
+        "seven_day_no_reborrow_churn",
+        "fully_settled",
+        "bucket 写回"
+      ],
+      "retrieved_examples": [],
+      "retrieved_error_cases": [],
+      "matched_expected": [
+        "table:dws.dws_fox_boc_behavior_log_d",
+        "field:debtor_id",
+        "field:behavior_type",
+        "field:behavior_time",
+        "field:behavior_status_name"
+      ],
+      "missing_expected": [
+        "glossary:collection_behavior",
+        "glossary:contact_outcome"
+      ],
+      "unexpected": [],
+      "judgment": "partial",
+      "notes": []
+    }
+  ]
+}

@@ -37,6 +37,8 @@ DEFAULT_PROMOTION_MANIFEST = Path("data_knowledge_eval/m2b/seed_promotion_manife
 DEFAULT_COVERAGE_YAML = Path("data_knowledge_eval/m2b/deterministic_coverage.yaml")
 DEFAULT_RESULTS_REVIEW = Path("docs/reviews/m2b-2-deterministic-baseline-results.md")
 DEFAULT_COVERAGE_REVIEW = Path("docs/reviews/m2b-2-golden-set-deterministic-coverage.md")
+DEFAULT_V21_RESULTS_REVIEW = Path("docs/reviews/m2b-2-1-deterministic-grounding-results.md")
+DEFAULT_V21_COMPARISON_REVIEW = Path("docs/reviews/m2b-2-1-v1-v2-baseline-comparison.md")
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
@@ -120,6 +122,21 @@ def _normalize_token(value: str) -> str:
     return str(value or "").strip().lower()
 
 
+def _dedupe_preserve_order(values: list[str]) -> list[str]:
+    result: list[str] = []
+    seen: set[str] = set()
+    for raw in values:
+        value = str(raw).strip()
+        if not value:
+            continue
+        key = value.lower()
+        if key in seen:
+            continue
+        result.append(value)
+        seen.add(key)
+    return result
+
+
 def _extract_field_aliases(row) -> list[str]:
     metadata = dict(getattr(row, "metadata_json", None) or {})
     aliases = metadata.get("aliases") or []
@@ -154,6 +171,49 @@ def _load_manifest_decisions(path: Path | None) -> dict[str, dict[str, Any]]:
     }
 
 
+def _load_seed_namespace(path: Path) -> str:
+    payload = _read_yaml(path) or {}
+    source_namespace = str(payload.get("source_namespace") or "").strip()
+    if not source_namespace:
+        raise ValueError(f"seed patch {path} is missing source_namespace")
+    return source_namespace
+
+
+def _build_glossary_alias_index(seed_patch_path: Path) -> dict[str, set[str]]:
+    payload = _read_yaml(seed_patch_path) or {}
+    index: dict[str, set[str]] = {}
+    for item in payload.get("glossary_terms") or []:
+        source_key = str(item.get("source_key") or "").strip()
+        canonical_candidates = {
+            _normalize_token(item.get("term")),
+            _normalize_token(source_key.split(".")[-1] if source_key else ""),
+        }
+        aliases = {
+            _normalize_token(item.get("term")),
+            *(_normalize_token(alias) for alias in (item.get("synonyms") or [])),
+            _normalize_token(source_key),
+            _normalize_token(source_key.split(".")[-1] if source_key else ""),
+        }
+        aliases = {token for token in aliases if token}
+        for canonical in canonical_candidates:
+            if not canonical:
+                continue
+            index.setdefault(canonical, set()).update(aliases)
+    return index
+
+
+def _phase_label_for_seed_namespace(source_namespace: str) -> str:
+    if source_namespace == "m2b_legacy_v2":
+        return "m2b_2_1"
+    return "m2b_2"
+
+
+def _default_manifest_path_for_seed_patch(seed_patch_path: Path) -> Path:
+    if seed_patch_path.stem.endswith("v2"):
+        return Path("data_knowledge_eval/m2b/seed_promotion_manifest.v2.yaml")
+    return DEFAULT_PROMOTION_MANIFEST
+
+
 def build_template_results(cases: list[dict], *, generated_at: str) -> dict:
     template_cases = []
     for case in cases:
@@ -181,15 +241,20 @@ def build_template_results(cases: list[dict], *, generated_at: str) -> dict:
     }
 
 
-def _case_manifest_notes(case_id: str, manifest_decisions: dict[str, dict[str, Any]]) -> list[str]:
+def _case_manifest_notes(
+    case_id: str,
+    manifest_decisions: dict[str, dict[str, Any]],
+    *,
+    phase_label: str,
+) -> list[str]:
     notes: list[str] = []
     for asset_id in CASE_MANIFEST_ONLY_HINTS.get(case_id, []):
         decision = manifest_decisions.get(asset_id)
         if decision is None:
-            notes.append(f"not_runtime_imported_in_m2b_2:{asset_id}")
+            notes.append(f"not_runtime_imported_in_{phase_label}:{asset_id}")
             continue
         if decision.get("seed_import_decision") != "import_now":
-            notes.append(f"not_runtime_imported_in_m2b_2:{asset_id}")
+            notes.append(f"not_runtime_imported_in_{phase_label}:{asset_id}")
     return notes
 
 
@@ -201,12 +266,19 @@ def _determine_judgment(*, matched_expected: list[str], missing_expected: list[s
     return "fail"
 
 
-def _build_case_result(case: dict[str, Any], context, *, manifest_decisions: dict[str, dict[str, Any]]) -> dict[str, Any]:
-    retrieved_tables = [row.table_name for row in context.catalog_tables]
-    retrieved_fields = [row.field_name for row in context.catalog_fields]
-    retrieved_glossary_terms = [row.term for row in context.glossary_terms]
-    retrieved_examples = [row.source_key for row in context.sql_examples]
-    retrieved_error_cases = [row.source_key for row in context.error_cases]
+def _build_case_result(
+    case: dict[str, Any],
+    context,
+    *,
+    manifest_decisions: dict[str, dict[str, Any]],
+    phase_label: str,
+    glossary_alias_index: dict[str, set[str]],
+) -> dict[str, Any]:
+    retrieved_tables = _dedupe_preserve_order([row.table_name for row in context.catalog_tables])
+    retrieved_fields = _dedupe_preserve_order([row.field_name for row in context.catalog_fields])
+    retrieved_glossary_terms = _dedupe_preserve_order([row.term for row in context.glossary_terms])
+    retrieved_examples = _dedupe_preserve_order([row.source_key for row in context.sql_examples])
+    retrieved_error_cases = _dedupe_preserve_order([row.source_key for row in context.error_cases])
 
     matched_expected: list[str] = []
     missing_expected: list[str] = []
@@ -239,7 +311,9 @@ def _build_case_result(case: dict[str, Any], context, *, manifest_decisions: dic
         glossary_tokens.update(_extract_glossary_tokens(row))
     for expected in case["expected_glossary_terms"]:
         label = f"glossary:{expected}"
-        if _normalize_token(expected) in glossary_tokens:
+        expected_token = _normalize_token(expected)
+        alias_tokens = glossary_alias_index.get(expected_token, set())
+        if expected_token in glossary_tokens or (alias_tokens and glossary_tokens.intersection(alias_tokens)):
             matched_expected.append(label)
         else:
             missing_expected.append(label)
@@ -260,7 +334,7 @@ def _build_case_result(case: dict[str, Any], context, *, manifest_decisions: dic
         if _normalize_token(forbidden) in error_tokens:
             unexpected.append(label)
 
-    notes = _case_manifest_notes(str(case["case_id"]), manifest_decisions)
+    notes = _case_manifest_notes(str(case["case_id"]), manifest_decisions, phase_label=phase_label)
     if unexpected:
         notes.append("forbidden error-case context surfaced in deterministic retrieval")
 
@@ -288,7 +362,11 @@ def build_deterministic_results(
     promotion_manifest_path: Path | None = None,
 ) -> dict[str, Any]:
     cases = load_golden_cases(golden_set_path)
-    manifest_decisions = _load_manifest_decisions(promotion_manifest_path or DEFAULT_PROMOTION_MANIFEST)
+    seed_source_namespace = _load_seed_namespace(seed_patch_path)
+    phase_label = _phase_label_for_seed_namespace(seed_source_namespace)
+    manifest_path = promotion_manifest_path or _default_manifest_path_for_seed_patch(seed_patch_path)
+    manifest_decisions = _load_manifest_decisions(manifest_path)
+    glossary_alias_index = _build_glossary_alias_index(seed_patch_path)
 
     from app.core.config import settings
 
@@ -343,7 +421,13 @@ def build_deterministic_results(
                         output_bucket=case.get("output_bucket"),
                     )
                     case_results.append(
-                        _build_case_result(case, context, manifest_decisions=manifest_decisions)
+                        _build_case_result(
+                            case,
+                            context,
+                            manifest_decisions=manifest_decisions,
+                            phase_label=phase_label,
+                            glossary_alias_index=glossary_alias_index,
+                        )
                     )
         finally:
             reset_auth_engine()
@@ -355,7 +439,7 @@ def build_deterministic_results(
         "generated_at": generated_at,
         "run_mode": "deterministic",
         "retriever": "DataKnowledgeRetriever",
-        "seed_namespaces": ["mx", "ph", "common", "m2b_legacy_v1"],
+        "seed_namespaces": ["mx", "ph", "common", seed_source_namespace],
         "seed_patch": str(seed_patch_path),
         "cases": case_results,
     }
@@ -383,16 +467,18 @@ def _build_coverage_payload(results_payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _build_results_review_markdown(results_payload: dict[str, Any]) -> str:
+def _build_results_review_markdown(results_payload: dict[str, Any], *, phase_label: str) -> str:
     counter = Counter(case["judgment"] for case in results_payload["cases"])
     missing_counter = Counter()
     for case in results_payload["cases"]:
         for item in case["missing_expected"]:
             missing_counter[item] += 1
-    next_step = "M2B-3" if counter["pass"] >= 8 and counter["fail"] == 0 else "M2B-2.1"
+    title = "# M2B-2 Deterministic Baseline Results" if phase_label == "m2b_2" else "# M2B-2.1 Deterministic Grounding Results"
+    next_step = "M2B-3" if counter["pass"] >= 8 and counter["fail"] == 0 else ("M2B-2.1" if phase_label == "m2b_2" else "M2B-2.2")
+    phase_text = "M2B-2" if phase_label == "m2b_2" else "M2B-2.1"
 
     lines = [
-        "# M2B-2 Deterministic Baseline Results",
+        title,
         "",
         "This is a diagnostic baseline for deterministic Data Knowledge retrieval only.",
         "",
@@ -408,8 +494,8 @@ def _build_results_review_markdown(results_payload: dict[str, Any]) -> str:
         "## Interpretation",
         "",
         "- This baseline does not use embeddings, vector retrieval, hybrid retrieval, SQL generation, or SQL execution.",
-        "- Missing business rules, cohort definitions, or canonical policies may be expected when they are manifest-only in M2B-2.",
-        "- If deterministic recall remains weak after this seed patch, the next step should be `M2B-2.1` rather than jumping directly to vector retrieval.",
+        f"- Missing business rules, cohort definitions, or canonical policies may be expected when they are manifest-only in {phase_text}.",
+        f"- If deterministic recall remains weak after this seed patch, the next step should be `{next_step}` rather than jumping directly to vector retrieval.",
         f"- Recommended next step: `{next_step}`",
         "",
         "## Top Missing Expectations",
@@ -417,6 +503,37 @@ def _build_results_review_markdown(results_payload: dict[str, Any]) -> str:
     ]
     for label, count in missing_counter.most_common(12):
         lines.append(f"- `{label}` missing in `{count}` cases")
+    return "\n".join(lines)
+
+
+def build_baseline_comparison_markdown(v1_payload: dict[str, Any], v2_payload: dict[str, Any]) -> str:
+    v1_cases = {case["case_id"]: case for case in v1_payload.get("cases", [])}
+    v2_cases = {case["case_id"]: case for case in v2_payload.get("cases", [])}
+    shared_ids = sorted(set(v1_cases) & set(v2_cases))
+    lines = [
+        "# M2B-2.1 V1 vs V2 Deterministic Baseline Comparison",
+        "",
+        "This comparison measures deterministic grounding changes between `m2b_legacy_v1` and `m2b_legacy_v2`.",
+        "",
+        "| case_id | v1_judgment | v2_judgment | matched_expected_delta | missing_expected_delta | unexpected_delta | improvement_summary | regression_risk |",
+        "|---|---|---|---:|---:|---:|---|---|",
+    ]
+    for case_id in shared_ids:
+        v1_case = v1_cases[case_id]
+        v2_case = v2_cases[case_id]
+        matched_delta = len(v2_case["matched_expected"]) - len(v1_case["matched_expected"])
+        missing_delta = len(v2_case["missing_expected"]) - len(v1_case["missing_expected"])
+        unexpected_delta = len(v2_case["unexpected"]) - len(v1_case["unexpected"])
+        if v1_case["judgment"] != v2_case["judgment"] or matched_delta > 0 or missing_delta < 0:
+            improvement_summary = "improved"
+        elif unexpected_delta > 0:
+            improvement_summary = "unexpected_increase"
+        else:
+            improvement_summary = "no_material_change"
+        regression_risk = "yes" if unexpected_delta > 0 or matched_delta < 0 or missing_delta > 0 else "no"
+        lines.append(
+            f"| {case_id} | {v1_case['judgment']} | {v2_case['judgment']} | {matched_delta} | {missing_delta} | {unexpected_delta} | {improvement_summary} | {regression_risk} |"
+        )
     return "\n".join(lines)
 
 
@@ -455,7 +572,8 @@ def main() -> int:
     parser.add_argument("--mode", required=True)
     parser.add_argument("--generated-at", default="template")
     parser.add_argument("--seed-patch", type=Path, default=DEFAULT_SEED_PATCH)
-    parser.add_argument("--promotion-manifest", type=Path, default=DEFAULT_PROMOTION_MANIFEST)
+    parser.add_argument("--promotion-manifest", type=Path)
+    parser.add_argument("--coverage-yaml", type=Path)
     args = parser.parse_args()
 
     if args.mode == "template":
@@ -476,12 +594,31 @@ def main() -> int:
     _write_json(args.output, payload)
 
     coverage_payload = _build_coverage_payload(payload)
-    coverage_output = DEFAULT_COVERAGE_YAML
+    coverage_output = args.coverage_yaml or DEFAULT_COVERAGE_YAML
     _write_yaml(coverage_output, coverage_payload)
 
-    DEFAULT_RESULTS_REVIEW.parent.mkdir(parents=True, exist_ok=True)
-    DEFAULT_RESULTS_REVIEW.write_text(_build_results_review_markdown(payload) + "\n", encoding="utf-8")
-    DEFAULT_COVERAGE_REVIEW.write_text(_build_coverage_review_markdown(payload) + "\n", encoding="utf-8")
+    seed_source_namespace = _load_seed_namespace(args.seed_patch)
+    if seed_source_namespace == "m2b_legacy_v2":
+        DEFAULT_V21_RESULTS_REVIEW.parent.mkdir(parents=True, exist_ok=True)
+        DEFAULT_V21_RESULTS_REVIEW.write_text(
+            _build_results_review_markdown(payload, phase_label="m2b_2_1") + "\n",
+            encoding="utf-8",
+        )
+        v1_result_path = args.output.parent / "baseline_results.m2b_legacy_v1.deterministic.json"
+        if v1_result_path.exists():
+            v1_payload = json.loads(v1_result_path.read_text(encoding="utf-8"))
+            DEFAULT_V21_COMPARISON_REVIEW.write_text(
+                build_baseline_comparison_markdown(v1_payload, payload) + "\n",
+                encoding="utf-8",
+            )
+    else:
+        if args.output == Path("data_knowledge_eval/m2b/baseline_results.deterministic.json"):
+            DEFAULT_RESULTS_REVIEW.parent.mkdir(parents=True, exist_ok=True)
+            DEFAULT_RESULTS_REVIEW.write_text(
+                _build_results_review_markdown(payload, phase_label="m2b_2") + "\n",
+                encoding="utf-8",
+            )
+            DEFAULT_COVERAGE_REVIEW.write_text(_build_coverage_review_markdown(payload) + "\n", encoding="utf-8")
     return 0
 
 

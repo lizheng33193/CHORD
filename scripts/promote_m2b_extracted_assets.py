@@ -67,6 +67,133 @@ DIRTY_SQL_PATTERNS = (
     re.compile(r"\b20\d{6}\b"),
 )
 
+SUPPORTED_SOURCE_NAMESPACE_PATTERN = re.compile(r"^m2b_legacy_v\d+$")
+
+V2_GLOSSARY_ENRICHMENTS: dict[str, dict[str, Any]] = {
+    "glossary.mx.high_risk": {
+        "synonyms": ["高风险用户", "high risk", "risk_level", "高风险客群"],
+        "mapped_tables": ["dwd_w_apply"],
+        "mapped_fields": ["risk_level", "user_uuid", "apply_create_at"],
+        "suggested_filters": ["risk_level", "recent_7d"],
+        "definition_suffix": "优先映射到风险等级字段与申请时间窗口。",
+    },
+    "glossary.mx.recent_7d": {
+        "synonyms": ["7天内", "last 7 days", "past 7 days", "rolling 7 day window"],
+        "mapped_tables": ["dwd_w_apply", "dwb_r_apply"],
+        "mapped_fields": ["apply_create_at", "apply_created_at", "dt"],
+        "suggested_filters": ["apply_create_at", "apply_created_at", "dt"],
+        "definition_suffix": "检索时优先命中业务时间字段，其次才是 dt 分区字段。",
+    },
+    "glossary.common.first_loan": {
+        "synonyms": ["首次借款", "第一笔借款", "first borrowing", "首借"],
+        "mapped_tables": ["dwd_w_apply"],
+        "mapped_fields": ["user_uuid", "withdraw_uuid", "asset_grant_at"],
+        "suggested_filters": ["withdraw_uuid", "first_loan"],
+    },
+    "glossary.common.never_overdue": {
+        "synonyms": ["未逾期", "没有逾期", "0逾期", "never overdue user"],
+        "mapped_tables": ["dwd_w_apply", "ph_apply_orders"],
+        "mapped_fields": ["asset_overdue_days", "max_overdue_days", "history_overdue_count"],
+        "suggested_filters": ["asset_overdue_days", "max_overdue_days"],
+    },
+    "glossary.common.fully_settled": {
+        "synonyms": ["结清", "已结清", "full settlement"],
+        "mapped_tables": ["dwd_w_apply"],
+        "mapped_fields": ["asset_finish_at", "asset_grant_at"],
+        "suggested_filters": ["asset_finish_at"],
+    },
+    "glossary.common.seven_day_no_reborrow_churn": {
+        "synonyms": ["7天内未复借", "未复借", "no reborrow within 7 days", "seven_day_no_reborrow"],
+        "mapped_tables": ["dwd_w_apply"],
+        "mapped_fields": ["withdraw_uuid", "asset_finish_at", "apply_create_at"],
+        "suggested_filters": ["withdraw_uuid", "apply_create_at"],
+    },
+    "glossary.mx.credit_profile": {
+        "synonyms": ["credit profile", "征信申请字段", "审核申请画像"],
+        "mapped_tables": ["dwb_r_apply"],
+        "mapped_fields": ["apply_id", "apply_user_uuid", "apply_status"],
+        "suggested_filters": ["apply_status", "apply_created_at"],
+        "definition_suffix": "应优先检索征信审核申请宽表字段。",
+    },
+    "glossary.mx.no_apply": {
+        "synonyms": ["无申请", "未申请", "no application"],
+        "mapped_tables": ["dwd_w_user"],
+        "mapped_fields": [],
+        "suggested_filters": ["user_uuid", "apply_create_at"],
+    },
+    "glossary.mx.recent_30d": {
+        "synonyms": ["30天内", "last 30 days", "past 30 days"],
+        "mapped_tables": [],
+        "mapped_fields": [],
+        "suggested_filters": ["user_create_time", "apply_create_at", "dt"],
+    },
+    "glossary.mx.app_profile": {
+        "synonyms": ["app profile", "安装应用画像", "app安装画像"],
+        "mapped_tables": ["ods_f_market_app_categories"],
+        "mapped_fields": ["app_package"],
+    },
+    "glossary.th.risk_apply": {
+        "synonyms": ["risk apply", "风控申请", "预审风控"],
+        "mapped_tables": ["dwt_rsk_apply_info_base_d"],
+    },
+    "glossary.th.ask_loan_risk": {
+        "synonyms": ["ask loan risk", "正审风控", "ask loan"],
+        "mapped_tables": ["dwt_rsk_ask_loan_info_base_d"],
+    },
+    "glossary.th.third_party_risk": {
+        "synonyms": ["third party risk", "三方风控", "供应商风控"],
+        "mapped_tables": ["hive_third_party_risk_domain"],
+    },
+}
+
+V2_FIELD_ENRICHMENTS: dict[str, dict[str, Any]] = {
+    "field.mx.dwd_w_apply.withdraw_uuid": {
+        "aliases": ["loan_uuid", "借款单号", "提现订单号"],
+        "description": "提现流水号，真实借款/首贷判定和复借检测的核心借款单号字段。",
+        "business_meaning_text": "借款单号，用于识别真实提现、首贷借款链路和 7 天内是否复借。",
+    },
+    "field.mx.dwd_w_apply.apply_create_at": {
+        "aliases": ["申请创建时间", "申请时间", "apply business time"],
+        "description": "申请创建时间，可作为申请业务时间窗口；优先于 dt 用于最近7天等自然语言时间过滤。",
+        "business_meaning_text": "申请创建时间，对应 apply_time / recent_7d / 风险申请时间窗口。",
+    },
+    "field.mx.dwd_w_apply.asset_grant_at": {
+        "aliases": ["放款时间", "到账时间", "grant time"],
+        "description": "放款时间，用于真实借款成立、首贷成立和生命周期观察窗口。",
+        "business_meaning_text": "放款时间，用于 true withdraw 和 first loan 生命周期分析。",
+    },
+    "field.mx.dwd_w_apply.asset_finish_at": {
+        "aliases": ["结清时间", "完全结清时间", "settlement time"],
+        "description": "资产或分期结清时间，用于 fully_settled 和 7 天未复借流失观察。",
+        "business_meaning_text": "结清时间，用于 full settlement 与 7 天 churn 观察窗口。",
+    },
+    "field.mx.dwd_w_apply.user_uuid": {
+        "aliases": ["用户ID", "用户id", "借款用户", "borrower_uuid"],
+        "description": "借款链路用户 ID，适用于 cohort join、用户级聚合和跨表关联。",
+        "business_meaning_text": "用户主键，可对应 uid / borrower / cohort join。",
+    },
+    "field.mx.dwb_r_apply.apply_id": {
+        "aliases": ["申请ID", "审核申请ID", "credit_apply_id"],
+        "description": "征信审核申请记录 ID，用于 credit profile / 审核字段查询。",
+        "business_meaning_text": "审核申请主键，用于 credit profile 与申请状态查询。",
+    },
+    "field.mx.dwb_r_apply.apply_user_uuid": {
+        "aliases": ["user_uuid", "申请用户", "credit_user_uuid"],
+        "description": "审核申请记录上的用户 uuid，可映射通用 user_uuid 问法。",
+        "business_meaning_text": "审核申请用户 ID，对应 user_uuid / user identifier / credit profile user。",
+    },
+    "field.mx.dwb_r_apply.apply_status": {
+        "aliases": ["审核状态", "申请状态", "credit_status"],
+        "description": "审核申请状态字段，可回答征信申请状态、审核状态相关查询。",
+        "business_meaning_text": "申请状态 / 审核状态，用于 credit profile 状态查询。",
+    },
+    "field.mx.dwb_r_apply.apply_created_at": {
+        "aliases": ["apply_time", "审核申请时间", "credit apply time"],
+        "description": "审核申请创建时间，对应 credit profile 的业务时间窗口。",
+        "business_meaning_text": "审核申请时间，可作为 recent_7d 等 credit profile 时间过滤字段。",
+    },
+}
+
 
 def _require_yaml() -> None:
     if yaml is None:
@@ -129,7 +256,7 @@ def _seed_status_for_country(country: str | None) -> str:
     return "active"
 
 
-def _promotion_for_asset(asset: dict[str, Any]) -> tuple[str, str]:
+def _promotion_for_asset(asset: dict[str, Any], *, source_namespace: str) -> tuple[str, str]:
     runtime_allowed = str(asset.get("runtime_allowed") or "").strip()
     confidence = str(asset.get("confidence") or "").strip().lower()
     asset_type = str(asset.get("asset_type") or "").strip()
@@ -145,6 +272,13 @@ def _promotion_for_asset(asset: dict[str, Any]) -> tuple[str, str]:
         if confidence in {"high", "medium"}:
             return "promote_now", "manifest_only"
         return "defer_needs_review", "not_imported"
+    if (
+        source_namespace == "m2b_legacy_v2"
+        and asset_type == "glossary_term"
+        and runtime_allowed == "sanitized_only"
+        and confidence in {"high", "medium"}
+    ):
+        return "promote_now", "import_now"
     if asset_type in {"catalog_table", "catalog_field", "glossary_term", "sql_example_pattern"}:
         if runtime_allowed == "sanitized_only" and confidence == "high":
             return "promote_now", "import_now"
@@ -155,7 +289,10 @@ def _promotion_for_asset(asset: dict[str, Any]) -> tuple[str, str]:
 def build_promotion_manifest(assets: list[dict[str, Any]], *, source_namespace: str) -> dict[str, Any]:
     manifest_assets: list[dict[str, Any]] = []
     for asset in sorted(assets, key=lambda item: str(item["asset_id"])):
-        promotion_decision, seed_import_decision = _promotion_for_asset(asset)
+        promotion_decision, seed_import_decision = _promotion_for_asset(
+            asset,
+            source_namespace=source_namespace,
+        )
         manifest_assets.append(
             {
                 "asset_id": asset["asset_id"],
@@ -320,6 +457,71 @@ def _build_sql_example_seed(asset: dict[str, Any], *, source_key: str) -> dict[s
     }
 
 
+def _merge_unique_strs(values: list[str], additions: list[str]) -> list[str]:
+    merged: list[str] = []
+    seen: set[str] = set()
+    for raw in [*(values or []), *(additions or [])]:
+        value = str(raw).strip()
+        if not value:
+            continue
+        key = value.lower()
+        if key in seen:
+            continue
+        merged.append(value)
+        seen.add(key)
+    return merged
+
+
+def _append_sentence(base: str | None, addition: str | None) -> str | None:
+    base_text = str(base or "").strip()
+    addition_text = str(addition or "").strip()
+    if not addition_text:
+        return base_text or None
+    if not base_text:
+        return addition_text
+    if addition_text in base_text:
+        return base_text
+    return f"{base_text} {addition_text}".strip()
+
+
+def _apply_v2_glossary_enrichments(item: dict[str, Any]) -> None:
+    enrichment = V2_GLOSSARY_ENRICHMENTS.get(str(item.get("source_key")))
+    if not enrichment:
+        return
+    item["synonyms"] = _merge_unique_strs(list(item.get("synonyms") or []), list(enrichment.get("synonyms") or []))
+    item["mapped_tables"] = _merge_unique_strs(list(item.get("mapped_tables") or []), list(enrichment.get("mapped_tables") or []))
+    item["mapped_fields"] = _merge_unique_strs(list(item.get("mapped_fields") or []), list(enrichment.get("mapped_fields") or []))
+    item["suggested_filters"] = _merge_unique_strs(
+        list(item.get("suggested_filters") or []),
+        list(enrichment.get("suggested_filters") or []),
+    )
+    item["definition"] = _append_sentence(item.get("definition"), enrichment.get("definition_suffix"))
+    metadata = dict(item.get("metadata") or {})
+    metadata["aliases"] = item["synonyms"]
+    item["metadata"] = metadata
+
+
+def _apply_v2_field_enrichments(item: dict[str, Any]) -> None:
+    enrichment = V2_FIELD_ENRICHMENTS.get(str(item.get("source_key")))
+    if not enrichment:
+        return
+    metadata = dict(item.get("metadata") or {})
+    aliases = _merge_unique_strs(list(metadata.get("aliases") or []), list(enrichment.get("aliases") or []))
+    metadata["aliases"] = aliases
+    item["metadata"] = metadata
+    item["description"] = _append_sentence(item.get("description"), enrichment.get("description"))
+    item["business_meaning"] = _append_sentence(item.get("business_meaning"), enrichment.get("business_meaning_text"))
+
+
+def _apply_seed_enrichments(payload: dict[str, Any], *, source_namespace: str) -> None:
+    if source_namespace != "m2b_legacy_v2":
+        return
+    for item in payload.get("glossary_terms") or []:
+        _apply_v2_glossary_enrichments(item)
+    for item in payload.get("catalog_fields") or []:
+        _apply_v2_field_enrichments(item)
+
+
 def _build_sql_error_case_seed(asset: dict[str, Any], *, source_key: str) -> dict[str, Any]:
     return {
         "source_key": source_key,
@@ -384,10 +586,11 @@ def build_seed_patch_payload(
             payload["sql_examples"].append(_build_sql_example_seed(asset, source_key=source_key))
         elif asset_type == "sql_error_case":
             payload["sql_error_cases"].append(_build_sql_error_case_seed(asset, source_key=source_key))
+    _apply_seed_enrichments(payload, source_namespace=source_namespace)
     return payload
 
 
-def validate_seed_patch_payload(payload: dict[str, Any]) -> None:
+def validate_seed_patch_payload(payload: dict[str, Any], *, expected_source_namespace: str | None = None) -> None:
     required_top_level = {
         "schema_version",
         "source_namespace",
@@ -401,8 +604,11 @@ def validate_seed_patch_payload(payload: dict[str, Any]) -> None:
     missing = required_top_level - set(payload)
     if missing:
         raise ValueError(f"seed patch missing top-level keys: {sorted(missing)}")
-    if payload["source_namespace"] != "m2b_legacy_v1":
-        raise ValueError("seed patch source_namespace must be m2b_legacy_v1")
+    source_namespace = str(payload["source_namespace"] or "").strip()
+    if not SUPPORTED_SOURCE_NAMESPACE_PATTERN.match(source_namespace):
+        raise ValueError("seed patch source_namespace must match m2b_legacy_vN")
+    if expected_source_namespace is not None and source_namespace != expected_source_namespace:
+        raise ValueError(f"seed patch source_namespace must be {expected_source_namespace}")
 
     seen_source_keys: set[str] = set()
     for family_name in ("catalog_tables", "catalog_fields", "glossary_terms", "sql_examples", "sql_error_cases"):
@@ -513,7 +719,7 @@ def main() -> int:
         source_namespace=args.source_namespace,
         generated_from_manifest=str(args.manifest),
     )
-    validate_seed_patch_payload(seed_payload)
+    validate_seed_patch_payload(seed_payload, expected_source_namespace=args.source_namespace)
 
     write_yaml(args.manifest, manifest)
     write_yaml(args.seed_output, seed_payload)
