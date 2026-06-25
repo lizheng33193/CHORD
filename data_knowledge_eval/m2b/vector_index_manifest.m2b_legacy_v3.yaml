@@ -1,0 +1,18 @@
+schema_version: m2b_vector_index_manifest_v1
+source_namespace: m2b_legacy_v3
+record_count: 101
+vectorizer_name: local_hashing_bow_v1
+vector_dim: 512
+vector_format: sparse_hash_weight_map
+normalization: l2
+tokenizer: unicode_lower_snake_camel_cjk_bigram
+input_fields:
+- title
+- embedding_text
+- search_hints
+field_weights:
+  title: 2.0
+  search_hints: 2.0
+  embedding_text: 1.0
+similarity: cosine
+generated_at: '2026-06-25T00:00:00Z'

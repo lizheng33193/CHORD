@@ -5,6 +5,33 @@
 - 整体架构：单体 FastAPI 后端，五层（API → 编排 → Skill 执行 → 数据访问 → 外部服务）
 - 入口文件：`app/main.py`
 
+## 2026-06-25 M2B-4 Vector Index Prototype
+
+- `M2B-3` 已完成，当前进入 `M2B-4`：
+  - `docs/plans/m2b-4-vector-index-prototype-plan.md`
+  - `docs/reviews/m2b-4-vector-index-prototype-results.md`
+  - `docs/reviews/m2b-4-deterministic-vs-vector-comparison.md`
+- 本阶段只做离线 vector prototype：
+  - 输入固定为 `embedding_records.m2b_legacy_v3.jsonl` 与 `embedding_manifest.m2b_legacy_v3.yaml`
+  - 使用 `local_hashing_bow_v1` 构建 `vector_index.m2b_legacy_v3.json`
+  - 对 `baseline_results.m2b_legacy_v3.deterministic.json` 做 vector-only 对照
+- 本阶段继续保持不变：
+  - 不调用真实 embedding API
+  - 不建立生产向量库
+  - 不做 hybrid retrieval
+  - 不改 `app/data_knowledge/retriever.py` / `app/data_knowledge/service.py`
+  - 不改 Data Agent runtime / SQL HITL / orchestrator bridge
+  - 不回头修改 `m2b_legacy_v3` seed 或 `embedding_records`
+- 当前 `M2B-4` 结果：
+  - vector index record_count：`101`
+  - vector baseline：`2 pass / 17 partial / 0 fail`
+  - 明确出现 `vector_only_matches` 的 case：
+    - `mx-no-withdraw-cohort`
+    - `mx-app-profile-query`
+    - `th-asset-snapshot-query`
+  - `th-asset-snapshot-query` 在 vector-only baseline 中提升为 `pass`
+  - 当前结论是：可进入 `M2B-5 Hybrid Retrieval Fusion`，但前提是保持 “deterministic 为主、vector 为补充” 的融合设计
+
 ## 2026-06-25 M2B-3 Embedding Text Builder
 
 - `M2B-2.2` 已完成，当前进入 `M2B-3`：
