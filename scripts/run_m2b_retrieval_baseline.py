@@ -39,6 +39,8 @@ DEFAULT_RESULTS_REVIEW = Path("docs/reviews/m2b-2-deterministic-baseline-results
 DEFAULT_COVERAGE_REVIEW = Path("docs/reviews/m2b-2-golden-set-deterministic-coverage.md")
 DEFAULT_V21_RESULTS_REVIEW = Path("docs/reviews/m2b-2-1-deterministic-grounding-results.md")
 DEFAULT_V21_COMPARISON_REVIEW = Path("docs/reviews/m2b-2-1-v1-v2-baseline-comparison.md")
+DEFAULT_V22_RESULTS_REVIEW = Path("docs/reviews/m2b-2-2-targeted-grounding-results.md")
+DEFAULT_V22_COMPARISON_REVIEW = Path("docs/reviews/m2b-2-2-v2-v3-baseline-comparison.md")
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
@@ -57,6 +59,16 @@ CASE_MANIFEST_ONLY_HINTS = {
     "mx-first-loan-never-overdue": [
         "cohort.mx.first_loan_never_overdue",
     ],
+}
+
+FIELD_EQUIVALENCE_TOKENS: dict[str, set[str]] = {
+    "overdue_days": {
+        "overdue_days",
+        "asset_overdue_days",
+        "real_overdue_days",
+        "max_overdue_days",
+        "history_overdue_count",
+    },
 }
 
 
@@ -152,10 +164,24 @@ def _extract_glossary_tokens(row) -> set[str]:
 
 def _extract_example_tokens(row) -> set[str]:
     tokens = {_normalize_token(getattr(row, "source_key", ""))}
+    natural_language_request = _normalize_token(getattr(row, "natural_language_request", ""))
+    if natural_language_request:
+        tokens.add(natural_language_request)
+        tokens.add(natural_language_request.replace(" ", "_"))
+    pattern_summary = _normalize_token(getattr(row, "pattern_summary", ""))
+    if pattern_summary:
+        tokens.add(pattern_summary)
+        tokens.add(pattern_summary.replace(" ", "_"))
     metadata = dict(getattr(row, "metadata_json", None) or {})
     scenario = metadata.get("scenario")
     if scenario:
-        tokens.add(_normalize_token(scenario))
+        normalized = _normalize_token(scenario)
+        tokens.add(normalized)
+        tokens.add(normalized.replace(" ", "_"))
+    for match_token in metadata.get("match_tokens") or []:
+        normalized = _normalize_token(match_token)
+        if normalized:
+            tokens.add(normalized)
     return {token for token in tokens if token}
 
 
@@ -205,10 +231,14 @@ def _build_glossary_alias_index(seed_patch_path: Path) -> dict[str, set[str]]:
 def _phase_label_for_seed_namespace(source_namespace: str) -> str:
     if source_namespace == "m2b_legacy_v2":
         return "m2b_2_1"
+    if source_namespace == "m2b_legacy_v3":
+        return "m2b_2_2"
     return "m2b_2"
 
 
 def _default_manifest_path_for_seed_patch(seed_patch_path: Path) -> Path:
+    if seed_patch_path.stem.endswith("v3"):
+        return Path("data_knowledge_eval/m2b/seed_promotion_manifest.v3.yaml")
     if seed_patch_path.stem.endswith("v2"):
         return Path("data_knowledge_eval/m2b/seed_promotion_manifest.v2.yaml")
     return DEFAULT_PROMOTION_MANIFEST
@@ -301,7 +331,8 @@ def _build_case_result(
     for expected in case["expected_fields"]:
         label = f"field:{expected}"
         token = _normalize_token(expected)
-        if token in field_tokens or token in field_alias_tokens:
+        equivalent_tokens = FIELD_EQUIVALENCE_TOKENS.get(token, {token})
+        if equivalent_tokens.intersection(field_tokens) or equivalent_tokens.intersection(field_alias_tokens):
             matched_expected.append(label)
         else:
             missing_expected.append(label)
@@ -473,9 +504,18 @@ def _build_results_review_markdown(results_payload: dict[str, Any], *, phase_lab
     for case in results_payload["cases"]:
         for item in case["missing_expected"]:
             missing_counter[item] += 1
-    title = "# M2B-2 Deterministic Baseline Results" if phase_label == "m2b_2" else "# M2B-2.1 Deterministic Grounding Results"
-    next_step = "M2B-3" if counter["pass"] >= 8 and counter["fail"] == 0 else ("M2B-2.1" if phase_label == "m2b_2" else "M2B-2.2")
-    phase_text = "M2B-2" if phase_label == "m2b_2" else "M2B-2.1"
+    if phase_label == "m2b_2":
+        title = "# M2B-2 Deterministic Baseline Results"
+        next_step = "M2B-3" if counter["pass"] >= 8 and counter["fail"] == 0 else "M2B-2.1"
+        phase_text = "M2B-2"
+    elif phase_label == "m2b_2_1":
+        title = "# M2B-2.1 Deterministic Grounding Results"
+        next_step = "M2B-3" if counter["pass"] >= 8 and counter["fail"] == 0 else "M2B-2.2"
+        phase_text = "M2B-2.1"
+    else:
+        title = "# M2B-2.2 Targeted Grounding Results"
+        next_step = "M2B-3" if counter["pass"] >= 5 and counter["fail"] == 0 else "M2B-2.3"
+        phase_text = "M2B-2.2"
 
     lines = [
         title,
@@ -506,33 +546,80 @@ def _build_results_review_markdown(results_payload: dict[str, Any], *, phase_lab
     return "\n".join(lines)
 
 
-def build_baseline_comparison_markdown(v1_payload: dict[str, Any], v2_payload: dict[str, Any]) -> str:
-    v1_cases = {case["case_id"]: case for case in v1_payload.get("cases", [])}
-    v2_cases = {case["case_id"]: case for case in v2_payload.get("cases", [])}
-    shared_ids = sorted(set(v1_cases) & set(v2_cases))
+def _seed_namespace_from_payload(payload: dict[str, Any]) -> str:
+    namespaces = payload.get("seed_namespaces") or []
+    if not namespaces:
+        return "unknown_seed"
+    return str(namespaces[-1])
+
+
+def _comparison_title(left_namespace: str, right_namespace: str) -> tuple[str, str]:
+    if left_namespace == "m2b_legacy_v1" and right_namespace == "m2b_legacy_v2":
+        return (
+            "# M2B-2.1 V1 vs V2 Deterministic Baseline Comparison",
+            "This comparison measures deterministic grounding changes between `m2b_legacy_v1` and `m2b_legacy_v2`.",
+        )
+    if left_namespace == "m2b_legacy_v2" and right_namespace == "m2b_legacy_v3":
+        return (
+            "# M2B-2.2 V2 vs V3 Deterministic Baseline Comparison",
+            "This comparison measures targeted deterministic grounding changes between `m2b_legacy_v2` and `m2b_legacy_v3`.",
+        )
+    return (
+        "# M2B Deterministic Baseline Comparison",
+        f"This comparison measures deterministic grounding changes between `{left_namespace}` and `{right_namespace}`.",
+    )
+
+
+def _comparison_header_labels(left_namespace: str, right_namespace: str) -> tuple[str, str]:
+    if left_namespace == "m2b_legacy_v1" and right_namespace == "m2b_legacy_v2":
+        return "v1_judgment", "v2_judgment"
+    if left_namespace == "m2b_legacy_v2" and right_namespace == "m2b_legacy_v3":
+        return "v2_judgment", "v3_judgment"
+    return "left_judgment", "right_judgment"
+
+
+def _judgment_rank(value: str) -> int:
+    order = {"fail": 0, "partial": 1, "pass": 2}
+    return order.get(str(value), -1)
+
+
+def build_baseline_comparison_markdown(left_payload: dict[str, Any], right_payload: dict[str, Any]) -> str:
+    left_namespace = _seed_namespace_from_payload(left_payload)
+    right_namespace = _seed_namespace_from_payload(right_payload)
+    title, subtitle = _comparison_title(left_namespace, right_namespace)
+    left_header, right_header = _comparison_header_labels(left_namespace, right_namespace)
+    left_cases = {case["case_id"]: case for case in left_payload.get("cases", [])}
+    right_cases = {case["case_id"]: case for case in right_payload.get("cases", [])}
+    shared_ids = sorted(set(left_cases) & set(right_cases))
     lines = [
-        "# M2B-2.1 V1 vs V2 Deterministic Baseline Comparison",
+        title,
         "",
-        "This comparison measures deterministic grounding changes between `m2b_legacy_v1` and `m2b_legacy_v2`.",
+        subtitle,
         "",
-        "| case_id | v1_judgment | v2_judgment | matched_expected_delta | missing_expected_delta | unexpected_delta | improvement_summary | regression_risk |",
+        f"- left_seed_namespace: `{left_namespace}`",
+        f"- right_seed_namespace: `{right_namespace}`",
+        "",
+        f"| case_id | {left_header} | {right_header} | matched_expected_delta | missing_expected_delta | unexpected_delta | improvement_summary | regression_risk |",
         "|---|---|---|---:|---:|---:|---|---|",
     ]
     for case_id in shared_ids:
-        v1_case = v1_cases[case_id]
-        v2_case = v2_cases[case_id]
-        matched_delta = len(v2_case["matched_expected"]) - len(v1_case["matched_expected"])
-        missing_delta = len(v2_case["missing_expected"]) - len(v1_case["missing_expected"])
-        unexpected_delta = len(v2_case["unexpected"]) - len(v1_case["unexpected"])
-        if v1_case["judgment"] != v2_case["judgment"] or matched_delta > 0 or missing_delta < 0:
+        left_case = left_cases[case_id]
+        right_case = right_cases[case_id]
+        matched_delta = len(right_case["matched_expected"]) - len(left_case["matched_expected"])
+        missing_delta = len(right_case["missing_expected"]) - len(left_case["missing_expected"])
+        unexpected_delta = len(right_case["unexpected"]) - len(left_case["unexpected"])
+        judgment_delta = _judgment_rank(right_case["judgment"]) - _judgment_rank(left_case["judgment"])
+        if judgment_delta > 0 or matched_delta > 0 or missing_delta < 0:
             improvement_summary = "improved"
+        elif judgment_delta < 0 or matched_delta < 0 or missing_delta > 0:
+            improvement_summary = "regressed"
         elif unexpected_delta > 0:
             improvement_summary = "unexpected_increase"
         else:
             improvement_summary = "no_material_change"
-        regression_risk = "yes" if unexpected_delta > 0 or matched_delta < 0 or missing_delta > 0 else "no"
+        regression_risk = "yes" if unexpected_delta > 0 or judgment_delta < 0 or matched_delta < 0 or missing_delta > 0 else "no"
         lines.append(
-            f"| {case_id} | {v1_case['judgment']} | {v2_case['judgment']} | {matched_delta} | {missing_delta} | {unexpected_delta} | {improvement_summary} | {regression_risk} |"
+            f"| {case_id} | {left_case['judgment']} | {right_case['judgment']} | {matched_delta} | {missing_delta} | {unexpected_delta} | {improvement_summary} | {regression_risk} |"
         )
     return "\n".join(lines)
 
@@ -609,6 +696,19 @@ def main() -> int:
             v1_payload = json.loads(v1_result_path.read_text(encoding="utf-8"))
             DEFAULT_V21_COMPARISON_REVIEW.write_text(
                 build_baseline_comparison_markdown(v1_payload, payload) + "\n",
+                encoding="utf-8",
+            )
+    elif seed_source_namespace == "m2b_legacy_v3":
+        DEFAULT_V22_RESULTS_REVIEW.parent.mkdir(parents=True, exist_ok=True)
+        DEFAULT_V22_RESULTS_REVIEW.write_text(
+            _build_results_review_markdown(payload, phase_label="m2b_2_2") + "\n",
+            encoding="utf-8",
+        )
+        v2_result_path = args.output.parent / "baseline_results.m2b_legacy_v2.deterministic.json"
+        if v2_result_path.exists():
+            v2_payload = json.loads(v2_result_path.read_text(encoding="utf-8"))
+            DEFAULT_V22_COMPARISON_REVIEW.write_text(
+                build_baseline_comparison_markdown(v2_payload, payload) + "\n",
                 encoding="utf-8",
             )
     else:

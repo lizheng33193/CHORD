@@ -18,7 +18,12 @@ def _build_seed_payload(*, tmp_path: Path, namespace: str):
     )
 
     assets = load_candidate_assets(EXTRACTED_ASSETS_DIR)
-    manifest_name = "seed_promotion_manifest.yaml" if namespace == "m2b_legacy_v1" else "seed_promotion_manifest.v2.yaml"
+    if namespace == "m2b_legacy_v1":
+        manifest_name = "seed_promotion_manifest.yaml"
+    elif namespace == "m2b_legacy_v2":
+        manifest_name = "seed_promotion_manifest.v2.yaml"
+    else:
+        manifest_name = "seed_promotion_manifest.v3.yaml"
     manifest = build_promotion_manifest(assets, source_namespace=namespace)
     seed_payload = build_seed_patch_payload(
         assets=assets,
@@ -120,27 +125,60 @@ def test_deterministic_baseline_supports_seed_patch_switching_and_v2_improves_cr
     assert "glossary:credit_profile" in v2_case["matched_expected"]
 
 
-def test_build_baseline_comparison_marks_improvements() -> None:
+def test_deterministic_baseline_supports_v3_seed_and_shrinks_mob1_and_overdue_gaps(tmp_path) -> None:
+    from scripts.run_m2b_retrieval_baseline import build_deterministic_results
+
+    v2_seed = _build_seed_payload(tmp_path=tmp_path, namespace="m2b_legacy_v2")
+    v3_seed = _build_seed_payload(tmp_path=tmp_path, namespace="m2b_legacy_v3")
+
+    v2_payload = build_deterministic_results(
+        golden_set_path=GOLDEN_SET_PATH,
+        seed_patch_path=v2_seed,
+        generated_at="deterministic-v2",
+    )
+    v3_payload = build_deterministic_results(
+        golden_set_path=GOLDEN_SET_PATH,
+        seed_patch_path=v3_seed,
+        generated_at="deterministic-v3",
+    )
+
+    v2_mob1 = next(case for case in v2_payload["cases"] if case["case_id"] == "mx-mob1-settled-7d-churn")
+    v3_mob1 = next(case for case in v3_payload["cases"] if case["case_id"] == "mx-mob1-settled-7d-churn")
+    assert len(v3_mob1["missing_expected"]) < len(v2_mob1["missing_expected"])
+    assert "glossary:mob1" in v3_mob1["matched_expected"]
+    assert "glossary:fully_settled" in v3_mob1["matched_expected"]
+    assert "glossary:seven_day_no_reborrow_churn" in v3_mob1["matched_expected"]
+
+    v2_withdraw = next(case for case in v2_payload["cases"] if case["case_id"] == "mx-withdraw-cohort")
+    v3_withdraw = next(case for case in v3_payload["cases"] if case["case_id"] == "mx-withdraw-cohort")
+    assert len(v3_withdraw["missing_expected"]) < len(v2_withdraw["missing_expected"])
+    assert "field:withdraw_uuid" in v3_withdraw["matched_expected"]
+    assert "field:asset_grant_at" in v3_withdraw["matched_expected"]
+
+
+def test_build_baseline_comparison_marks_v2_to_v3_improvements() -> None:
     from scripts.run_m2b_retrieval_baseline import build_baseline_comparison_markdown
 
     comparison = build_baseline_comparison_markdown(
         {
+            "seed_namespaces": ["mx", "ph", "common", "m2b_legacy_v2"],
             "cases": [
                 {
-                    "case_id": "mx-credit-profile-query",
-                    "judgment": "fail",
-                    "matched_expected": [],
-                    "missing_expected": ["table:hive.dwb.dwb_r_apply", "glossary:credit_profile"],
+                    "case_id": "mx-mob1-settled-7d-churn",
+                    "judgment": "partial",
+                    "matched_expected": ["table:hive.dwd.dwd_w_apply"],
+                    "missing_expected": ["glossary:mob1", "field:withdraw_uuid"],
                     "unexpected": [],
                 }
             ]
         },
         {
+            "seed_namespaces": ["mx", "ph", "common", "m2b_legacy_v3"],
             "cases": [
                 {
-                    "case_id": "mx-credit-profile-query",
-                    "judgment": "partial",
-                    "matched_expected": ["table:hive.dwb.dwb_r_apply", "glossary:credit_profile"],
+                    "case_id": "mx-mob1-settled-7d-churn",
+                    "judgment": "pass",
+                    "matched_expected": ["table:hive.dwd.dwd_w_apply", "glossary:mob1", "field:withdraw_uuid"],
                     "missing_expected": [],
                     "unexpected": [],
                 }
@@ -148,7 +186,38 @@ def test_build_baseline_comparison_marks_improvements() -> None:
         },
     )
 
-    assert "mx-credit-profile-query" in comparison
-    assert "fail" in comparison
+    assert "M2B-2.2 V2 vs V3" in comparison
+    assert "mx-mob1-settled-7d-churn" in comparison
+    assert "m2b_legacy_v2" in comparison
+    assert "m2b_legacy_v3" in comparison
     assert "partial" in comparison
+    assert "pass" in comparison
     assert "improved" in comparison
+
+    regression = build_baseline_comparison_markdown(
+        {
+            "seed_namespaces": ["mx", "ph", "common", "m2b_legacy_v2"],
+            "cases": [
+                {
+                    "case_id": "mx-credit-profile-query",
+                    "judgment": "pass",
+                    "matched_expected": ["table:hive.dwb.dwb_r_apply", "field:apply_id"],
+                    "missing_expected": [],
+                    "unexpected": [],
+                }
+            ],
+        },
+        {
+            "seed_namespaces": ["mx", "ph", "common", "m2b_legacy_v3"],
+            "cases": [
+                {
+                    "case_id": "mx-credit-profile-query",
+                    "judgment": "partial",
+                    "matched_expected": ["table:hive.dwb.dwb_r_apply"],
+                    "missing_expected": ["field:apply_id"],
+                    "unexpected": [],
+                }
+            ],
+        },
+    )
+    assert "regressed" in regression

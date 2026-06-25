@@ -35,6 +35,41 @@
 - [x] E1 单用户埋点深度解析 → docs/plans/trace-analyzer-plan.md（2026-05-01）
 
 ## 当前进行中的功能
+- [x] M2B-2.2：Targeted Deterministic Grounding Patch — 已完成（2026-06-25）
+  - plan / reviews：
+    - `docs/plans/m2b-2-2-targeted-deterministic-grounding-patch-plan.md`
+    - `docs/reviews/m2b-2-2-missing-grounding-analysis.md`
+    - `docs/reviews/m2b-2-2-targeted-grounding-results.md`
+    - `docs/reviews/m2b-2-2-v2-v3-baseline-comparison.md`
+  - 本阶段产出：
+    - `data_knowledge_seed/m2b/m2b_legacy_v3.yaml`
+    - `data_knowledge_eval/m2b/seed_promotion_manifest.v3.yaml`
+    - `data_knowledge_eval/m2b/baseline_results.m2b_legacy_v2.deterministic.json`（同一版 runner 公平复跑）
+    - `data_knowledge_eval/m2b/baseline_results.m2b_legacy_v3.deterministic.json`
+    - `data_knowledge_eval/m2b/deterministic_coverage.m2b_legacy_v2.yaml`
+    - `data_knowledge_eval/m2b/deterministic_coverage.m2b_legacy_v3.yaml`
+    - `scripts/promote_m2b_extracted_assets.py`
+    - `scripts/run_m2b_retrieval_baseline.py`
+  - 本轮结果：
+    - `m2b_legacy_v3` 保持 isolated evaluation namespace，不叠加导入 `v2`
+    - rerun v2 baseline：`5 pass / 14 partial / 0 fail`
+    - v3 baseline：`11 pass / 8 partial / 0 fail`
+    - `mx-first-loan-never-overdue`：`partial -> pass`
+    - `mx-withdraw-cohort`：`partial -> pass`
+    - `mx-no-apply-cohort`：`partial -> pass`
+    - `dws-renewal-loan-segment-query`：`partial -> pass`
+    - `dws-fox-boc-behavior-query`：`partial -> pass`
+    - `th-ask-loan-risk-query`：`partial -> pass`
+    - `mx-mob1-settled-7d-churn`：missing 从 `6` 项缩减到 `1` 项
+    - `mx-credit-profile-query` 在 v3 中保持 `pass`，没有引入 regression
+  - 保持不变：
+    - 不做 embedding / vector index / hybrid retrieval
+    - 不改 Data Agent runtime
+    - 不改 SQL HITL / approve / execute / orchestrator bridge
+    - 不改 `app/data_knowledge/retriever.py` scoring/top-k/filtering
+  - 下一步：
+    - 进入 `M2B-3 Embedding Text Builder`
+
 - [x] M2B-2.1：Seed / Alias / Deterministic Grounding Patch — 已完成（2026-06-25）
   - plan / reviews：
     - `docs/plans/m2b-2-1-seed-alias-deterministic-grounding-patch-plan.md`

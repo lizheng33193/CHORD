@@ -194,6 +194,179 @@ V2_FIELD_ENRICHMENTS: dict[str, dict[str, Any]] = {
     },
 }
 
+V3_GLOSSARY_ENRICHMENTS: dict[str, dict[str, Any]] = {
+    "glossary.mx.credit_profile": {
+        "synonyms": [
+            "征信相关申请字段",
+            "征信申请状态",
+            "征信审核状态",
+            "墨西哥征信字段",
+            "credit application fields",
+            "credit apply status",
+        ],
+        "mapped_tables": ["dwb_r_apply"],
+        "mapped_fields": ["apply_id", "apply_status", "apply_user_uuid"],
+        "suggested_filters": ["apply_id", "apply_status", "apply_created_at"],
+        "definition_suffix": "用于回答墨西哥征信相关申请字段、审核申请状态与申请主键查询。",
+    },
+    "glossary.common.mob1": {
+        "synonyms": [
+            "结清7天未复借",
+            "首贷结清流失",
+            "settled 7d no reborrow",
+            "mob1 churn",
+        ],
+        "mapped_tables": ["dwd_w_apply"],
+        "mapped_fields": [
+            "user_uuid",
+            "withdraw_uuid",
+            "asset_grant_at",
+            "asset_finish_at",
+            "apply_create_at",
+        ],
+        "suggested_filters": [
+            "first_loan",
+            "fully_settled",
+            "settlement_over_7d",
+            "no_reborrow_within_7d",
+        ],
+        "definition_suffix": "runtime grounding 必须同时覆盖首贷、完全结清、结清满7天和7天内未复借四个条件。",
+    },
+    "glossary.common.first_loan": {
+        "synonyms": ["首贷提现", "first withdraw", "loan order"],
+        "mapped_fields": ["withdraw_uuid", "apply_create_at", "asset_grant_at"],
+        "suggested_filters": ["withdraw_uuid", "asset_grant_at", "apply_create_at"],
+        "definition_suffix": "优先关联真实提现/放款订单字段，而不是只停留在用户级语义。",
+    },
+    "glossary.common.never_overdue": {
+        "synonyms": ["无逾期", "never overdue history", "max overdue"],
+        "mapped_fields": ["asset_overdue_days", "real_overdue_days", "max_overdue_days"],
+        "suggested_filters": ["asset_overdue_days", "real_overdue_days", "max_overdue_days"],
+        "definition_suffix": "从未逾期语义应优先映射资产逾期和历史最大逾期字段。",
+    },
+    "glossary.common.fully_settled": {
+        "synonyms": ["结清满7天", "settled over 7d", "完成还款"],
+        "mapped_fields": ["asset_finish_at", "asset_grant_at", "withdraw_uuid"],
+        "suggested_filters": ["asset_finish_at", "settlement_over_7d"],
+        "definition_suffix": "用于 mob1 场景时，至少需要结清时间、放款时间和借款订单字段可见。",
+    },
+    "glossary.common.seven_day_no_reborrow_churn": {
+        "synonyms": ["结清7天未复借", "首贷结清流失", "no_reborrow_within_7d"],
+        "mapped_fields": ["withdraw_uuid", "asset_finish_at", "asset_grant_at", "apply_create_at"],
+        "suggested_filters": ["no_reborrow_within_7d", "withdraw_uuid", "asset_finish_at"],
+        "definition_suffix": "该语义需要同时关联结清时间、观察期和复借排除条件。",
+    },
+    "glossary.mx.no_withdraw": {
+        "synonyms": ["未提现", "未放款", "no successful withdraw"],
+        "mapped_tables": ["dwd_w_apply"],
+        "mapped_fields": ["withdraw_uuid", "asset_grant_at"],
+        "suggested_filters": ["withdraw_uuid", "asset_grant_at"],
+    },
+    "glossary.mx.successful_withdraw": {
+        "synonyms": ["提现成功", "放款成功", "withdraw order", "loan order"],
+        "mapped_tables": ["dwd_w_apply"],
+        "mapped_fields": ["withdraw_uuid", "asset_grant_at"],
+        "suggested_filters": ["withdraw_uuid", "asset_grant_at"],
+        "definition_suffix": "应优先命中提现订单号与放款时间字段。",
+    },
+    "glossary.mx.no_apply": {
+        "synonyms": ["未进件用户", "zero apply"],
+        "mapped_tables": ["dwd_w_user", "dwd_w_apply"],
+        "mapped_fields": ["user_uuid", "apply_create_at"],
+        "suggested_filters": ["user_uuid", "apply_create_at"],
+    },
+    "glossary.multi.settled_over_3m": {
+        "synonyms": ["settled over 3 months", "3m settled"],
+        "mapped_tables": ["dws_user_renewal_loan_seg_d"],
+        "mapped_fields": ["last_finish_time", "mob_code"],
+    },
+    "glossary.multi.collection_behavior": {
+        "synonyms": ["collection touch behavior", "贷后催收行为"],
+        "mapped_tables": ["dws_fox_boc_behavior_log_d"],
+        "mapped_fields": ["behavior_type", "behavior_time", "contact_type"],
+    },
+    "glossary.multi.contact_outcome": {
+        "synonyms": ["contact result", "触达状态"],
+        "mapped_tables": ["dws_fox_boc_behavior_log_d"],
+        "mapped_fields": ["behavior_status_name", "contact_type"],
+    },
+}
+
+V3_FIELD_ENRICHMENTS: dict[str, dict[str, Any]] = {
+    "field.mx.dwd_w_apply.withdraw_uuid": {
+        "aliases": ["提现订单", "借款订单", "loan order id", "withdraw order id", "首贷提现"],
+        "description": "提现/借款订单标识，用于关联申请、提现、放款、资产和首贷链路。",
+        "business_meaning_text": "提现订单号/借款订单号（loan order id / withdraw order id），用于首贷提现、成功提现、放款成立、首贷且从未逾期的借款订单识别以及复借排除。",
+    },
+    "field.mx.dwd_w_apply.user_uuid": {
+        "aliases": ["用户唯一标识", "user id", "user_identifier"],
+        "description": "申请、提现、资产链路中的用户主标识，可作为 cohort 与资产联合分析的用户键。",
+        "business_meaning_text": "用户主键，用于 apply/asset/user 主链路，不等价于 behavior 表 uid。",
+    },
+    "field.mx.dwd_w_apply.asset_grant_at": {
+        "aliases": ["放款成功时间", "loan disbursement time", "successful withdraw time"],
+        "description": "资产放款时间，用于判断放款成功、首贷放款、借款订单成立和资产生成窗口。",
+        "business_meaning_text": "放款时间，对应 successful_withdraw / first_loan / loan_order 语义。",
+    },
+    "field.mx.dwd_w_apply.asset_finish_at": {
+        "aliases": ["还清时间", "结清满7天", "settled over 7d"],
+        "description": "资产或分期结清时间，用于判断完全结清、结清满7天观察期和 mob1 流失。",
+        "business_meaning_text": "结清时间，对应 fully_settled / settlement_over_7d / mob1 / no_reborrow_within_7d，也是结清满7天观察窗口的核心字段。",
+    },
+    "field.mx.dwd_w_apply.asset_overdue_days": {
+        "aliases": ["当前逾期天数", "最大逾期", "never overdue", "max overdue days"],
+        "description": "资产逾期天数字段，可用于从未逾期、无逾期、历史最大逾期等自然语言风险语义。",
+        "business_meaning_text": "逾期天数字段，对应 overdue / never_overdue / max_overdue / overdue_risk。",
+    },
+    "field.mx.dwd_w_apply.real_overdue_days": {
+        "aliases": ["真实逾期天数", "历史逾期天数", "no overdue history"],
+        "description": "真实逾期天数字段，用于补充 never overdue / historical overdue 的风险语义。",
+        "business_meaning_text": "真实逾期天数，可作为从未逾期和历史最大逾期的辅助字段。",
+    },
+    "field.mx.dwb_b1_data_burying_point.uid": {
+        "aliases": ["behavior uid", "event uid", "埋点用户ID"],
+        "description": "埋点行为表用户标识，适用于 behavior writeback 和行为明细关联。",
+        "business_meaning_text": "behavior writeback join key，对应 event uid / 埋点用户ID，不与 user_uuid 全局等价。",
+    },
+    "field.mx.dwb_r_apply.apply_id": {
+        "aliases": ["征信申请字段", "征信申请ID", "审核申请字段", "credit application id"],
+        "description": "征信审核申请主键字段，可回答墨西哥征信相关申请字段与审核申请主键查询。",
+        "business_meaning_text": "credit profile 申请主键，用于征信审核申请字段、申请状态与申请主表关联。",
+    },
+    "field.mx.dwb_r_apply.apply_status": {
+        "aliases": ["征信申请状态", "征信审核状态", "审核申请状态", "credit apply status"],
+        "description": "征信审核申请状态字段，可回答墨西哥征信申请状态、审核状态与申请字段查询。",
+        "business_meaning_text": "credit profile 审核申请状态字段，用于征信相关申请状态与字段查询。",
+    },
+}
+
+V3_SQL_EXAMPLE_ENRICHMENTS: dict[str, dict[str, Any]] = {
+    "sql_pattern.mx.behavior_writeback_target_cohort": {
+        "natural_language_request": "behavior writeback pattern",
+        "pattern_summary": [
+            "return uid timestamp_ eventname as the minimum behavior writeback payload",
+            "preserve uid to user_uuid join semantics without treating them as globally equivalent fields",
+        ],
+        "match_tokens": ["behavior_writeback_pattern", "uid", "timestamp_", "eventname"],
+    },
+    "sql_pattern.mx.mob1_churn_cte": {
+        "natural_language_request": "mob1 churn pattern",
+        "pattern_summary": [
+            "carry withdraw_uuid together with asset_grant_at and asset_finish_at for mob1 lifecycle grounding",
+            "surface first_loan fully_settled settlement_over_7d and no_reborrow_within_7d semantics in the pattern guidance",
+        ],
+        "match_tokens": ["mob1_churn_pattern", "mob1", "fully_settled", "no_reborrow_within_7d"],
+    },
+}
+
+V3_GLOSSARY_SCOPE_CLONES: dict[str, str] = {
+    "glossary.common.mob1": "mx",
+    "glossary.common.first_loan": "mx",
+    "glossary.common.never_overdue": "mx",
+    "glossary.common.fully_settled": "mx",
+    "glossary.common.seven_day_no_reborrow_churn": "mx",
+}
+
 
 def _require_yaml() -> None:
     if yaml is None:
@@ -273,7 +446,7 @@ def _promotion_for_asset(asset: dict[str, Any], *, source_namespace: str) -> tup
             return "promote_now", "manifest_only"
         return "defer_needs_review", "not_imported"
     if (
-        source_namespace == "m2b_legacy_v2"
+        source_namespace in {"m2b_legacy_v2", "m2b_legacy_v3"}
         and asset_type == "glossary_term"
         and runtime_allowed == "sanitized_only"
         and confidence in {"high", "medium"}
@@ -513,13 +686,84 @@ def _apply_v2_field_enrichments(item: dict[str, Any]) -> None:
     item["business_meaning"] = _append_sentence(item.get("business_meaning"), enrichment.get("business_meaning_text"))
 
 
+def _apply_v3_glossary_enrichments(item: dict[str, Any]) -> None:
+    enrichment = V3_GLOSSARY_ENRICHMENTS.get(str(item.get("source_key")))
+    if not enrichment:
+        return
+    item["synonyms"] = _merge_unique_strs(list(item.get("synonyms") or []), list(enrichment.get("synonyms") or []))
+    item["mapped_tables"] = _merge_unique_strs(list(item.get("mapped_tables") or []), list(enrichment.get("mapped_tables") or []))
+    item["mapped_fields"] = _merge_unique_strs(list(item.get("mapped_fields") or []), list(enrichment.get("mapped_fields") or []))
+    item["suggested_filters"] = _merge_unique_strs(
+        list(item.get("suggested_filters") or []),
+        list(enrichment.get("suggested_filters") or []),
+    )
+    item["definition"] = _append_sentence(item.get("definition"), enrichment.get("definition_suffix"))
+    metadata = dict(item.get("metadata") or {})
+    metadata["aliases"] = item["synonyms"]
+    item["metadata"] = metadata
+
+
+def _apply_v3_field_enrichments(item: dict[str, Any]) -> None:
+    enrichment = V3_FIELD_ENRICHMENTS.get(str(item.get("source_key")))
+    if not enrichment:
+        return
+    metadata = dict(item.get("metadata") or {})
+    aliases = _merge_unique_strs(list(metadata.get("aliases") or []), list(enrichment.get("aliases") or []))
+    metadata["aliases"] = aliases
+    item["metadata"] = metadata
+    item["description"] = _append_sentence(item.get("description"), enrichment.get("description"))
+    item["business_meaning"] = _append_sentence(item.get("business_meaning"), enrichment.get("business_meaning_text"))
+
+
+def _apply_v3_sql_example_enrichments(item: dict[str, Any]) -> None:
+    enrichment = V3_SQL_EXAMPLE_ENRICHMENTS.get(str(item.get("source_key")))
+    if not enrichment:
+        return
+    natural_language_request = str(enrichment.get("natural_language_request") or "").strip()
+    if natural_language_request:
+        item["natural_language_request"] = natural_language_request
+    pattern_summary = " | ".join(enrichment.get("pattern_summary") or [])
+    item["pattern_summary"] = _append_sentence(item.get("pattern_summary"), pattern_summary)
+    metadata = dict(item.get("metadata") or {})
+    metadata["match_tokens"] = _merge_unique_strs(
+        list(metadata.get("match_tokens") or []),
+        list(enrichment.get("match_tokens") or []),
+    )
+    item["metadata"] = metadata
+
+
+def _append_v3_glossary_scope_clones(payload: dict[str, Any]) -> None:
+    clones: list[dict[str, Any]] = []
+    for item in payload.get("glossary_terms") or []:
+        target_country = V3_GLOSSARY_SCOPE_CLONES.get(str(item.get("source_key")))
+        if not target_country:
+            continue
+        clone = json.loads(json.dumps(item, ensure_ascii=False))
+        clone["source_key"] = f"{item['source_key']}.mx_runtime"
+        clone["country"] = target_country
+        metadata = dict(clone.get("metadata") or {})
+        metadata["runtime_scope_variant"] = target_country
+        clone["metadata"] = metadata
+        clones.append(clone)
+    payload["glossary_terms"].extend(clones)
+
+
 def _apply_seed_enrichments(payload: dict[str, Any], *, source_namespace: str) -> None:
-    if source_namespace != "m2b_legacy_v2":
+    if source_namespace not in {"m2b_legacy_v2", "m2b_legacy_v3"}:
         return
     for item in payload.get("glossary_terms") or []:
         _apply_v2_glossary_enrichments(item)
     for item in payload.get("catalog_fields") or []:
         _apply_v2_field_enrichments(item)
+    if source_namespace != "m2b_legacy_v3":
+        return
+    for item in payload.get("glossary_terms") or []:
+        _apply_v3_glossary_enrichments(item)
+    for item in payload.get("catalog_fields") or []:
+        _apply_v3_field_enrichments(item)
+    for item in payload.get("sql_examples") or []:
+        _apply_v3_sql_example_enrichments(item)
+    _append_v3_glossary_scope_clones(payload)
 
 
 def _build_sql_error_case_seed(asset: dict[str, Any], *, source_key: str) -> dict[str, Any]:
