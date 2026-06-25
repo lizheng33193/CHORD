@@ -1,0 +1,251 @@
+schema_version: m2b_deterministic_coverage_v1
+run_mode: deterministic
+seed_namespaces:
+- mx
+- ph
+- common
+- m2b_legacy_v2
+seed_patch: data_knowledge_seed/m2b/m2b_legacy_v2.yaml
+cases:
+- case_id: mx-high-risk-cohort
+  matched_expected:
+  - table:hive.dwd.dwd_w_apply
+  - field:user_uuid
+  - field:risk_level
+  - field:apply_time
+  - field:dt
+  - glossary:high_risk
+  - glossary:recent_7d
+  missing_expected: []
+  unexpected: []
+  coverage_judgment: pass
+  notes:
+  - not_runtime_imported_in_m2b_2_1:cohort.mx.high_risk_recent_7d
+  - not_runtime_imported_in_m2b_2_1:canonical.mx.apply_business_time
+- case_id: mx-recent-7d-risk-users
+  matched_expected:
+  - table:hive.dwd.dwd_w_apply
+  - field:user_uuid
+  - field:risk_level
+  - field:apply_time
+  - glossary:high_risk
+  - glossary:recent_7d
+  missing_expected: []
+  unexpected: []
+  coverage_judgment: pass
+  notes: []
+- case_id: mx-first-loan-never-overdue
+  matched_expected:
+  - table:hive.dwd.dwd_w_apply
+  - field:user_uuid
+  - field:apply_time
+  - glossary:first_loan
+  - glossary:never_overdue
+  missing_expected:
+  - field:withdraw_uuid
+  - field:overdue_days
+  unexpected: []
+  coverage_judgment: partial
+  notes:
+  - not_runtime_imported_in_m2b_2_1:cohort.mx.first_loan_never_overdue
+- case_id: mx-mob1-settled-7d-churn
+  matched_expected:
+  - table:hive.dwd.dwd_w_apply
+  - field:user_uuid
+  - field:apply_create_at
+  - glossary:first_loan
+  missing_expected:
+  - field:withdraw_uuid
+  - field:asset_finish_at
+  - field:asset_grant_at
+  - glossary:mob1
+  - glossary:fully_settled
+  - glossary:seven_day_no_reborrow_churn
+  - example:mob1_churn_pattern
+  unexpected: []
+  coverage_judgment: partial
+  notes:
+  - not_runtime_imported_in_m2b_2_1:rule.common.full_settlement
+  - not_runtime_imported_in_m2b_2_1:rule.common.seven_day_no_reborrow
+  - not_runtime_imported_in_m2b_2_1:cohort.mx.mob1_settled_7d_churn
+- case_id: mx-behavior-writeback
+  matched_expected:
+  - table:hive.dwb.dwb_b1_data_burying_point
+  - field:uid
+  - field:timestamp_
+  - field:eventname
+  - glossary:writeback_behavior
+  - glossary:uid_cohort_required
+  missing_expected:
+  - example:behavior_writeback_pattern
+  unexpected: []
+  coverage_judgment: partial
+  notes: []
+- case_id: mx-glossary-combo-writeback
+  matched_expected:
+  - table:hive.dwd.dwd_w_apply
+  - table:hive.dwb.dwb_b1_data_burying_point
+  - field:user_uuid
+  - field:risk_level
+  - field:apply_time
+  - field:uid
+  - field:timestamp_
+  - field:eventname
+  - glossary:high_risk
+  - glossary:recent_7d
+  - glossary:writeback_behavior
+  missing_expected:
+  - example:behavior_writeback_pattern
+  unexpected: []
+  coverage_judgment: partial
+  notes: []
+- case_id: mx-no-apply-cohort
+  matched_expected:
+  - table:hive.dwd.dwd_w_apply
+  - field:user_uuid
+  - field:apply_time
+  - glossary:recent_30d
+  missing_expected:
+  - table:hive.dwd.dwd_w_user
+  - glossary:no_apply
+  unexpected: []
+  coverage_judgment: partial
+  notes: []
+- case_id: mx-no-withdraw-cohort
+  matched_expected:
+  - table:hive.dwd.dwd_w_apply
+  - field:user_uuid
+  - field:apply_time
+  missing_expected:
+  - field:withdraw_uuid
+  - glossary:no_withdraw
+  unexpected: []
+  coverage_judgment: partial
+  notes: []
+- case_id: mx-withdraw-cohort
+  matched_expected:
+  - table:hive.dwd.dwd_w_apply
+  - field:user_uuid
+  - glossary:recent_7d
+  missing_expected:
+  - field:withdraw_uuid
+  - field:asset_grant_at
+  - glossary:successful_withdraw
+  unexpected: []
+  coverage_judgment: partial
+  notes: []
+- case_id: mx-app-profile-query
+  matched_expected:
+  - table:hive.ods.ods_f_market_app_categories
+  - field:app_package
+  - glossary:app_profile
+  missing_expected:
+  - field:category_name
+  - field:year_day
+  unexpected: []
+  coverage_judgment: partial
+  notes: []
+- case_id: mx-credit-profile-query
+  matched_expected:
+  - table:hive.dwb.dwb_r_apply
+  - field:apply_id
+  - field:user_uuid
+  - field:apply_status
+  - glossary:credit_profile
+  missing_expected: []
+  unexpected: []
+  coverage_judgment: pass
+  notes: []
+- case_id: ph-first-loan-never-overdue
+  matched_expected:
+  - table:ph_apply_orders
+  - field:loan_count
+  - glossary:first_loan
+  - glossary:never_overdue
+  missing_expected:
+  - field:user_uuid
+  - field:overdue_days
+  unexpected: []
+  coverage_judgment: partial
+  notes: []
+- case_id: ph-withdraw-uuid-negative
+  matched_expected:
+  - table:ph_apply_orders
+  - field:loan_count
+  - glossary:never_overdue
+  missing_expected:
+  - field:user_uuid
+  unexpected: []
+  coverage_judgment: partial
+  notes: []
+- case_id: th-asset-snapshot-query
+  matched_expected:
+  - field:asset_id
+  - glossary:asset_snapshot
+  missing_expected:
+  - table:hive.dwt.dwt_asset_info_base_snap
+  - field:user_uuid
+  - field:finish_time
+  unexpected: []
+  coverage_judgment: partial
+  notes: []
+- case_id: th-risk-apply-query
+  matched_expected:
+  - table:hive.dwt.dwt_rsk_apply_info_base_d
+  - field:apply_uuid
+  - glossary:risk_apply
+  missing_expected:
+  - field:ask_loan_uuid
+  - field:user_loan_label
+  unexpected: []
+  coverage_judgment: partial
+  notes: []
+- case_id: th-ask-loan-risk-query
+  matched_expected:
+  - table:hive.dwt.dwt_rsk_ask_loan_info_base_d
+  - field:ask_loan_uuid
+  - field:user_uuid
+  - glossary:ask_loan_risk
+  missing_expected:
+  - field:apply_create_at
+  unexpected: []
+  coverage_judgment: partial
+  notes: []
+- case_id: th-third-party-risk-query
+  matched_expected:
+  - glossary:third_party_risk
+  - glossary:credit_report
+  missing_expected:
+  - table:hive.third_party.thailand_sources
+  - field:supplier_name
+  - field:product_name
+  - field:parse_table_name
+  unexpected: []
+  coverage_judgment: partial
+  notes: []
+- case_id: dws-renewal-loan-segment-query
+  matched_expected:
+  - table:dws.dws_user_renewal_loan_seg_d
+  - field:user_uuid
+  - field:mob_code
+  - field:last_finish_time
+  - field:cur_loan_cnt
+  - glossary:mob1
+  missing_expected:
+  - glossary:settled_over_3m
+  unexpected: []
+  coverage_judgment: partial
+  notes: []
+- case_id: dws-fox-boc-behavior-query
+  matched_expected:
+  - table:dws.dws_fox_boc_behavior_log_d
+  - field:debtor_id
+  - field:behavior_type
+  - field:behavior_time
+  - field:behavior_status_name
+  missing_expected:
+  - glossary:collection_behavior
+  - glossary:contact_outcome
+  unexpected: []
+  coverage_judgment: partial
+  notes: []

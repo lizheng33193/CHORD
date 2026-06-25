@@ -5,6 +5,29 @@
 - 整体架构：单体 FastAPI 后端，五层（API → 编排 → Skill 执行 → 数据访问 → 外部服务）
 - 入口文件：`app/main.py`
 
+## 2026-06-25 M2B-2.1 Seed / Alias / Deterministic Grounding Patch
+
+- `M2B-2` 已完成并产出 `m2b_legacy_v1` deterministic baseline，当前进入 `M2B-2.1`：
+  - `docs/plans/m2b-2-1-seed-alias-deterministic-grounding-patch-plan.md`
+  - `docs/reviews/m2b-2-1-deterministic-grounding-results.md`
+  - `docs/reviews/m2b-2-1-v1-v2-baseline-comparison.md`
+- 本阶段只做 deterministic grounding patch：
+  - 生成完整替代 patch `data_knowledge_seed/m2b/m2b_legacy_v2.yaml`
+  - 用 glossary synonyms、field business meaning、mapped tables/fields、normalization 修补 deterministic retrieval grounding
+  - 对 `m2b_legacy_v1` 与 `m2b_legacy_v2` 跑 A/B baseline
+- 本阶段继续保持不变：
+  - 不做 embedding / vector index / hybrid retrieval
+  - 不改 `app/data_knowledge/retriever.py` scoring/top-k/filtering
+  - 不改 `app/data_agent/service.py` / `app/data_agent/sql_plan.py` / SQL HITL / orchestrator bridge
+  - `business_rule / cohort_definition / canonical_field_policy` 仍不进入 runtime seed family
+- 当前 `M2B-2.1` 结果：
+  - `m2b_legacy_v2` 已生成并保持 isolated evaluation namespace
+  - v1 baseline：`18 partial / 1 fail / 0 pass`
+  - v2 baseline：`16 partial / 3 pass / 0 fail`
+  - 改善最明显的 case 包括 `mx-credit-profile-query`、`mx-high-risk-cohort`、`mx-recent-7d-risk-users`
+  - 仍存在 `withdraw_uuid / user_uuid / overdue_days / asset_*` 与 `mob1` 相关缺口
+  - 当前结论是：下一步优先 `M2B-2.2`，暂不直接进入 `M2B-3`
+
 ## 2026-06-25 M2B-2 Seed Promotion & Deterministic Retrieval Baseline
 
 - `M2B-1` 已完成，当前进入 `M2B-2 Seed Promotion & Deterministic Retrieval Baseline`：
