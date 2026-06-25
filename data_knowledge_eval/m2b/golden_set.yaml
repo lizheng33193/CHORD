@@ -1,0 +1,412 @@
+cases:
+  - case_id: mx-high-risk-cohort
+    country: mx
+    domain: risk
+    run_type: cohort_query
+    output_bucket: null
+    request: 找最近 7 天高风险用户
+    expected_tables:
+      - hive.dwd.dwd_w_apply
+    expected_fields:
+      - user_uuid
+      - risk_level
+      - apply_time
+      - dt
+    expected_glossary_terms:
+      - high_risk
+      - recent_7d
+    expected_sql_examples: []
+    forbidden_examples:
+      - fixed_historical_date_copy
+      - historical_source_filter_copy
+    notes:
+      - dt can be used for partition pruning but should not replace the business time field.
+
+  - case_id: mx-recent-7d-risk-users
+    country: mx
+    domain: risk
+    run_type: cohort_query
+    output_bucket: null
+    request: 提取墨西哥最近 7 天风险等级较高的用户
+    expected_tables:
+      - hive.dwd.dwd_w_apply
+    expected_fields:
+      - user_uuid
+      - risk_level
+      - apply_time
+    expected_glossary_terms:
+      - high_risk
+      - recent_7d
+    expected_sql_examples: []
+    forbidden_examples:
+      - fixed_historical_date_copy
+    notes:
+      - Recent window should stay relative to request time.
+
+  - case_id: mx-first-loan-never-overdue
+    country: mx
+    domain: lifecycle
+    run_type: cohort_query
+    output_bucket: null
+    request: 找出墨西哥首贷且从未逾期的用户
+    expected_tables:
+      - hive.dwd.dwd_w_apply
+    expected_fields:
+      - user_uuid
+      - withdraw_uuid
+      - apply_time
+      - overdue_days
+    expected_glossary_terms:
+      - first_loan
+      - never_overdue
+    expected_sql_examples: []
+    forbidden_examples:
+      - withdraw_uuid_negative_mismatch
+    notes:
+      - First-loan semantics should prefer loan-order logic rather than naive customer type only.
+
+  - case_id: mx-mob1-settled-7d-churn
+    country: mx
+    domain: lifecycle
+    run_type: cohort_query
+    output_bucket: null
+    request: 提取墨西哥 mob1 首贷结清 7 天未复借流失用户
+    expected_tables:
+      - hive.dwd.dwd_w_apply
+    expected_fields:
+      - user_uuid
+      - withdraw_uuid
+      - apply_create_at
+      - asset_finish_at
+      - asset_grant_at
+    expected_glossary_terms:
+      - mob1
+      - first_loan
+      - fully_settled
+      - seven_day_no_reborrow_churn
+    expected_sql_examples:
+      - mob1_churn_pattern
+    forbidden_examples:
+      - missing_settlement_7d_observation
+      - missing_reborrow_anti_join
+      - fixed_historical_date_copy
+    notes:
+      - mob1 must include first loan, full settlement, settlement over 7 days, and no reborrow within 7 days.
+
+  - case_id: mx-behavior-writeback
+    country: mx
+    domain: behavior
+    run_type: bucket_writeback
+    output_bucket: behavior
+    request: 用 Data Agent 补齐这些用户的 behavior 数据并写回 behavior
+    expected_tables:
+      - hive.dwb.dwb_b1_data_burying_point
+    expected_fields:
+      - uid
+      - timestamp_
+      - eventname
+    expected_glossary_terms:
+      - writeback_behavior
+      - uid_cohort_required
+    expected_sql_examples:
+      - behavior_writeback_pattern
+    forbidden_examples:
+      - broad_behavior_scan
+      - unresolved_uid_placeholder
+    notes:
+      - Behavior writeback requires a cohort or uid constraint and must not broad-scan the event table.
+
+  - case_id: mx-glossary-combo-writeback
+    country: mx
+    domain: behavior
+    run_type: bucket_writeback
+    output_bucket: behavior
+    request: 先找最近 7 天高风险用户，再补齐这些用户的 behavior 数据并写回 behavior
+    expected_tables:
+      - hive.dwd.dwd_w_apply
+      - hive.dwb.dwb_b1_data_burying_point
+    expected_fields:
+      - user_uuid
+      - risk_level
+      - apply_time
+      - uid
+      - timestamp_
+      - eventname
+    expected_glossary_terms:
+      - high_risk
+      - recent_7d
+      - writeback_behavior
+    expected_sql_examples:
+      - behavior_writeback_pattern
+    forbidden_examples:
+      - historical_template_drift
+      - broad_behavior_scan
+    notes:
+      - Retrieval should preserve both cohort semantics and writeback constraints.
+
+  - case_id: mx-no-apply-cohort
+    country: mx
+    domain: lifecycle
+    run_type: cohort_query
+    output_bucket: null
+    request: 找出最近 30 天没有申请记录的墨西哥用户
+    expected_tables:
+      - hive.dwd.dwd_w_user
+      - hive.dwd.dwd_w_apply
+    expected_fields:
+      - user_uuid
+      - apply_time
+    expected_glossary_terms:
+      - no_apply
+      - recent_30d
+    expected_sql_examples: []
+    forbidden_examples:
+      - missing_anti_join
+    notes:
+      - This cohort should use anti-join or equivalent absence logic.
+
+  - case_id: mx-no-withdraw-cohort
+    country: mx
+    domain: lifecycle
+    run_type: cohort_query
+    output_bucket: null
+    request: 找出申请过但没有成功提现的墨西哥用户
+    expected_tables:
+      - hive.dwd.dwd_w_apply
+    expected_fields:
+      - user_uuid
+      - withdraw_uuid
+      - apply_time
+    expected_glossary_terms:
+      - no_withdraw
+    expected_sql_examples: []
+    forbidden_examples:
+      - withdraw_uuid_positive_only
+    notes:
+      - Distinguish between application records and true withdrawal events.
+
+  - case_id: mx-withdraw-cohort
+    country: mx
+    domain: lifecycle
+    run_type: cohort_query
+    output_bucket: null
+    request: 找出最近成功提现的墨西哥用户
+    expected_tables:
+      - hive.dwd.dwd_w_apply
+    expected_fields:
+      - user_uuid
+      - withdraw_uuid
+      - asset_grant_at
+    expected_glossary_terms:
+      - successful_withdraw
+      - recent_7d
+    expected_sql_examples: []
+    forbidden_examples:
+      - apply_only_without_true_withdraw
+    notes:
+      - True withdrawal requires a real withdrawal identifier or grant event.
+
+  - case_id: mx-app-profile-query
+    country: mx
+    domain: app_profile
+    run_type: cohort_query
+    output_bucket: null
+    request: 查询墨西哥用户的 app 安装分类信息
+    expected_tables:
+      - hive.ods.ods_f_market_app_categories
+    expected_fields:
+      - app_package
+      - category_name
+      - year_day
+    expected_glossary_terms:
+      - app_profile
+    expected_sql_examples: []
+    forbidden_examples:
+      - raw_connection_literal_copy
+    notes:
+      - Retrieval should surface app-category catalog grounding rather than legacy notebook setup code.
+
+  - case_id: mx-credit-profile-query
+    country: mx
+    domain: credit
+    run_type: cohort_query
+    output_bucket: null
+    request: 查询墨西哥征信相关申请字段
+    expected_tables:
+      - hive.dwb.dwb_r_apply
+    expected_fields:
+      - apply_id
+      - user_uuid
+      - apply_status
+    expected_glossary_terms:
+      - credit_profile
+    expected_sql_examples: []
+    forbidden_examples:
+      - raw_connection_literal_copy
+    notes:
+      - Credit-field grounding should come from schema docs, not raw notebook credentials.
+
+  - case_id: ph-first-loan-never-overdue
+    country: ph
+    domain: lifecycle
+    run_type: cohort_query
+    output_bucket: null
+    request: 找出菲律宾首贷且从未逾期的用户
+    expected_tables:
+      - ph_apply_orders
+    expected_fields:
+      - user_uuid
+      - loan_count
+      - overdue_days
+    expected_glossary_terms:
+      - first_loan
+      - never_overdue
+    expected_sql_examples: []
+    forbidden_examples:
+      - withdraw_uuid_negative_mismatch
+    notes:
+      - Philippines first-loan logic should respect country-specific field grounding.
+
+  - case_id: ph-withdraw-uuid-negative
+    country: ph
+    domain: risk
+    run_type: cohort_query
+    output_bucket: null
+    request: 修复菲律宾首贷从未逾期 SQL，避免使用 withdraw_uuid
+    expected_tables:
+      - ph_apply_orders
+    expected_fields:
+      - loan_count
+      - user_uuid
+    expected_glossary_terms:
+      - never_overdue
+    expected_sql_examples: []
+    forbidden_examples:
+      - withdraw_uuid_negative_mismatch
+    notes:
+      - This case exists to confirm the retriever can surface the negative example/error-case context.
+
+  - case_id: th-asset-snapshot-query
+    country: th
+    domain: asset
+    run_type: cohort_query
+    output_bucket: null
+    request: 查询泰国资产快照宽表字段
+    expected_tables:
+      - hive.dwt.dwt_asset_info_base_snap
+    expected_fields:
+      - asset_id
+      - user_uuid
+      - finish_time
+    expected_glossary_terms:
+      - asset_snapshot
+    expected_sql_examples: []
+    forbidden_examples:
+      - cross_country_table_leak
+    notes:
+      - Asset snapshot retrieval should stay inside Thailand asset-domain docs.
+
+  - case_id: th-risk-apply-query
+    country: th
+    domain: risk
+    run_type: cohort_query
+    output_bucket: null
+    request: 查询泰国正审风控宽表字段
+    expected_tables:
+      - hive.dwt.dwt_rsk_apply_info_base_d
+    expected_fields:
+      - apply_uuid
+      - ask_loan_uuid
+      - user_loan_label
+    expected_glossary_terms:
+      - risk_apply
+    expected_sql_examples: []
+    forbidden_examples:
+      - cross_country_table_leak
+    notes:
+      - Positive risk-apply grounding should prefer Thailand risk-domain sources.
+
+  - case_id: th-ask-loan-risk-query
+    country: th
+    domain: risk
+    run_type: cohort_query
+    output_bucket: null
+    request: 查询泰国预审 ask loan 风控表
+    expected_tables:
+      - hive.dwt.dwt_rsk_ask_loan_info_base_d
+    expected_fields:
+      - ask_loan_uuid
+      - user_uuid
+      - apply_create_at
+    expected_glossary_terms:
+      - ask_loan_risk
+    expected_sql_examples: []
+    forbidden_examples:
+      - cross_country_table_leak
+    notes:
+      - Ask-loan risk queries should ground to the Thailand pre-review wide table.
+
+  - case_id: th-third-party-risk-query
+    country: th
+    domain: third_party
+    run_type: cohort_query
+    output_bucket: null
+    request: 查询泰国三方风险和征信供应商信息
+    expected_tables:
+      - hive.third_party.thailand_sources
+    expected_fields:
+      - supplier_name
+      - product_name
+      - parse_table_name
+    expected_glossary_terms:
+      - third_party_risk
+      - credit_report
+    expected_sql_examples: []
+    forbidden_examples:
+      - cross_country_table_leak
+    notes:
+      - Third-party supplier lookup is a retrieval grounding case even if exact runtime tables are not yet seeded.
+
+  - case_id: dws-renewal-loan-segment-query
+    country: multi
+    domain: lifecycle
+    run_type: cohort_query
+    output_bucket: null
+    request: 查询 dws_user_renewal_loan_seg_d 的续贷和 mob 分层字段
+    expected_tables:
+      - dws.dws_user_renewal_loan_seg_d
+    expected_fields:
+      - user_uuid
+      - mob_code
+      - last_finish_time
+      - cur_loan_cnt
+    expected_glossary_terms:
+      - mob1
+      - settled_over_3m
+    expected_sql_examples: []
+    forbidden_examples:
+      - field_family_hallucination
+    notes:
+      - Retrieval should surface renewal-segment semantics and field names directly from the DWS table docs.
+
+  - case_id: dws-fox-boc-behavior-query
+    country: multi
+    domain: behavior
+    run_type: cohort_query
+    output_bucket: null
+    request: 查询 dws_fox_boc_behavior_log_d 的行为字段和催收触达含义
+    expected_tables:
+      - dws.dws_fox_boc_behavior_log_d
+    expected_fields:
+      - debtor_id
+      - behavior_type
+      - behavior_time
+      - behavior_status_name
+    expected_glossary_terms:
+      - collection_behavior
+      - contact_outcome
+    expected_sql_examples: []
+    forbidden_examples:
+      - field_family_hallucination
+    notes:
+      - Retrieval should expose behavioral contact semantics without broadening into unrelated writeback examples.
