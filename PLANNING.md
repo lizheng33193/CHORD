@@ -5,6 +5,32 @@
 - 整体架构：单体 FastAPI 后端，五层（API → 编排 → Skill 执行 → 数据访问 → 外部服务）
 - 入口文件：`app/main.py`
 
+## 2026-06-25 M2B-3 Embedding Text Builder
+
+- `M2B-2.2` 已完成，当前进入 `M2B-3`：
+  - `docs/plans/m2b-3-embedding-text-builder-plan.md`
+  - `docs/reviews/m2b-3-embedding-text-builder-results.md`
+- 本阶段只做离线 embedding text 构建：
+  - 输入固定为 `data_knowledge_seed/m2b/m2b_legacy_v3.yaml`
+  - 输出 `embedding_records.m2b_legacy_v3.jsonl`
+  - 输出 `embedding_manifest.m2b_legacy_v3.yaml`
+  - 输出 `embedding_preview.m2b_legacy_v3.md`
+- 本阶段继续保持不变：
+  - 不调用 embedding API
+  - 不生成 vector / index
+  - 不改 `app/data_knowledge/retriever.py` scoring/top-k/filtering
+  - 不改 `app/data_knowledge/service.py` / Data Agent runtime / SQL HITL / orchestrator bridge
+  - 不读取 `docs/knowledge-base` raw docs
+- 当前 `M2B-3` 结果：
+  - `record_count=101`
+  - `catalog_table=10`
+  - `catalog_field=61`
+  - `glossary_term=28`
+  - `sql_example=2`
+  - `sql_error_case=0`
+  - preview 已覆盖 `mob1 / withdraw_uuid / user_uuid / asset_finish_at / credit_profile`
+  - 当前结论是：可以进入 `M2B-4 Vector Index Prototype`
+
 ## 2026-06-25 M2B-2.2 Targeted Deterministic Grounding Patch
 
 - `M2B-2.1` 已完成，当前进入 `M2B-2.2`：

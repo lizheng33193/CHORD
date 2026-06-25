@@ -1,0 +1,29 @@
+schema_version: m2b_embedding_manifest_v1
+source_namespace: m2b_legacy_v3
+seed_patch: data_knowledge_seed/m2b/m2b_legacy_v3.yaml
+builder_schema_version: embedding_text_v1
+generated_at: '2026-06-25T00:00:00Z'
+record_count: 101
+family_counts:
+  catalog_table: 10
+  catalog_field: 61
+  glossary_term: 28
+  sql_example: 2
+  sql_error_case: 0
+skipped_counts:
+  unsupported_family: 0
+  inactive_status: 0
+  empty_embedding_text: 0
+input_families:
+- catalog_tables
+- catalog_fields
+- glossary_terms
+- sql_examples
+- sql_error_cases
+excluded_families:
+- business_rules
+- cohort_definitions
+- canonical_field_policies
+record_id_hash_algorithm: sha256
+record_id_hash_input: source_namespace + source_key + asset_family
+sanitization_checks_passed: true
