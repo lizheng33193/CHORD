@@ -35,6 +35,34 @@
 - [x] E1 单用户埋点深度解析 → docs/plans/trace-analyzer-plan.md（2026-05-01）
 
 ## 当前进行中的功能
+- [x] M2B-2：Seed Promotion & Deterministic Retrieval Baseline — 已完成（2026-06-25）
+  - plan / reviews：
+    - `docs/plans/m2b-2-seed-promotion-deterministic-baseline-plan.md`
+    - `docs/reviews/m2b-2-seed-promotion-review.md`
+    - `docs/reviews/m2b-2-deterministic-baseline-results.md`
+    - `docs/reviews/m2b-2-golden-set-deterministic-coverage.md`
+  - 本阶段产出：
+    - `data_knowledge_eval/m2b/seed_promotion_manifest.yaml`
+    - `data_knowledge_seed/m2b/m2b_legacy_v1.yaml`
+    - `data_knowledge_eval/m2b/baseline_results.deterministic.json`
+    - `data_knowledge_eval/m2b/deterministic_coverage.yaml`
+    - `scripts/promote_m2b_extracted_assets.py`
+    - `scripts/run_m2b_retrieval_baseline.py` deterministic mode
+    - `tests/test_m2b_seed_promotion.py`
+    - `tests/test_m2b_deterministic_baseline.py`
+  - 本轮结果：
+    - 128 条 candidate assets 已全部完成 promotion 决策
+    - `m2b_legacy_v1` seed patch 导出 93 条 runtime-importable 资产
+    - isolated deterministic baseline 已真实跑通，结果为 `18 partial / 1 fail / 0 pass`
+    - 当前 baseline 仍显示 glossary alias、risk grounding、credit/app/third-party 表字段召回不足
+  - 保持不变：
+    - 不做 embedding / vector index / hybrid retrieval
+    - 不改 Data Agent runtime
+    - 不改 SQL HITL / approve / execute / orchestrator bridge
+    - 不改 `app/data_knowledge/retriever.py` scoring/top-k/filtering
+  - 下一步：
+    - 进入 `M2B-2.1 Seed / Alias / Deterministic Grounding Patch`
+
 - [x] M2B-0：Knowledge Inventory & Retrieval Baseline — 已完成（2026-06-25）
   - design / plan：
     - `docs/specs/m2b-hybrid-retrieval-grounding-design.md`
@@ -78,7 +106,7 @@
     - 不改 `app/data_agent/sql_plan.py`
     - 不改 SQL HITL / approve / execute / orchestrator bridge
   - 下一步：
-    - 进入 `M2B-2 Seed Import / Knowledge Store Update`
+    - 进入 `M2B-2 Seed Promotion & Deterministic Retrieval Baseline`
 
 - [x] M2A-Runtime Quality：Data Agent 运行时质量收敛 — 第一轮完成 + RQ-FU1 completed（2026-06-24）
   - plan / baseline：

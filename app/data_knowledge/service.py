@@ -81,6 +81,13 @@ def _bundle_country(bundle: str) -> str | None:
     return normalize_country_scope_value(normalized) or normalized
 
 
+def _normalize_country_for_seed_patch(value: Any) -> str | None:
+    normalized = str(value).strip().lower() if value is not None else ""
+    if normalized in {"", "common", "null", "none"}:
+        return None
+    return normalize_country_scope_value(normalized) or normalized
+
+
 class DataKnowledgeService:
     def __init__(self, db: Session) -> None:
         self.db = db
@@ -191,6 +198,154 @@ class DataKnowledgeService:
             actor_username=ctx.username,
         )
         return SeedImportResponse(**result)
+
+    def import_seed_patch(self, *, path: Path, project_id: int | None, actor_username: str) -> dict[str, int | str]:
+        payload = yaml.safe_load(path.read_text(encoding="utf-8")) if path.exists() else {}
+        if not isinstance(payload, dict):
+            raise HTTPException(status_code=400, detail="seed patch must be a mapping")
+        source_namespace = str(payload.get("source_namespace") or "").strip()
+        if not source_namespace:
+            raise HTTPException(status_code=400, detail="seed patch source_namespace is required")
+
+        upserted = 0
+        deprecated = 0
+        seen_by_family: dict[tuple[type, str | None], set[str]] = {}
+
+        def remember(model, country: str | None, source_key: str) -> None:
+            seen_by_family.setdefault((model, country), set()).add(source_key)
+
+        for entry in payload.get("catalog_tables") or []:
+            country = _normalize_country_for_seed_patch(entry.get("country"))
+            source_key = str(entry["source_key"])
+            remember(DataCatalogTable, country, source_key)
+            table_payload = {
+                "table_name": entry["table_name"],
+                "domain": entry.get("domain"),
+                "description": entry.get("description"),
+                "purpose": entry.get("purpose"),
+                "grain": entry.get("grain"),
+                "time_field": entry.get("time_field"),
+                "partition_field": entry.get("partition_field"),
+                "join_keys": entry.get("join_keys") or [],
+                "common_filters": entry.get("common_filters") or [],
+                "metadata": entry.get("metadata") or {},
+            }
+            upserted += self._upsert_catalog_table_seed(
+                project_id=project_id,
+                country=country,
+                source_namespace=source_namespace,
+                source_key=source_key,
+                actor_username=actor_username,
+                payload=table_payload,
+            )
+
+        for entry in payload.get("catalog_fields") or []:
+            country = _normalize_country_for_seed_patch(entry.get("country"))
+            source_key = str(entry["source_key"])
+            remember(DataCatalogField, country, source_key)
+            field_payload = {
+                "table_name": entry["table_name"],
+                "field_name": entry["field_name"],
+                "field_type": entry.get("field_type"),
+                "description": entry.get("description"),
+                "business_meaning": entry.get("business_meaning"),
+                "is_sensitive": entry.get("is_sensitive", False),
+                "join_hint": entry.get("join_hint"),
+                "metadata": entry.get("metadata") or {},
+            }
+            upserted += self._upsert_catalog_field_seed(
+                project_id=project_id,
+                country=country,
+                source_namespace=source_namespace,
+                source_key=source_key,
+                actor_username=actor_username,
+                payload=field_payload,
+            )
+
+        for entry in payload.get("glossary_terms") or []:
+            country = _normalize_country_for_seed_patch(entry.get("country"))
+            source_key = str(entry["source_key"])
+            remember(DataGlossaryTerm, country, source_key)
+            glossary_payload = {
+                "term": entry["term"],
+                "synonyms": entry.get("synonyms") or [],
+                "definition": entry.get("definition"),
+                "mapped_tables": entry.get("mapped_tables") or [],
+                "mapped_fields": entry.get("mapped_fields") or [],
+                "suggested_filters": entry.get("suggested_filters") or [],
+            }
+            upserted += self._upsert_glossary_seed(
+                project_id=project_id,
+                country=country,
+                source_namespace=source_namespace,
+                source_key=source_key,
+                actor_username=actor_username,
+                payload=glossary_payload,
+            )
+
+        for entry in payload.get("sql_examples") or []:
+            country = _normalize_country_for_seed_patch(entry.get("country"))
+            source_key = str(entry["source_key"])
+            remember(DataSqlExample, country, source_key)
+            example_payload = {
+                "natural_language_request": entry["natural_language_request"],
+                "run_type": entry.get("run_type") or "cohort_query",
+                "output_bucket": entry.get("output_bucket"),
+                "sql_hash": entry["sql_hash"],
+                "sql_text": entry.get("sql_text"),
+                "tables_used": entry.get("tables_used") or [],
+                "fields_used": entry.get("fields_used") or [],
+                "pattern_summary": entry.get("pattern_summary"),
+                "reviewer_username": entry.get("reviewer_username"),
+                "execution_status": entry.get("execution_status"),
+            }
+            upserted += self._upsert_sql_example_seed(
+                project_id=project_id,
+                country=country,
+                source_namespace=source_namespace,
+                source_key=source_key,
+                actor_username=actor_username,
+                payload=example_payload,
+            )
+
+        for entry in payload.get("sql_error_cases") or []:
+            country = _normalize_country_for_seed_patch(entry.get("country"))
+            source_key = str(entry["source_key"])
+            remember(DataSqlErrorCase, country, source_key)
+            error_payload = {
+                "natural_language_request": entry.get("natural_language_request"),
+                "run_type": entry.get("run_type"),
+                "output_bucket": entry.get("output_bucket"),
+                "error_type": entry["error_type"],
+                "error_message": entry.get("error_message"),
+                "failed_sql_hash": entry.get("failed_sql_hash"),
+                "failed_sql_text": entry.get("failed_sql_text"),
+                "fixed_sql_hash": entry.get("fixed_sql_hash"),
+                "fixed_sql_text": entry.get("fixed_sql_text"),
+                "fix_summary": entry.get("fix_summary"),
+                "detected_tables": entry.get("detected_tables") or [],
+                "detected_fields": entry.get("detected_fields") or [],
+                "status": entry.get("status") or "open",
+            }
+            upserted += self._upsert_sql_error_case_seed(
+                project_id=project_id,
+                country=country,
+                source_namespace=source_namespace,
+                source_key=source_key,
+                actor_username=actor_username,
+                payload=error_payload,
+            )
+
+        for (model, country), seen_keys in seen_by_family.items():
+            deprecated += self._deprecate_removed_namespace_rows(
+                model,
+                project_id=project_id,
+                country=country,
+                source_namespace=source_namespace,
+                seen_keys=seen_keys,
+            )
+        self.db.commit()
+        return {"source_namespace": source_namespace, "upserted": upserted, "deprecated": deprecated}
 
     def create_catalog_table(self, *, ctx: UserContext, body: CatalogTableCreateRequest) -> CatalogTableItem:
         require_permission(ctx, "data:knowledge:write")
