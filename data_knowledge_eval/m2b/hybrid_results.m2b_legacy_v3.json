@@ -1,0 +1,2537 @@
+{
+  "schema_version": "m2b_hybrid_baseline_v1",
+  "run_mode": "hybrid_prototype",
+  "fusion_strategy": "primary_merge_v1",
+  "deterministic_baseline": "data_knowledge_eval/m2b/baseline_results.m2b_legacy_v3.deterministic.json",
+  "vector_baseline": "data_knowledge_eval/m2b/vector_results.m2b_legacy_v3.json",
+  "generated_at": "2026-06-28T00:00:00Z",
+  "source_namespace": "m2b_legacy_v3",
+  "cases": [
+    {
+      "case_id": "mx-high-risk-cohort",
+      "request": "找最近 7 天高风险用户",
+      "retrieved_tables": [
+        "dwd_w_apply",
+        "dwb_r_apply"
+      ],
+      "retrieved_fields": [
+        "apply_time",
+        "user_uuid",
+        "risk_level",
+        "apply_create_at",
+        "dt",
+        "apply_created_at",
+        "max_overdue_days",
+        "asset_overdue_days",
+        "real_overdue_days",
+        "asset_finish_at",
+        "asset_grant_at",
+        "withdraw_uuid"
+      ],
+      "retrieved_glossary_terms": [
+        "high_risk",
+        "recent_7d",
+        "never_overdue",
+        "高风险用户",
+        "mob1"
+      ],
+      "retrieved_examples": [
+        "example:first-loan-never-overdue",
+        "sql_pattern.mx.mob1_churn_cte"
+      ],
+      "retrieved_error_cases": [],
+      "vector_supplements": [],
+      "rejected_vector_candidates": [
+        {
+          "record_id": "sha256:cc2c1f8dfb4938bc95bf918696c7c04b1560ef4b43713b4a9ac318198363bc14",
+          "source_key": "glossary.mx.high_risk",
+          "asset_family": "glossary_term",
+          "title": "high_risk",
+          "score": 0.343725,
+          "rank": 1,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:f4f630e0ae0ba54dda5468cb0e4e15187cced0b7a12d6e4ce21c0bc7f5280f9e",
+          "source_key": "field.mx.dwd_w_apply.apply_create_at",
+          "asset_family": "catalog_field",
+          "title": "dwd_w_apply.apply_create_at",
+          "score": 0.203173,
+          "rank": 2,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:ce8900888efd0bed185ff3fc02a0c801ee6f62be55249c9761a3c630d46a855b",
+          "source_key": "field.mx.dwd_w_user.apply_source",
+          "asset_family": "catalog_field",
+          "title": "dwd_w_user.apply_source",
+          "score": 0.195892,
+          "rank": 3,
+          "rejected_reason": "deterministic_pass_guard"
+        },
+        {
+          "record_id": "sha256:34638de8d18bfa731ba48541f59196e6b0a4d306a2c7137288e4448b4ad39c8a",
+          "source_key": "sql_pattern.mx.behavior_writeback_target_cohort",
+          "asset_family": "sql_example",
+          "title": "sql_pattern.mx.behavior_writeback_target_cohort",
+          "score": 0.1942,
+          "rank": 4,
+          "rejected_reason": "deterministic_pass_guard"
+        },
+        {
+          "record_id": "sha256:0de20a992e2065ce55b39c13e65db47495cfcd21e9c44ad78dec3599c10f90c0",
+          "source_key": "field.mx.dwd_w_user.dt",
+          "asset_family": "catalog_field",
+          "title": "dwd_w_user.dt",
+          "score": 0.187647,
+          "rank": 5,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:8c8d69267e7241ad2f9e28e8a7a4016f461a8e2247dead54bb8775334de3f361",
+          "source_key": "glossary.mx.recent_30d",
+          "asset_family": "glossary_term",
+          "title": "recent_30d",
+          "score": 0.183951,
+          "rank": 6,
+          "rejected_reason": "deterministic_pass_guard"
+        },
+        {
+          "record_id": "sha256:40c47d4dea1253dd848d66f91fd26c5483fa9b54335be97c7a06bc038f8ebd43",
+          "source_key": "glossary.mx.uid_cohort_required",
+          "asset_family": "glossary_term",
+          "title": "uid_cohort_required",
+          "score": 0.181252,
+          "rank": 7,
+          "rejected_reason": "deterministic_pass_guard"
+        },
+        {
+          "record_id": "sha256:4fbfbf126b037c3999859617fe9a8ac8e36a409d3fb97052832dd9679a268110",
+          "source_key": "table.mx.dwd_w_user",
+          "asset_family": "catalog_table",
+          "title": "dwd_w_user",
+          "score": 0.180814,
+          "rank": 8,
+          "rejected_reason": "deterministic_pass_guard"
+        },
+        {
+          "record_id": "sha256:80157ae08091578f48298e3b3dfdcd84c8be9892df1562666004f05dfd342e7b",
+          "source_key": "field.mx.dwd_w_user.user_uuid",
+          "asset_family": "catalog_field",
+          "title": "dwd_w_user.user_uuid",
+          "score": 0.179959,
+          "rank": 9,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:6cf19e26230a124cf05305ba479865be8d7640be74a8dca0dbb6de1031faba27",
+          "source_key": "field.mx.dwd_w_user.user_source",
+          "asset_family": "catalog_field",
+          "title": "dwd_w_user.user_source",
+          "score": 0.177068,
+          "rank": 10,
+          "rejected_reason": "deterministic_pass_guard"
+        }
+      ],
+      "notes": [
+        "primary_merge_v1: deterministic primary with vector supplement",
+        "fusion selection uses rank/score/family caps only; no golden label leakage"
+      ],
+      "matched_expected": [
+        "table:hive.dwd.dwd_w_apply",
+        "field:user_uuid",
+        "field:risk_level",
+        "field:apply_time",
+        "field:dt",
+        "glossary:high_risk",
+        "glossary:recent_7d"
+      ],
+      "missing_expected": [],
+      "unexpected": [],
+      "judgment": "pass"
+    },
+    {
+      "case_id": "mx-recent-7d-risk-users",
+      "request": "提取墨西哥最近 7 天风险等级较高的用户",
+      "retrieved_tables": [
+        "dwd_w_apply",
+        "dwb_r_apply",
+        "dwd_w_user"
+      ],
+      "retrieved_fields": [
+        "apply_time",
+        "user_uuid",
+        "risk_level",
+        "apply_create_at",
+        "dt",
+        "apply_created_at",
+        "asset_finish_at",
+        "asset_grant_at",
+        "withdraw_uuid",
+        "max_overdue_days",
+        "asset_overdue_days",
+        "real_overdue_days"
+      ],
+      "retrieved_glossary_terms": [
+        "high_risk",
+        "recent_7d",
+        "mob1",
+        "never_overdue",
+        "no_apply"
+      ],
+      "retrieved_examples": [
+        "example:first-loan-never-overdue",
+        "sql_pattern.mx.mob1_churn_cte"
+      ],
+      "retrieved_error_cases": [],
+      "vector_supplements": [],
+      "rejected_vector_candidates": [
+        {
+          "record_id": "sha256:cc2c1f8dfb4938bc95bf918696c7c04b1560ef4b43713b4a9ac318198363bc14",
+          "source_key": "glossary.mx.high_risk",
+          "asset_family": "glossary_term",
+          "title": "high_risk",
+          "score": 0.396955,
+          "rank": 1,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:ce8900888efd0bed185ff3fc02a0c801ee6f62be55249c9761a3c630d46a855b",
+          "source_key": "field.mx.dwd_w_user.apply_source",
+          "asset_family": "catalog_field",
+          "title": "dwd_w_user.apply_source",
+          "score": 0.209963,
+          "rank": 2,
+          "rejected_reason": "deterministic_pass_guard"
+        },
+        {
+          "record_id": "sha256:6cf19e26230a124cf05305ba479865be8d7640be74a8dca0dbb6de1031faba27",
+          "source_key": "field.mx.dwd_w_user.user_source",
+          "asset_family": "catalog_field",
+          "title": "dwd_w_user.user_source",
+          "score": 0.198327,
+          "rank": 3,
+          "rejected_reason": "deterministic_pass_guard"
+        },
+        {
+          "record_id": "sha256:f4f630e0ae0ba54dda5468cb0e4e15187cced0b7a12d6e4ce21c0bc7f5280f9e",
+          "source_key": "field.mx.dwd_w_apply.apply_create_at",
+          "asset_family": "catalog_field",
+          "title": "dwd_w_apply.apply_create_at",
+          "score": 0.183235,
+          "rank": 4,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:0b3e313c38b449cf11860fb621f0f7513c97afd8709f850d97e087ab5169b5b4",
+          "source_key": "glossary.mx.successful_withdraw",
+          "asset_family": "glossary_term",
+          "title": "successful_withdraw",
+          "score": 0.178533,
+          "rank": 5,
+          "rejected_reason": "deterministic_pass_guard"
+        },
+        {
+          "record_id": "sha256:40c47d4dea1253dd848d66f91fd26c5483fa9b54335be97c7a06bc038f8ebd43",
+          "source_key": "glossary.mx.uid_cohort_required",
+          "asset_family": "glossary_term",
+          "title": "uid_cohort_required",
+          "score": 0.161934,
+          "rank": 6,
+          "rejected_reason": "deterministic_pass_guard"
+        },
+        {
+          "record_id": "sha256:34638de8d18bfa731ba48541f59196e6b0a4d306a2c7137288e4448b4ad39c8a",
+          "source_key": "sql_pattern.mx.behavior_writeback_target_cohort",
+          "asset_family": "sql_example",
+          "title": "sql_pattern.mx.behavior_writeback_target_cohort",
+          "score": 0.158193,
+          "rank": 7,
+          "rejected_reason": "deterministic_pass_guard"
+        },
+        {
+          "record_id": "sha256:2a4005feb3f4c565b787c93c8adbb123b38900c476bee24642b9a6be16eb1c0c",
+          "source_key": "glossary.mx.no_withdraw",
+          "asset_family": "glossary_term",
+          "title": "no_withdraw",
+          "score": 0.156826,
+          "rank": 8,
+          "rejected_reason": "deterministic_pass_guard"
+        },
+        {
+          "record_id": "sha256:8c8d69267e7241ad2f9e28e8a7a4016f461a8e2247dead54bb8775334de3f361",
+          "source_key": "glossary.mx.recent_30d",
+          "asset_family": "glossary_term",
+          "title": "recent_30d",
+          "score": 0.149845,
+          "rank": 9,
+          "rejected_reason": "deterministic_pass_guard"
+        },
+        {
+          "record_id": "sha256:013580a083b2e4015841ea06d489283a99c19328de039ed4990afb90e099c742",
+          "source_key": "field.mx.dwd_w_apply.withdraw_uuid",
+          "asset_family": "catalog_field",
+          "title": "dwd_w_apply.withdraw_uuid",
+          "score": 0.148238,
+          "rank": 10,
+          "rejected_reason": "duplicate_with_deterministic"
+        }
+      ],
+      "notes": [
+        "primary_merge_v1: deterministic primary with vector supplement",
+        "fusion selection uses rank/score/family caps only; no golden label leakage"
+      ],
+      "matched_expected": [
+        "table:hive.dwd.dwd_w_apply",
+        "field:user_uuid",
+        "field:risk_level",
+        "field:apply_time",
+        "glossary:high_risk",
+        "glossary:recent_7d"
+      ],
+      "missing_expected": [],
+      "unexpected": [],
+      "judgment": "pass"
+    },
+    {
+      "case_id": "mx-first-loan-never-overdue",
+      "request": "找出墨西哥首贷且从未逾期的用户",
+      "retrieved_tables": [
+        "dwd_w_apply",
+        "dwb_r_apply",
+        "dwd_w_user"
+      ],
+      "retrieved_fields": [
+        "user_uuid",
+        "max_overdue_days",
+        "asset_overdue_days",
+        "real_overdue_days",
+        "apply_create_at",
+        "asset_finish_at",
+        "asset_grant_at",
+        "withdraw_uuid",
+        "dt",
+        "apply_created_at"
+      ],
+      "retrieved_glossary_terms": [
+        "never_overdue",
+        "mob1",
+        "recent_7d",
+        "first_loan",
+        "no_apply"
+      ],
+      "retrieved_examples": [
+        "example:first-loan-never-overdue",
+        "sql_pattern.mx.mob1_churn_cte"
+      ],
+      "retrieved_error_cases": [],
+      "vector_supplements": [],
+      "rejected_vector_candidates": [
+        {
+          "record_id": "sha256:013580a083b2e4015841ea06d489283a99c19328de039ed4990afb90e099c742",
+          "source_key": "field.mx.dwd_w_apply.withdraw_uuid",
+          "asset_family": "catalog_field",
+          "title": "dwd_w_apply.withdraw_uuid",
+          "score": 0.248153,
+          "rank": 1,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:80157ae08091578f48298e3b3dfdcd84c8be9892df1562666004f05dfd342e7b",
+          "source_key": "field.mx.dwd_w_user.user_uuid",
+          "asset_family": "catalog_field",
+          "title": "dwd_w_user.user_uuid",
+          "score": 0.191546,
+          "rank": 2,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:34638de8d18bfa731ba48541f59196e6b0a4d306a2c7137288e4448b4ad39c8a",
+          "source_key": "sql_pattern.mx.behavior_writeback_target_cohort",
+          "asset_family": "sql_example",
+          "title": "sql_pattern.mx.behavior_writeback_target_cohort",
+          "score": 0.183278,
+          "rank": 3,
+          "rejected_reason": "deterministic_pass_guard"
+        },
+        {
+          "record_id": "sha256:f9cb038f51b6eab982b0fba9c9b88af1f8b9ff2f20bdb7abe8007f67fe2271a9",
+          "source_key": "sql_pattern.mx.mob1_churn_cte",
+          "asset_family": "sql_example",
+          "title": "sql_pattern.mx.mob1_churn_cte",
+          "score": 0.177838,
+          "rank": 4,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:0b19b878b7ea03e9d542aff3086e427ba092e4d68f4d33b924fb4e77083c8b4e",
+          "source_key": "field.mx.dwd_w_apply.real_overdue_days",
+          "asset_family": "catalog_field",
+          "title": "dwd_w_apply.real_overdue_days",
+          "score": 0.172675,
+          "rank": 5,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:cc2c1f8dfb4938bc95bf918696c7c04b1560ef4b43713b4a9ac318198363bc14",
+          "source_key": "glossary.mx.high_risk",
+          "asset_family": "glossary_term",
+          "title": "high_risk",
+          "score": 0.172463,
+          "rank": 6,
+          "rejected_reason": "deterministic_pass_guard"
+        },
+        {
+          "record_id": "sha256:07d65fa9a4a683097d442465fc38188d04a92664dd0b2e18c94837ae0e1e3d58",
+          "source_key": "glossary.common.first_loan.mx_runtime",
+          "asset_family": "glossary_term",
+          "title": "first_loan",
+          "score": 0.172263,
+          "rank": 7,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:4fbfbf126b037c3999859617fe9a8ac8e36a409d3fb97052832dd9679a268110",
+          "source_key": "table.mx.dwd_w_user",
+          "asset_family": "catalog_table",
+          "title": "dwd_w_user",
+          "score": 0.172079,
+          "rank": 8,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:dc54207cee34fbcdae5c1d68d1e783c65f9970d833116fa9162fc84a7bc9081e",
+          "source_key": "glossary.common.never_overdue.mx_runtime",
+          "asset_family": "glossary_term",
+          "title": "never_overdue",
+          "score": 0.170429,
+          "rank": 9,
+          "rejected_reason": "duplicate_with_deterministic"
+        }
+      ],
+      "notes": [
+        "primary_merge_v1: deterministic primary with vector supplement",
+        "fusion selection uses rank/score/family caps only; no golden label leakage"
+      ],
+      "matched_expected": [
+        "table:hive.dwd.dwd_w_apply",
+        "field:user_uuid",
+        "field:withdraw_uuid",
+        "field:apply_time",
+        "field:overdue_days",
+        "glossary:first_loan",
+        "glossary:never_overdue"
+      ],
+      "missing_expected": [],
+      "unexpected": [],
+      "judgment": "pass"
+    },
+    {
+      "case_id": "mx-mob1-settled-7d-churn",
+      "request": "提取墨西哥 mob1 首贷结清 7 天未复借流失用户",
+      "retrieved_tables": [
+        "dwd_w_apply",
+        "dwb_r_apply"
+      ],
+      "retrieved_fields": [
+        "asset_finish_at",
+        "user_uuid",
+        "apply_create_at",
+        "asset_grant_at",
+        "withdraw_uuid",
+        "max_overdue_days",
+        "asset_overdue_days",
+        "real_overdue_days",
+        "dt",
+        "apply_created_at"
+      ],
+      "retrieved_glossary_terms": [
+        "mob1",
+        "seven_day_no_reborrow_churn",
+        "fully_settled",
+        "never_overdue",
+        "recent_7d"
+      ],
+      "retrieved_examples": [
+        "sql_pattern.mx.mob1_churn_cte",
+        "example:first-loan-never-overdue",
+        "sql_pattern.mx.behavior_writeback_target_cohort"
+      ],
+      "retrieved_error_cases": [],
+      "vector_supplements": [
+        {
+          "record_id": "sha256:34638de8d18bfa731ba48541f59196e6b0a4d306a2c7137288e4448b4ad39c8a",
+          "source_key": "sql_pattern.mx.behavior_writeback_target_cohort",
+          "asset_family": "sql_example",
+          "title": "sql_pattern.mx.behavior_writeback_target_cohort",
+          "score": 0.229387,
+          "rank": 3,
+          "accepted_reason": "vector_supplement_new_candidate"
+        }
+      ],
+      "rejected_vector_candidates": [
+        {
+          "record_id": "sha256:0ea2e2f966a282938d92b7463b92487f4128004356f2e5187bc7f3f03892a14f",
+          "source_key": "glossary.common.mob1.mx_runtime",
+          "asset_family": "glossary_term",
+          "title": "mob1",
+          "score": 0.360954,
+          "rank": 1,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:4d3e39ac282f523cb0cb1eed6c5b6fddd4b15a081b2b33580e7bec9b8941c27f",
+          "source_key": "glossary.common.seven_day_no_reborrow_churn.mx_runtime",
+          "asset_family": "glossary_term",
+          "title": "seven_day_no_reborrow_churn",
+          "score": 0.301727,
+          "rank": 2,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:f9cb038f51b6eab982b0fba9c9b88af1f8b9ff2f20bdb7abe8007f67fe2271a9",
+          "source_key": "sql_pattern.mx.mob1_churn_cte",
+          "asset_family": "sql_example",
+          "title": "sql_pattern.mx.mob1_churn_cte",
+          "score": 0.213066,
+          "rank": 4,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:b98847f094febebc947485714beb1a7bfeb00c5dd20970dc61a71f0c3c03cdeb",
+          "source_key": "field.mx.dwd_w_apply.asset_finish_at",
+          "asset_family": "catalog_field",
+          "title": "dwd_w_apply.asset_finish_at",
+          "score": 0.163545,
+          "rank": 5,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:5c9d4a15908c75a172d72996dcfeb901ae8a0b23c2a1c4a4edecdcad034d7402",
+          "source_key": "field.mx.dwb_b1_data_burying_point.eventname",
+          "asset_family": "catalog_field",
+          "title": "dwb_b1_data_burying_point.eventname",
+          "score": 0.156686,
+          "rank": 6,
+          "rejected_reason": "below_family_threshold"
+        },
+        {
+          "record_id": "sha256:40c47d4dea1253dd848d66f91fd26c5483fa9b54335be97c7a06bc038f8ebd43",
+          "source_key": "glossary.mx.uid_cohort_required",
+          "asset_family": "glossary_term",
+          "title": "uid_cohort_required",
+          "score": 0.156541,
+          "rank": 7,
+          "rejected_reason": "below_family_threshold"
+        },
+        {
+          "record_id": "sha256:462a3d006edb94578627a54a7ff169ef9cfb8633e6b446195e762e945889b13d",
+          "source_key": "field.mx.dwd_w_apply.user_uuid",
+          "asset_family": "catalog_field",
+          "title": "dwd_w_apply.user_uuid",
+          "score": 0.148211,
+          "rank": 8,
+          "rejected_reason": "duplicate_with_deterministic"
+        }
+      ],
+      "notes": [
+        "primary_merge_v1: deterministic primary with vector supplement",
+        "fusion selection uses rank/score/family caps only; no golden label leakage"
+      ],
+      "matched_expected": [
+        "table:hive.dwd.dwd_w_apply",
+        "field:user_uuid",
+        "field:withdraw_uuid",
+        "field:apply_create_at",
+        "field:asset_finish_at",
+        "field:asset_grant_at",
+        "glossary:mob1",
+        "glossary:fully_settled",
+        "glossary:seven_day_no_reborrow_churn",
+        "example:mob1_churn_pattern"
+      ],
+      "missing_expected": [
+        "glossary:first_loan"
+      ],
+      "unexpected": [],
+      "judgment": "partial"
+    },
+    {
+      "case_id": "mx-behavior-writeback",
+      "request": "用 Data Agent 补齐这些用户的 behavior 数据并写回 behavior",
+      "retrieved_tables": [
+        "dwb_b1_data_burying_point",
+        "dwd_w_apply",
+        "dwb_r_apply"
+      ],
+      "retrieved_fields": [
+        "uid",
+        "eventname",
+        "user_uuid",
+        "timestamp_",
+        "max_overdue_days",
+        "asset_overdue_days",
+        "real_overdue_days",
+        "dt",
+        "apply_created_at",
+        "apply_create_at"
+      ],
+      "retrieved_glossary_terms": [
+        "写回 behavior",
+        "writeback_behavior",
+        "uid_cohort_required",
+        "never_overdue",
+        "recent_7d"
+      ],
+      "retrieved_examples": [
+        "example:behavior-writeback",
+        "sql_pattern.mx.behavior_writeback_target_cohort"
+      ],
+      "retrieved_error_cases": [],
+      "vector_supplements": [],
+      "rejected_vector_candidates": [
+        {
+          "record_id": "sha256:001c33d2b1ac2ada38de25d22401387136614ccabf0ced0f2b305ec2fd347acb",
+          "source_key": "glossary.mx.writeback_behavior",
+          "asset_family": "glossary_term",
+          "title": "writeback_behavior",
+          "score": 0.400252,
+          "rank": 1,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:34638de8d18bfa731ba48541f59196e6b0a4d306a2c7137288e4448b4ad39c8a",
+          "source_key": "sql_pattern.mx.behavior_writeback_target_cohort",
+          "asset_family": "sql_example",
+          "title": "sql_pattern.mx.behavior_writeback_target_cohort",
+          "score": 0.265523,
+          "rank": 2,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:141d17092b0a5dd24f4a2fc0451f898210d066f0f77e19b324e8da4c108ccaec",
+          "source_key": "table.mx.dwb_b1_data_burying_point",
+          "asset_family": "catalog_table",
+          "title": "dwb_b1_data_burying_point",
+          "score": 0.253234,
+          "rank": 3,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:6a3966ecdb7aede81c2a168ecc4a57f25d78d9c3549facacabe5ab69a11d0238",
+          "source_key": "field.mx.dwb_b1_data_burying_point.uid",
+          "asset_family": "catalog_field",
+          "title": "dwb_b1_data_burying_point.uid",
+          "score": 0.247721,
+          "rank": 4,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:5c9d4a15908c75a172d72996dcfeb901ae8a0b23c2a1c4a4edecdcad034d7402",
+          "source_key": "field.mx.dwb_b1_data_burying_point.eventname",
+          "asset_family": "catalog_field",
+          "title": "dwb_b1_data_burying_point.eventname",
+          "score": 0.211007,
+          "rank": 5,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:7cbb01804a478c97b7c5f01ee566026186e88178a9001b8987dabfd43ccb2916",
+          "source_key": "field.mx.dwb_b1_data_burying_point.extend",
+          "asset_family": "catalog_field",
+          "title": "dwb_b1_data_burying_point.extend",
+          "score": 0.210656,
+          "rank": 6,
+          "rejected_reason": "deterministic_pass_guard"
+        },
+        {
+          "record_id": "sha256:6cf19e26230a124cf05305ba479865be8d7640be74a8dca0dbb6de1031faba27",
+          "source_key": "field.mx.dwd_w_user.user_source",
+          "asset_family": "catalog_field",
+          "title": "dwd_w_user.user_source",
+          "score": 0.172496,
+          "rank": 7,
+          "rejected_reason": "deterministic_pass_guard"
+        },
+        {
+          "record_id": "sha256:c6f6a6942cad2cfbf6a3e0170fb3217b6778c40c71f0011acc5ff696fbdf88d8",
+          "source_key": "field.mx.dwd_w_user.individual_uuid",
+          "asset_family": "catalog_field",
+          "title": "dwd_w_user.individual_uuid",
+          "score": 0.153234,
+          "rank": 8,
+          "rejected_reason": "deterministic_pass_guard"
+        },
+        {
+          "record_id": "sha256:a8414469bf56bbfd45184e7931a98f07bb9b2304dccf284ea3522574f4ae6118",
+          "source_key": "field.mx.dwb_b1_data_burying_point.dt",
+          "asset_family": "catalog_field",
+          "title": "dwb_b1_data_burying_point.dt",
+          "score": 0.152311,
+          "rank": 9,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:ef37641f003101d370d44bb852f68651b22b10a5debd433a2de2657f26125304",
+          "source_key": "field.mx.dwb_b1_data_burying_point.timestamp_",
+          "asset_family": "catalog_field",
+          "title": "dwb_b1_data_burying_point.timestamp_",
+          "score": 0.145111,
+          "rank": 10,
+          "rejected_reason": "duplicate_with_deterministic"
+        }
+      ],
+      "notes": [
+        "primary_merge_v1: deterministic primary with vector supplement",
+        "fusion selection uses rank/score/family caps only; no golden label leakage"
+      ],
+      "matched_expected": [
+        "table:hive.dwb.dwb_b1_data_burying_point",
+        "field:uid",
+        "field:timestamp_",
+        "field:eventname",
+        "glossary:writeback_behavior",
+        "glossary:uid_cohort_required",
+        "example:behavior_writeback_pattern"
+      ],
+      "missing_expected": [],
+      "unexpected": [],
+      "judgment": "pass"
+    },
+    {
+      "case_id": "mx-glossary-combo-writeback",
+      "request": "先找最近 7 天高风险用户，再补齐这些用户的 behavior 数据并写回 behavior",
+      "retrieved_tables": [
+        "dwb_b1_data_burying_point",
+        "dwd_w_apply",
+        "dwb_r_apply"
+      ],
+      "retrieved_fields": [
+        "uid",
+        "eventname",
+        "user_uuid",
+        "timestamp_",
+        "risk_level",
+        "apply_create_at",
+        "dt",
+        "apply_created_at"
+      ],
+      "retrieved_glossary_terms": [
+        "写回 behavior",
+        "writeback_behavior",
+        "uid_cohort_required",
+        "high_risk",
+        "recent_7d"
+      ],
+      "retrieved_examples": [
+        "example:behavior-writeback",
+        "sql_pattern.mx.behavior_writeback_target_cohort"
+      ],
+      "retrieved_error_cases": [],
+      "vector_supplements": [],
+      "rejected_vector_candidates": [
+        {
+          "record_id": "sha256:001c33d2b1ac2ada38de25d22401387136614ccabf0ced0f2b305ec2fd347acb",
+          "source_key": "glossary.mx.writeback_behavior",
+          "asset_family": "glossary_term",
+          "title": "writeback_behavior",
+          "score": 0.373627,
+          "rank": 1,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:cc2c1f8dfb4938bc95bf918696c7c04b1560ef4b43713b4a9ac318198363bc14",
+          "source_key": "glossary.mx.high_risk",
+          "asset_family": "glossary_term",
+          "title": "high_risk",
+          "score": 0.271217,
+          "rank": 2,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:34638de8d18bfa731ba48541f59196e6b0a4d306a2c7137288e4448b4ad39c8a",
+          "source_key": "sql_pattern.mx.behavior_writeback_target_cohort",
+          "asset_family": "sql_example",
+          "title": "sql_pattern.mx.behavior_writeback_target_cohort",
+          "score": 0.229271,
+          "rank": 3,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:6a3966ecdb7aede81c2a168ecc4a57f25d78d9c3549facacabe5ab69a11d0238",
+          "source_key": "field.mx.dwb_b1_data_burying_point.uid",
+          "asset_family": "catalog_field",
+          "title": "dwb_b1_data_burying_point.uid",
+          "score": 0.2139,
+          "rank": 4,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:141d17092b0a5dd24f4a2fc0451f898210d066f0f77e19b324e8da4c108ccaec",
+          "source_key": "table.mx.dwb_b1_data_burying_point",
+          "asset_family": "catalog_table",
+          "title": "dwb_b1_data_burying_point",
+          "score": 0.175645,
+          "rank": 5,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:f4f630e0ae0ba54dda5468cb0e4e15187cced0b7a12d6e4ce21c0bc7f5280f9e",
+          "source_key": "field.mx.dwd_w_apply.apply_create_at",
+          "asset_family": "catalog_field",
+          "title": "dwd_w_apply.apply_create_at",
+          "score": 0.174759,
+          "rank": 6,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:6cf19e26230a124cf05305ba479865be8d7640be74a8dca0dbb6de1031faba27",
+          "source_key": "field.mx.dwd_w_user.user_source",
+          "asset_family": "catalog_field",
+          "title": "dwd_w_user.user_source",
+          "score": 0.160704,
+          "rank": 7,
+          "rejected_reason": "deterministic_pass_guard"
+        },
+        {
+          "record_id": "sha256:c6f6a6942cad2cfbf6a3e0170fb3217b6778c40c71f0011acc5ff696fbdf88d8",
+          "source_key": "field.mx.dwd_w_user.individual_uuid",
+          "asset_family": "catalog_field",
+          "title": "dwd_w_user.individual_uuid",
+          "score": 0.152669,
+          "rank": 8,
+          "rejected_reason": "deterministic_pass_guard"
+        },
+        {
+          "record_id": "sha256:4fbfbf126b037c3999859617fe9a8ac8e36a409d3fb97052832dd9679a268110",
+          "source_key": "table.mx.dwd_w_user",
+          "asset_family": "catalog_table",
+          "title": "dwd_w_user",
+          "score": 0.150683,
+          "rank": 9,
+          "rejected_reason": "deterministic_pass_guard"
+        },
+        {
+          "record_id": "sha256:40c47d4dea1253dd848d66f91fd26c5483fa9b54335be97c7a06bc038f8ebd43",
+          "source_key": "glossary.mx.uid_cohort_required",
+          "asset_family": "glossary_term",
+          "title": "uid_cohort_required",
+          "score": 0.149099,
+          "rank": 10,
+          "rejected_reason": "duplicate_with_deterministic"
+        }
+      ],
+      "notes": [
+        "primary_merge_v1: deterministic primary with vector supplement",
+        "fusion selection uses rank/score/family caps only; no golden label leakage"
+      ],
+      "matched_expected": [
+        "table:hive.dwd.dwd_w_apply",
+        "table:hive.dwb.dwb_b1_data_burying_point",
+        "field:user_uuid",
+        "field:risk_level",
+        "field:apply_time",
+        "field:uid",
+        "field:timestamp_",
+        "field:eventname",
+        "glossary:high_risk",
+        "glossary:recent_7d",
+        "glossary:writeback_behavior",
+        "example:behavior_writeback_pattern"
+      ],
+      "missing_expected": [],
+      "unexpected": [],
+      "judgment": "pass"
+    },
+    {
+      "case_id": "mx-no-apply-cohort",
+      "request": "找出最近 30 天没有申请记录的墨西哥用户",
+      "retrieved_tables": [
+        "dwd_w_user",
+        "dwd_w_apply",
+        "dwb_r_apply"
+      ],
+      "retrieved_fields": [
+        "user_uuid",
+        "apply_time",
+        "apply_create_at",
+        "dt",
+        "apply_created_at",
+        "max_overdue_days",
+        "asset_overdue_days",
+        "real_overdue_days",
+        "asset_finish_at",
+        "asset_grant_at",
+        "withdraw_uuid"
+      ],
+      "retrieved_glossary_terms": [
+        "no_apply",
+        "recent_7d",
+        "never_overdue",
+        "recent_30d",
+        "mob1"
+      ],
+      "retrieved_examples": [
+        "example:first-loan-never-overdue",
+        "sql_pattern.mx.mob1_churn_cte"
+      ],
+      "retrieved_error_cases": [],
+      "vector_supplements": [],
+      "rejected_vector_candidates": [
+        {
+          "record_id": "sha256:e5c8c15b4495f5a0a2eeea25feca00a8bfddd132ace97b4bdaa5f64d77640439",
+          "source_key": "glossary.mx.no_apply",
+          "asset_family": "glossary_term",
+          "title": "no_apply",
+          "score": 0.241201,
+          "rank": 1,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:8c8d69267e7241ad2f9e28e8a7a4016f461a8e2247dead54bb8775334de3f361",
+          "source_key": "glossary.mx.recent_30d",
+          "asset_family": "glossary_term",
+          "title": "recent_30d",
+          "score": 0.216552,
+          "rank": 2,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:cc2c1f8dfb4938bc95bf918696c7c04b1560ef4b43713b4a9ac318198363bc14",
+          "source_key": "glossary.mx.high_risk",
+          "asset_family": "glossary_term",
+          "title": "high_risk",
+          "score": 0.187948,
+          "rank": 3,
+          "rejected_reason": "deterministic_pass_guard"
+        },
+        {
+          "record_id": "sha256:40c47d4dea1253dd848d66f91fd26c5483fa9b54335be97c7a06bc038f8ebd43",
+          "source_key": "glossary.mx.uid_cohort_required",
+          "asset_family": "glossary_term",
+          "title": "uid_cohort_required",
+          "score": 0.161119,
+          "rank": 4,
+          "rejected_reason": "deterministic_pass_guard"
+        },
+        {
+          "record_id": "sha256:4fbfbf126b037c3999859617fe9a8ac8e36a409d3fb97052832dd9679a268110",
+          "source_key": "table.mx.dwd_w_user",
+          "asset_family": "catalog_table",
+          "title": "dwd_w_user",
+          "score": 0.15843,
+          "rank": 5,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:2a4005feb3f4c565b787c93c8adbb123b38900c476bee24642b9a6be16eb1c0c",
+          "source_key": "glossary.mx.no_withdraw",
+          "asset_family": "glossary_term",
+          "title": "no_withdraw",
+          "score": 0.154139,
+          "rank": 6,
+          "rejected_reason": "deterministic_pass_guard"
+        },
+        {
+          "record_id": "sha256:0de20a992e2065ce55b39c13e65db47495cfcd21e9c44ad78dec3599c10f90c0",
+          "source_key": "field.mx.dwd_w_user.dt",
+          "asset_family": "catalog_field",
+          "title": "dwd_w_user.dt",
+          "score": 0.151733,
+          "rank": 7,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:34638de8d18bfa731ba48541f59196e6b0a4d306a2c7137288e4448b4ad39c8a",
+          "source_key": "sql_pattern.mx.behavior_writeback_target_cohort",
+          "asset_family": "sql_example",
+          "title": "sql_pattern.mx.behavior_writeback_target_cohort",
+          "score": 0.144635,
+          "rank": 8,
+          "rejected_reason": "deterministic_pass_guard"
+        },
+        {
+          "record_id": "sha256:80157ae08091578f48298e3b3dfdcd84c8be9892df1562666004f05dfd342e7b",
+          "source_key": "field.mx.dwd_w_user.user_uuid",
+          "asset_family": "catalog_field",
+          "title": "dwd_w_user.user_uuid",
+          "score": 0.14461,
+          "rank": 9,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:6cf19e26230a124cf05305ba479865be8d7640be74a8dca0dbb6de1031faba27",
+          "source_key": "field.mx.dwd_w_user.user_source",
+          "asset_family": "catalog_field",
+          "title": "dwd_w_user.user_source",
+          "score": 0.144239,
+          "rank": 10,
+          "rejected_reason": "deterministic_pass_guard"
+        }
+      ],
+      "notes": [
+        "primary_merge_v1: deterministic primary with vector supplement",
+        "fusion selection uses rank/score/family caps only; no golden label leakage"
+      ],
+      "matched_expected": [
+        "table:hive.dwd.dwd_w_user",
+        "table:hive.dwd.dwd_w_apply",
+        "field:user_uuid",
+        "field:apply_time",
+        "glossary:no_apply",
+        "glossary:recent_30d"
+      ],
+      "missing_expected": [],
+      "unexpected": [],
+      "judgment": "pass"
+    },
+    {
+      "case_id": "mx-no-withdraw-cohort",
+      "request": "找出申请过但没有成功提现的墨西哥用户",
+      "retrieved_tables": [
+        "dwd_w_apply",
+        "dwb_r_apply",
+        "dwd_w_user"
+      ],
+      "retrieved_fields": [
+        "withdraw_uuid",
+        "user_uuid",
+        "max_overdue_days",
+        "asset_overdue_days",
+        "real_overdue_days",
+        "dt",
+        "apply_created_at",
+        "apply_create_at",
+        "asset_finish_at",
+        "asset_grant_at"
+      ],
+      "retrieved_glossary_terms": [
+        "never_overdue",
+        "recent_7d",
+        "mob1",
+        "no_apply",
+        "successful_withdraw",
+        "no_withdraw"
+      ],
+      "retrieved_examples": [
+        "example:first-loan-never-overdue",
+        "sql_pattern.mx.mob1_churn_cte",
+        "sql_pattern.mx.behavior_writeback_target_cohort"
+      ],
+      "retrieved_error_cases": [],
+      "vector_supplements": [
+        {
+          "record_id": "sha256:2a4005feb3f4c565b787c93c8adbb123b38900c476bee24642b9a6be16eb1c0c",
+          "source_key": "glossary.mx.no_withdraw",
+          "asset_family": "glossary_term",
+          "title": "no_withdraw",
+          "score": 0.171014,
+          "rank": 2,
+          "accepted_reason": "vector_supplement_new_candidate"
+        },
+        {
+          "record_id": "sha256:34638de8d18bfa731ba48541f59196e6b0a4d306a2c7137288e4448b4ad39c8a",
+          "source_key": "sql_pattern.mx.behavior_writeback_target_cohort",
+          "asset_family": "sql_example",
+          "title": "sql_pattern.mx.behavior_writeback_target_cohort",
+          "score": 0.150004,
+          "rank": 7,
+          "accepted_reason": "vector_supplement_new_candidate"
+        }
+      ],
+      "rejected_vector_candidates": [
+        {
+          "record_id": "sha256:4fbfbf126b037c3999859617fe9a8ac8e36a409d3fb97052832dd9679a268110",
+          "source_key": "table.mx.dwd_w_user",
+          "asset_family": "catalog_table",
+          "title": "dwd_w_user",
+          "score": 0.188959,
+          "rank": 1,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:e5c8c15b4495f5a0a2eeea25feca00a8bfddd132ace97b4bdaa5f64d77640439",
+          "source_key": "glossary.mx.no_apply",
+          "asset_family": "glossary_term",
+          "title": "no_apply",
+          "score": 0.164388,
+          "rank": 3,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:f4f630e0ae0ba54dda5468cb0e4e15187cced0b7a12d6e4ce21c0bc7f5280f9e",
+          "source_key": "field.mx.dwd_w_apply.apply_create_at",
+          "asset_family": "catalog_field",
+          "title": "dwd_w_apply.apply_create_at",
+          "score": 0.156936,
+          "rank": 4,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:40c47d4dea1253dd848d66f91fd26c5483fa9b54335be97c7a06bc038f8ebd43",
+          "source_key": "glossary.mx.uid_cohort_required",
+          "asset_family": "glossary_term",
+          "title": "uid_cohort_required",
+          "score": 0.153552,
+          "rank": 5,
+          "rejected_reason": "below_family_threshold"
+        },
+        {
+          "record_id": "sha256:013580a083b2e4015841ea06d489283a99c19328de039ed4990afb90e099c742",
+          "source_key": "field.mx.dwd_w_apply.withdraw_uuid",
+          "asset_family": "catalog_field",
+          "title": "dwd_w_apply.withdraw_uuid",
+          "score": 0.152613,
+          "rank": 6,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:0b3e313c38b449cf11860fb621f0f7513c97afd8709f850d97e087ab5169b5b4",
+          "source_key": "glossary.mx.successful_withdraw",
+          "asset_family": "glossary_term",
+          "title": "successful_withdraw",
+          "score": 0.148562,
+          "rank": 8,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:cc2c1f8dfb4938bc95bf918696c7c04b1560ef4b43713b4a9ac318198363bc14",
+          "source_key": "glossary.mx.high_risk",
+          "asset_family": "glossary_term",
+          "title": "high_risk",
+          "score": 0.144514,
+          "rank": 9,
+          "rejected_reason": "rank_above_limit"
+        },
+        {
+          "record_id": "sha256:001c33d2b1ac2ada38de25d22401387136614ccabf0ced0f2b305ec2fd347acb",
+          "source_key": "glossary.mx.writeback_behavior",
+          "asset_family": "glossary_term",
+          "title": "writeback_behavior",
+          "score": 0.142597,
+          "rank": 10,
+          "rejected_reason": "rank_above_limit"
+        }
+      ],
+      "notes": [
+        "primary_merge_v1: deterministic primary with vector supplement",
+        "fusion selection uses rank/score/family caps only; no golden label leakage"
+      ],
+      "matched_expected": [
+        "table:hive.dwd.dwd_w_apply",
+        "field:user_uuid",
+        "field:withdraw_uuid",
+        "field:apply_time",
+        "glossary:no_withdraw"
+      ],
+      "missing_expected": [],
+      "unexpected": [],
+      "judgment": "pass"
+    },
+    {
+      "case_id": "mx-withdraw-cohort",
+      "request": "找出最近成功提现的墨西哥用户",
+      "retrieved_tables": [
+        "dwd_w_apply",
+        "dwb_r_apply",
+        "dwd_w_user"
+      ],
+      "retrieved_fields": [
+        "withdraw_uuid",
+        "user_uuid",
+        "apply_time",
+        "dt",
+        "apply_created_at",
+        "apply_create_at",
+        "max_overdue_days",
+        "asset_overdue_days",
+        "real_overdue_days",
+        "asset_finish_at",
+        "asset_grant_at"
+      ],
+      "retrieved_glossary_terms": [
+        "recent_7d",
+        "never_overdue",
+        "mob1",
+        "no_apply",
+        "successful_withdraw"
+      ],
+      "retrieved_examples": [
+        "example:first-loan-never-overdue",
+        "sql_pattern.mx.mob1_churn_cte"
+      ],
+      "retrieved_error_cases": [],
+      "vector_supplements": [],
+      "rejected_vector_candidates": [
+        {
+          "record_id": "sha256:4fbfbf126b037c3999859617fe9a8ac8e36a409d3fb97052832dd9679a268110",
+          "source_key": "table.mx.dwd_w_user",
+          "asset_family": "catalog_table",
+          "title": "dwd_w_user",
+          "score": 0.196537,
+          "rank": 1,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:cc2c1f8dfb4938bc95bf918696c7c04b1560ef4b43713b4a9ac318198363bc14",
+          "source_key": "glossary.mx.high_risk",
+          "asset_family": "glossary_term",
+          "title": "high_risk",
+          "score": 0.192256,
+          "rank": 2,
+          "rejected_reason": "deterministic_pass_guard"
+        },
+        {
+          "record_id": "sha256:40c47d4dea1253dd848d66f91fd26c5483fa9b54335be97c7a06bc038f8ebd43",
+          "source_key": "glossary.mx.uid_cohort_required",
+          "asset_family": "glossary_term",
+          "title": "uid_cohort_required",
+          "score": 0.173802,
+          "rank": 3,
+          "rejected_reason": "deterministic_pass_guard"
+        },
+        {
+          "record_id": "sha256:0b3e313c38b449cf11860fb621f0f7513c97afd8709f850d97e087ab5169b5b4",
+          "source_key": "glossary.mx.successful_withdraw",
+          "asset_family": "glossary_term",
+          "title": "successful_withdraw",
+          "score": 0.165301,
+          "rank": 4,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:34638de8d18bfa731ba48541f59196e6b0a4d306a2c7137288e4448b4ad39c8a",
+          "source_key": "sql_pattern.mx.behavior_writeback_target_cohort",
+          "asset_family": "sql_example",
+          "title": "sql_pattern.mx.behavior_writeback_target_cohort",
+          "score": 0.156021,
+          "rank": 5,
+          "rejected_reason": "deterministic_pass_guard"
+        },
+        {
+          "record_id": "sha256:80157ae08091578f48298e3b3dfdcd84c8be9892df1562666004f05dfd342e7b",
+          "source_key": "field.mx.dwd_w_user.user_uuid",
+          "asset_family": "catalog_field",
+          "title": "dwd_w_user.user_uuid",
+          "score": 0.155994,
+          "rank": 6,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:6cf19e26230a124cf05305ba479865be8d7640be74a8dca0dbb6de1031faba27",
+          "source_key": "field.mx.dwd_w_user.user_source",
+          "asset_family": "catalog_field",
+          "title": "dwd_w_user.user_source",
+          "score": 0.155594,
+          "rank": 7,
+          "rejected_reason": "deterministic_pass_guard"
+        },
+        {
+          "record_id": "sha256:0de20a992e2065ce55b39c13e65db47495cfcd21e9c44ad78dec3599c10f90c0",
+          "source_key": "field.mx.dwd_w_user.dt",
+          "asset_family": "catalog_field",
+          "title": "dwd_w_user.dt",
+          "score": 0.150756,
+          "rank": 8,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:001c33d2b1ac2ada38de25d22401387136614ccabf0ced0f2b305ec2fd347acb",
+          "source_key": "glossary.mx.writeback_behavior",
+          "asset_family": "glossary_term",
+          "title": "writeback_behavior",
+          "score": 0.148316,
+          "rank": 9,
+          "rejected_reason": "deterministic_pass_guard"
+        },
+        {
+          "record_id": "sha256:e5c8c15b4495f5a0a2eeea25feca00a8bfddd132ace97b4bdaa5f64d77640439",
+          "source_key": "glossary.mx.no_apply",
+          "asset_family": "glossary_term",
+          "title": "no_apply",
+          "score": 0.137528,
+          "rank": 10,
+          "rejected_reason": "duplicate_with_deterministic"
+        }
+      ],
+      "notes": [
+        "primary_merge_v1: deterministic primary with vector supplement",
+        "fusion selection uses rank/score/family caps only; no golden label leakage"
+      ],
+      "matched_expected": [
+        "table:hive.dwd.dwd_w_apply",
+        "field:user_uuid",
+        "field:withdraw_uuid",
+        "field:asset_grant_at",
+        "glossary:successful_withdraw",
+        "glossary:recent_7d"
+      ],
+      "missing_expected": [],
+      "unexpected": [],
+      "judgment": "pass"
+    },
+    {
+      "case_id": "mx-app-profile-query",
+      "request": "查询墨西哥用户的 app 安装分类信息",
+      "retrieved_tables": [
+        "dwd_w_apply",
+        "dwb_r_apply",
+        "ods_f_market_app_categories",
+        "dwd_w_user"
+      ],
+      "retrieved_fields": [
+        "user_uuid",
+        "uid",
+        "loan_count",
+        "max_overdue_days",
+        "risk_level",
+        "app_package",
+        "asset_overdue_days",
+        "real_overdue_days",
+        "dt",
+        "apply_created_at",
+        "apply_create_at",
+        "asset_finish_at",
+        "asset_grant_at",
+        "withdraw_uuid",
+        "year_day"
+      ],
+      "retrieved_glossary_terms": [
+        "app_profile",
+        "never_overdue",
+        "recent_7d",
+        "mob1",
+        "no_apply",
+        "recent_30d"
+      ],
+      "retrieved_examples": [
+        "example:first-loan-never-overdue",
+        "sql_pattern.mx.mob1_churn_cte"
+      ],
+      "retrieved_error_cases": [],
+      "vector_supplements": [
+        {
+          "record_id": "sha256:8c8d69267e7241ad2f9e28e8a7a4016f461a8e2247dead54bb8775334de3f361",
+          "source_key": "glossary.mx.recent_30d",
+          "asset_family": "glossary_term",
+          "title": "recent_30d",
+          "score": 0.191164,
+          "rank": 5,
+          "accepted_reason": "vector_supplement_new_candidate"
+        },
+        {
+          "record_id": "sha256:4572a4b5cf800ea09aa6adf9fa59932cc2305047bd6a1e5f9dac4f8f71246f31",
+          "source_key": "field.mx.ods_f_market_app_categories.year_day",
+          "asset_family": "catalog_field",
+          "title": "ods_f_market_app_categories.year_day",
+          "score": 0.169128,
+          "rank": 7,
+          "accepted_reason": "vector_supplement_new_candidate"
+        }
+      ],
+      "rejected_vector_candidates": [
+        {
+          "record_id": "sha256:e1c5295d7c2270f25134f602ad87d99d04f6719e32fe651ced1bbf79dadedc72",
+          "source_key": "glossary.mx.app_profile",
+          "asset_family": "glossary_term",
+          "title": "app_profile",
+          "score": 0.413757,
+          "rank": 1,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:38866fb92486efd05de352d77e9c46fb9eb8ce90ea78c1ac98b528aaa942b732",
+          "source_key": "table.mx.ods_f_market_app_categories",
+          "asset_family": "catalog_table",
+          "title": "ods_f_market_app_categories",
+          "score": 0.256594,
+          "rank": 2,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:80157ae08091578f48298e3b3dfdcd84c8be9892df1562666004f05dfd342e7b",
+          "source_key": "field.mx.dwd_w_user.user_uuid",
+          "asset_family": "catalog_field",
+          "title": "dwd_w_user.user_uuid",
+          "score": 0.197218,
+          "rank": 3,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:4fbfbf126b037c3999859617fe9a8ac8e36a409d3fb97052832dd9679a268110",
+          "source_key": "table.mx.dwd_w_user",
+          "asset_family": "catalog_table",
+          "title": "dwd_w_user",
+          "score": 0.192217,
+          "rank": 4,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:00c99636487a864190077f2ea5a61349311cc2ecbbef364fbade76119382388b",
+          "source_key": "field.mx.dwb_r_apply.apply_created_at",
+          "asset_family": "catalog_field",
+          "title": "dwb_r_apply.apply_created_at",
+          "score": 0.183928,
+          "rank": 6,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:414cbe00dad9b65a7b14a0ddd2ca734150eada2c0b66bb712fcfc2fc3ca7ef8d",
+          "source_key": "glossary.mx.credit_profile",
+          "asset_family": "glossary_term",
+          "title": "credit_profile",
+          "score": 0.165808,
+          "rank": 8,
+          "rejected_reason": "below_family_threshold"
+        },
+        {
+          "record_id": "sha256:6cf19e26230a124cf05305ba479865be8d7640be74a8dca0dbb6de1031faba27",
+          "source_key": "field.mx.dwd_w_user.user_source",
+          "asset_family": "catalog_field",
+          "title": "dwd_w_user.user_source",
+          "score": 0.165217,
+          "rank": 9,
+          "rejected_reason": "rank_above_limit"
+        },
+        {
+          "record_id": "sha256:cc2c1f8dfb4938bc95bf918696c7c04b1560ef4b43713b4a9ac318198363bc14",
+          "source_key": "glossary.mx.high_risk",
+          "asset_family": "glossary_term",
+          "title": "high_risk",
+          "score": 0.164099,
+          "rank": 10,
+          "rejected_reason": "rank_above_limit"
+        }
+      ],
+      "notes": [
+        "primary_merge_v1: deterministic primary with vector supplement",
+        "fusion selection uses rank/score/family caps only; no golden label leakage"
+      ],
+      "matched_expected": [
+        "table:hive.ods.ods_f_market_app_categories",
+        "field:app_package",
+        "glossary:app_profile",
+        "field:year_day"
+      ],
+      "missing_expected": [
+        "field:category_name"
+      ],
+      "unexpected": [],
+      "judgment": "partial"
+    },
+    {
+      "case_id": "mx-credit-profile-query",
+      "request": "查询墨西哥征信相关申请字段",
+      "retrieved_tables": [
+        "dwb_r_apply",
+        "dwd_w_apply",
+        "dwd_w_user"
+      ],
+      "retrieved_fields": [
+        "user_uuid",
+        "apply_id",
+        "apply_status",
+        "apply_user_uuid",
+        "max_overdue_days",
+        "asset_overdue_days",
+        "real_overdue_days",
+        "dt",
+        "apply_created_at",
+        "apply_create_at",
+        "asset_finish_at",
+        "asset_grant_at",
+        "withdraw_uuid"
+      ],
+      "retrieved_glossary_terms": [
+        "credit_profile",
+        "never_overdue",
+        "recent_7d",
+        "mob1",
+        "no_apply"
+      ],
+      "retrieved_examples": [
+        "example:first-loan-never-overdue",
+        "sql_pattern.mx.mob1_churn_cte"
+      ],
+      "retrieved_error_cases": [],
+      "vector_supplements": [],
+      "rejected_vector_candidates": [
+        {
+          "record_id": "sha256:414cbe00dad9b65a7b14a0ddd2ca734150eada2c0b66bb712fcfc2fc3ca7ef8d",
+          "source_key": "glossary.mx.credit_profile",
+          "asset_family": "glossary_term",
+          "title": "credit_profile",
+          "score": 0.413543,
+          "rank": 1,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:cd50a7d3f4bfec944400e4b9e78efe6a9d17f0ab60d18462ab8c5d9884f91f27",
+          "source_key": "field.mx.dwb_r_apply.apply_status",
+          "asset_family": "catalog_field",
+          "title": "dwb_r_apply.apply_status",
+          "score": 0.33068,
+          "rank": 2,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:7cc3a165393ed28e0d68325d1b0b2f5fb13690c85c150c16e510cf11481c2768",
+          "source_key": "field.mx.dwb_r_apply.apply_id",
+          "asset_family": "catalog_field",
+          "title": "dwb_r_apply.apply_id",
+          "score": 0.298088,
+          "rank": 3,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:4fbfbf126b037c3999859617fe9a8ac8e36a409d3fb97052832dd9679a268110",
+          "source_key": "table.mx.dwd_w_user",
+          "asset_family": "catalog_table",
+          "title": "dwd_w_user",
+          "score": 0.268113,
+          "rank": 4,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:c6f6a6942cad2cfbf6a3e0170fb3217b6778c40c71f0011acc5ff696fbdf88d8",
+          "source_key": "field.mx.dwd_w_user.individual_uuid",
+          "asset_family": "catalog_field",
+          "title": "dwd_w_user.individual_uuid",
+          "score": 0.245853,
+          "rank": 5,
+          "rejected_reason": "deterministic_pass_guard"
+        },
+        {
+          "record_id": "sha256:34638de8d18bfa731ba48541f59196e6b0a4d306a2c7137288e4448b4ad39c8a",
+          "source_key": "sql_pattern.mx.behavior_writeback_target_cohort",
+          "asset_family": "sql_example",
+          "title": "sql_pattern.mx.behavior_writeback_target_cohort",
+          "score": 0.207681,
+          "rank": 6,
+          "rejected_reason": "deterministic_pass_guard"
+        },
+        {
+          "record_id": "sha256:80157ae08091578f48298e3b3dfdcd84c8be9892df1562666004f05dfd342e7b",
+          "source_key": "field.mx.dwd_w_user.user_uuid",
+          "asset_family": "catalog_field",
+          "title": "dwd_w_user.user_uuid",
+          "score": 0.177982,
+          "rank": 7,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:0de20a992e2065ce55b39c13e65db47495cfcd21e9c44ad78dec3599c10f90c0",
+          "source_key": "field.mx.dwd_w_user.dt",
+          "asset_family": "catalog_field",
+          "title": "dwd_w_user.dt",
+          "score": 0.172005,
+          "rank": 8,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:001c33d2b1ac2ada38de25d22401387136614ccabf0ced0f2b305ec2fd347acb",
+          "source_key": "glossary.mx.writeback_behavior",
+          "asset_family": "glossary_term",
+          "title": "writeback_behavior",
+          "score": 0.169222,
+          "rank": 9,
+          "rejected_reason": "deterministic_pass_guard"
+        },
+        {
+          "record_id": "sha256:40c47d4dea1253dd848d66f91fd26c5483fa9b54335be97c7a06bc038f8ebd43",
+          "source_key": "glossary.mx.uid_cohort_required",
+          "asset_family": "glossary_term",
+          "title": "uid_cohort_required",
+          "score": 0.166144,
+          "rank": 10,
+          "rejected_reason": "deterministic_pass_guard"
+        }
+      ],
+      "notes": [
+        "primary_merge_v1: deterministic primary with vector supplement",
+        "fusion selection uses rank/score/family caps only; no golden label leakage"
+      ],
+      "matched_expected": [
+        "table:hive.dwb.dwb_r_apply",
+        "field:apply_id",
+        "field:user_uuid",
+        "field:apply_status",
+        "glossary:credit_profile"
+      ],
+      "missing_expected": [],
+      "unexpected": [],
+      "judgment": "pass"
+    },
+    {
+      "case_id": "ph-first-loan-never-overdue",
+      "request": "找出菲律宾首贷且从未逾期的用户",
+      "retrieved_tables": [
+        "ph_apply_orders"
+      ],
+      "retrieved_fields": [
+        "history_overdue_count",
+        "loan_count"
+      ],
+      "retrieved_glossary_terms": [
+        "从未逾期",
+        "首贷",
+        "never_overdue",
+        "mob1",
+        "first_loan"
+      ],
+      "retrieved_examples": [
+        "example:ph-first-loan-never-overdue"
+      ],
+      "retrieved_error_cases": [
+        "case:ph-withdraw-uuid"
+      ],
+      "vector_supplements": [],
+      "rejected_vector_candidates": [
+        {
+          "record_id": "sha256:83af481d512555ef5d56111f3849875b819581a9be8de6b0265e9dda3adad016",
+          "source_key": "glossary.common.never_overdue",
+          "asset_family": "glossary_term",
+          "title": "never_overdue",
+          "score": 0.220105,
+          "rank": 1,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:34525ed8bb703d5a828b7274b8c1d787db59f0bb02c2c8f729c76c50a6bfa035",
+          "source_key": "glossary.common.first_loan",
+          "asset_family": "glossary_term",
+          "title": "first_loan",
+          "score": 0.144877,
+          "rank": 2,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:51dfea1d545ca8f37798fe52d93dc74066c26584f8d1ababefcc5c311fa7fd80",
+          "source_key": "glossary.common.seven_day_no_reborrow_churn",
+          "asset_family": "glossary_term",
+          "title": "seven_day_no_reborrow_churn",
+          "score": 0.109087,
+          "rank": 3,
+          "rejected_reason": "below_family_threshold"
+        },
+        {
+          "record_id": "sha256:2c4f24c00cae91e59e6520fe215ca245e56ce30cffd3ad5a206307a5e8a8cff7",
+          "source_key": "glossary.common.fully_settled",
+          "asset_family": "glossary_term",
+          "title": "fully_settled",
+          "score": 0.09348,
+          "rank": 4,
+          "rejected_reason": "below_family_threshold"
+        },
+        {
+          "record_id": "sha256:b7299dcf9be5224bc5df8153527d7f2319edef5c3b991fbdc9ad2c7ac0ff5f29",
+          "source_key": "glossary.common.mob1",
+          "asset_family": "glossary_term",
+          "title": "mob1",
+          "score": 0.054341,
+          "rank": 5,
+          "rejected_reason": "duplicate_with_deterministic"
+        }
+      ],
+      "notes": [
+        "primary_merge_v1: deterministic primary with vector supplement",
+        "fusion selection uses rank/score/family caps only; no golden label leakage"
+      ],
+      "matched_expected": [
+        "table:ph_apply_orders",
+        "field:loan_count",
+        "field:overdue_days",
+        "glossary:first_loan",
+        "glossary:never_overdue"
+      ],
+      "missing_expected": [
+        "field:user_uuid"
+      ],
+      "unexpected": [],
+      "judgment": "partial"
+    },
+    {
+      "case_id": "ph-withdraw-uuid-negative",
+      "request": "修复菲律宾首贷从未逾期 SQL，避免使用 withdraw_uuid",
+      "retrieved_tables": [
+        "ph_apply_orders"
+      ],
+      "retrieved_fields": [
+        "uid",
+        "history_overdue_count",
+        "loan_count"
+      ],
+      "retrieved_glossary_terms": [
+        "从未逾期",
+        "首贷",
+        "first_loan",
+        "seven_day_no_reborrow_churn",
+        "mob1",
+        "fully_settled"
+      ],
+      "retrieved_examples": [
+        "example:ph-first-loan-never-overdue"
+      ],
+      "retrieved_error_cases": [
+        "case:ph-withdraw-uuid"
+      ],
+      "vector_supplements": [
+        {
+          "record_id": "sha256:2c4f24c00cae91e59e6520fe215ca245e56ce30cffd3ad5a206307a5e8a8cff7",
+          "source_key": "glossary.common.fully_settled",
+          "asset_family": "glossary_term",
+          "title": "fully_settled",
+          "score": 0.177978,
+          "rank": 4,
+          "accepted_reason": "vector_supplement_new_candidate"
+        }
+      ],
+      "rejected_vector_candidates": [
+        {
+          "record_id": "sha256:51dfea1d545ca8f37798fe52d93dc74066c26584f8d1ababefcc5c311fa7fd80",
+          "source_key": "glossary.common.seven_day_no_reborrow_churn",
+          "asset_family": "glossary_term",
+          "title": "seven_day_no_reborrow_churn",
+          "score": 0.235958,
+          "rank": 1,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:b7299dcf9be5224bc5df8153527d7f2319edef5c3b991fbdc9ad2c7ac0ff5f29",
+          "source_key": "glossary.common.mob1",
+          "asset_family": "glossary_term",
+          "title": "mob1",
+          "score": 0.203737,
+          "rank": 2,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:34525ed8bb703d5a828b7274b8c1d787db59f0bb02c2c8f729c76c50a6bfa035",
+          "source_key": "glossary.common.first_loan",
+          "asset_family": "glossary_term",
+          "title": "first_loan",
+          "score": 0.187799,
+          "rank": 3,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:83af481d512555ef5d56111f3849875b819581a9be8de6b0265e9dda3adad016",
+          "source_key": "glossary.common.never_overdue",
+          "asset_family": "glossary_term",
+          "title": "never_overdue",
+          "score": 0.15088,
+          "rank": 5,
+          "rejected_reason": "below_family_threshold"
+        }
+      ],
+      "notes": [
+        "primary_merge_v1: deterministic primary with vector supplement",
+        "fusion selection uses rank/score/family caps only; no golden label leakage"
+      ],
+      "matched_expected": [
+        "table:ph_apply_orders",
+        "field:loan_count",
+        "glossary:never_overdue"
+      ],
+      "missing_expected": [
+        "field:user_uuid"
+      ],
+      "unexpected": [],
+      "judgment": "partial"
+    },
+    {
+      "case_id": "th-asset-snapshot-query",
+      "request": "查询泰国资产快照宽表字段",
+      "retrieved_tables": [
+        "dwt_rsk_ask_loan_info_base_d",
+        "dwt_rsk_apply_info_base_d",
+        "dwt_asset_info_base_snap"
+      ],
+      "retrieved_fields": [
+        "asset_id",
+        "user_uuid",
+        "finish_time"
+      ],
+      "retrieved_glossary_terms": [
+        "ask_loan_risk",
+        "asset_snapshot",
+        "risk_apply",
+        "third_party_risk",
+        "never_overdue"
+      ],
+      "retrieved_examples": [],
+      "retrieved_error_cases": [],
+      "vector_supplements": [
+        {
+          "record_id": "sha256:59b345be5116448bead40d0be35517df11aab861e588e7157aa405dbf6727a83",
+          "source_key": "field.th.dwt_asset_info_base_snap.user_uuid",
+          "asset_family": "catalog_field",
+          "title": "dwt_asset_info_base_snap.user_uuid",
+          "score": 0.238352,
+          "rank": 2,
+          "accepted_reason": "vector_supplement_new_candidate"
+        },
+        {
+          "record_id": "sha256:adac3bdecf4d710cd726904393209a03ad1a4c1e996ea79b917818086b686c93",
+          "source_key": "table.th.dwt_asset_info_base_snap",
+          "asset_family": "catalog_table",
+          "title": "dwt_asset_info_base_snap",
+          "score": 0.228694,
+          "rank": 3,
+          "accepted_reason": "vector_supplement_new_candidate"
+        },
+        {
+          "record_id": "sha256:d4010ab3425ddb81a12433f7de4dad0b8cd9cd19476602472879ddd3d0d962bb",
+          "source_key": "field.th.dwt_asset_info_base_snap.finish_time",
+          "asset_family": "catalog_field",
+          "title": "dwt_asset_info_base_snap.finish_time",
+          "score": 0.217386,
+          "rank": 5,
+          "accepted_reason": "vector_supplement_new_candidate"
+        }
+      ],
+      "rejected_vector_candidates": [
+        {
+          "record_id": "sha256:72c315b1a401dbfdbe5a267bf3b40e28b5435cbd2237c15de0cc03f007719913",
+          "source_key": "glossary.th.asset_snapshot",
+          "asset_family": "glossary_term",
+          "title": "asset_snapshot",
+          "score": 0.400425,
+          "rank": 1,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:ec6b173516018a526e37cbd031c96fa27631f4745b739b9ae9bf1fb7c5d3e3d2",
+          "source_key": "field.th.dwt_asset_info_base_snap.asset_id",
+          "asset_family": "catalog_field",
+          "title": "dwt_asset_info_base_snap.asset_id",
+          "score": 0.225601,
+          "rank": 4,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:831be697d9c3ce165cce520165d10b6075e766f8a89a38a0a0b22cbc2cc0500e",
+          "source_key": "field.th.dwt_asset_info_base_snap.apply_uuid",
+          "asset_family": "catalog_field",
+          "title": "dwt_asset_info_base_snap.apply_uuid",
+          "score": 0.195834,
+          "rank": 6,
+          "rejected_reason": "family_cap_reached"
+        },
+        {
+          "record_id": "sha256:83af481d512555ef5d56111f3849875b819581a9be8de6b0265e9dda3adad016",
+          "source_key": "glossary.common.never_overdue",
+          "asset_family": "glossary_term",
+          "title": "never_overdue",
+          "score": 0.153033,
+          "rank": 7,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:51dfea1d545ca8f37798fe52d93dc74066c26584f8d1ababefcc5c311fa7fd80",
+          "source_key": "glossary.common.seven_day_no_reborrow_churn",
+          "asset_family": "glossary_term",
+          "title": "seven_day_no_reborrow_churn",
+          "score": 0.146587,
+          "rank": 8,
+          "rejected_reason": "below_family_threshold"
+        },
+        {
+          "record_id": "sha256:5b329543bf7c6697240ed9f357ae6c4662ae713a71af096da29eef120ee7287f",
+          "source_key": "glossary.th.risk_apply",
+          "asset_family": "glossary_term",
+          "title": "risk_apply",
+          "score": 0.123286,
+          "rank": 9,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:1a0c22cfeddf298bfcacc453a9d81a8088de8b9d1a7f2464bbd6a030e7b63026",
+          "source_key": "field.th.dwt_rsk_ask_loan_info_base_d.refuse_reason",
+          "asset_family": "catalog_field",
+          "title": "dwt_rsk_ask_loan_info_base_d.refuse_reason",
+          "score": 0.122638,
+          "rank": 10,
+          "rejected_reason": "rank_above_limit"
+        }
+      ],
+      "notes": [
+        "primary_merge_v1: deterministic primary with vector supplement",
+        "fusion selection uses rank/score/family caps only; no golden label leakage"
+      ],
+      "matched_expected": [
+        "field:asset_id",
+        "glossary:asset_snapshot",
+        "table:hive.dwt.dwt_asset_info_base_snap",
+        "field:user_uuid",
+        "field:finish_time"
+      ],
+      "missing_expected": [],
+      "unexpected": [],
+      "judgment": "pass"
+    },
+    {
+      "case_id": "th-risk-apply-query",
+      "request": "查询泰国正审风控宽表字段",
+      "retrieved_tables": [
+        "dwt_rsk_apply_info_base_d",
+        "dwt_rsk_ask_loan_info_base_d"
+      ],
+      "retrieved_fields": [
+        "apply_uuid",
+        "user_uuid",
+        "apply_create_at"
+      ],
+      "retrieved_glossary_terms": [
+        "ask_loan_risk",
+        "risk_apply",
+        "third_party_risk",
+        "never_overdue",
+        "mob1",
+        "asset_snapshot"
+      ],
+      "retrieved_examples": [],
+      "retrieved_error_cases": [],
+      "vector_supplements": [
+        {
+          "record_id": "sha256:72c315b1a401dbfdbe5a267bf3b40e28b5435cbd2237c15de0cc03f007719913",
+          "source_key": "glossary.th.asset_snapshot",
+          "asset_family": "glossary_term",
+          "title": "asset_snapshot",
+          "score": 0.228814,
+          "rank": 3,
+          "accepted_reason": "vector_supplement_new_candidate"
+        }
+      ],
+      "rejected_vector_candidates": [
+        {
+          "record_id": "sha256:5b329543bf7c6697240ed9f357ae6c4662ae713a71af096da29eef120ee7287f",
+          "source_key": "glossary.th.risk_apply",
+          "asset_family": "glossary_term",
+          "title": "risk_apply",
+          "score": 0.3452,
+          "rank": 1,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:f70d5e296aa72c6f673aaec50a0376b6785d2d97753e5cec6ffd9a1a5e3d028e",
+          "source_key": "glossary.th.ask_loan_risk",
+          "asset_family": "glossary_term",
+          "title": "ask_loan_risk",
+          "score": 0.324177,
+          "rank": 2,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:b7fe0cc859da5be8870d0134bfff8245f47b936d6c9eda6a704c63925384eeb0",
+          "source_key": "glossary.th.third_party_risk",
+          "asset_family": "glossary_term",
+          "title": "third_party_risk",
+          "score": 0.212092,
+          "rank": 4,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:831be697d9c3ce165cce520165d10b6075e766f8a89a38a0a0b22cbc2cc0500e",
+          "source_key": "field.th.dwt_asset_info_base_snap.apply_uuid",
+          "asset_family": "catalog_field",
+          "title": "dwt_asset_info_base_snap.apply_uuid",
+          "score": 0.183334,
+          "rank": 5,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:59b345be5116448bead40d0be35517df11aab861e588e7157aa405dbf6727a83",
+          "source_key": "field.th.dwt_asset_info_base_snap.user_uuid",
+          "asset_family": "catalog_field",
+          "title": "dwt_asset_info_base_snap.user_uuid",
+          "score": 0.174508,
+          "rank": 6,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:d5e1e9e52809f5c1111cf8d9769479d3de39e31b287dc2d9d061467ac7657dd6",
+          "source_key": "table.th.dwt_rsk_ask_loan_info_base_d",
+          "asset_family": "catalog_table",
+          "title": "dwt_rsk_ask_loan_info_base_d",
+          "score": 0.163296,
+          "rank": 7,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:adac3bdecf4d710cd726904393209a03ad1a4c1e996ea79b917818086b686c93",
+          "source_key": "table.th.dwt_asset_info_base_snap",
+          "asset_family": "catalog_table",
+          "title": "dwt_asset_info_base_snap",
+          "score": 0.15772,
+          "rank": 8,
+          "rejected_reason": "below_family_threshold"
+        },
+        {
+          "record_id": "sha256:ec6b173516018a526e37cbd031c96fa27631f4745b739b9ae9bf1fb7c5d3e3d2",
+          "source_key": "field.th.dwt_asset_info_base_snap.asset_id",
+          "asset_family": "catalog_field",
+          "title": "dwt_asset_info_base_snap.asset_id",
+          "score": 0.144385,
+          "rank": 9,
+          "rejected_reason": "rank_above_limit"
+        },
+        {
+          "record_id": "sha256:fc8611f64e18da6348a49c14322d655344d2f2301a7c2de61e40f86dbf1e26ca",
+          "source_key": "table.th.dwt_rsk_apply_info_base_d",
+          "asset_family": "catalog_table",
+          "title": "dwt_rsk_apply_info_base_d",
+          "score": 0.139364,
+          "rank": 10,
+          "rejected_reason": "duplicate_with_deterministic"
+        }
+      ],
+      "notes": [
+        "primary_merge_v1: deterministic primary with vector supplement",
+        "fusion selection uses rank/score/family caps only; no golden label leakage"
+      ],
+      "matched_expected": [
+        "table:hive.dwt.dwt_rsk_apply_info_base_d",
+        "field:apply_uuid",
+        "glossary:risk_apply"
+      ],
+      "missing_expected": [
+        "field:ask_loan_uuid",
+        "field:user_loan_label"
+      ],
+      "unexpected": [],
+      "judgment": "partial"
+    },
+    {
+      "case_id": "th-ask-loan-risk-query",
+      "request": "查询泰国预审 ask loan 风控表",
+      "retrieved_tables": [
+        "dwt_rsk_apply_info_base_d",
+        "dwt_rsk_ask_loan_info_base_d"
+      ],
+      "retrieved_fields": [
+        "ask_loan_uuid",
+        "apply_uuid",
+        "from_system",
+        "pre_user_loan_label",
+        "user_uuid",
+        "apply_create_at"
+      ],
+      "retrieved_glossary_terms": [
+        "ask_loan_risk",
+        "risk_apply",
+        "third_party_risk",
+        "first_loan",
+        "mob1"
+      ],
+      "retrieved_examples": [],
+      "retrieved_error_cases": [],
+      "vector_supplements": [],
+      "rejected_vector_candidates": [
+        {
+          "record_id": "sha256:f70d5e296aa72c6f673aaec50a0376b6785d2d97753e5cec6ffd9a1a5e3d028e",
+          "source_key": "glossary.th.ask_loan_risk",
+          "asset_family": "glossary_term",
+          "title": "ask_loan_risk",
+          "score": 0.451475,
+          "rank": 1,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:5b329543bf7c6697240ed9f357ae6c4662ae713a71af096da29eef120ee7287f",
+          "source_key": "glossary.th.risk_apply",
+          "asset_family": "glossary_term",
+          "title": "risk_apply",
+          "score": 0.279195,
+          "rank": 2,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:d5e1e9e52809f5c1111cf8d9769479d3de39e31b287dc2d9d061467ac7657dd6",
+          "source_key": "table.th.dwt_rsk_ask_loan_info_base_d",
+          "asset_family": "catalog_table",
+          "title": "dwt_rsk_ask_loan_info_base_d",
+          "score": 0.278787,
+          "rank": 3,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:1a0c22cfeddf298bfcacc453a9d81a8088de8b9d1a7f2464bbd6a030e7b63026",
+          "source_key": "field.th.dwt_rsk_ask_loan_info_base_d.refuse_reason",
+          "asset_family": "catalog_field",
+          "title": "dwt_rsk_ask_loan_info_base_d.refuse_reason",
+          "score": 0.214609,
+          "rank": 4,
+          "rejected_reason": "deterministic_pass_guard"
+        },
+        {
+          "record_id": "sha256:4882d7503a427749e5b65e002e0f808cf387b25b4bacc9ad3784032327a269f4",
+          "source_key": "field.th.dwt_rsk_ask_loan_info_base_d.pre_user_loan_label",
+          "asset_family": "catalog_field",
+          "title": "dwt_rsk_ask_loan_info_base_d.pre_user_loan_label",
+          "score": 0.20897,
+          "rank": 5,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:a9ef13ea61c8275431b0d068fd090dbad3c65daa776ea6be6e8f0ba3a2dba0c2",
+          "source_key": "field.th.dwt_rsk_apply_info_base_d.ask_loan_uuid",
+          "asset_family": "catalog_field",
+          "title": "dwt_rsk_apply_info_base_d.ask_loan_uuid",
+          "score": 0.206836,
+          "rank": 6,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:b7fe0cc859da5be8870d0134bfff8245f47b936d6c9eda6a704c63925384eeb0",
+          "source_key": "glossary.th.third_party_risk",
+          "asset_family": "glossary_term",
+          "title": "third_party_risk",
+          "score": 0.204083,
+          "rank": 7,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:7ddc4040275ad1f22e1e7f58c9f2649ea3e20675c505876b3901031d833eaad2",
+          "source_key": "field.th.dwt_rsk_ask_loan_info_base_d.from_system",
+          "asset_family": "catalog_field",
+          "title": "dwt_rsk_ask_loan_info_base_d.from_system",
+          "score": 0.189775,
+          "rank": 8,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:fc8611f64e18da6348a49c14322d655344d2f2301a7c2de61e40f86dbf1e26ca",
+          "source_key": "table.th.dwt_rsk_apply_info_base_d",
+          "asset_family": "catalog_table",
+          "title": "dwt_rsk_apply_info_base_d",
+          "score": 0.181431,
+          "rank": 9,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:bac9a825aad08dfa9bf7b0b9f1816d8072de7a9f627779c5b22230b8254a20b1",
+          "source_key": "field.th.dwt_rsk_ask_loan_info_base_d.ask_loan_uuid",
+          "asset_family": "catalog_field",
+          "title": "dwt_rsk_ask_loan_info_base_d.ask_loan_uuid",
+          "score": 0.177586,
+          "rank": 10,
+          "rejected_reason": "duplicate_with_deterministic"
+        }
+      ],
+      "notes": [
+        "primary_merge_v1: deterministic primary with vector supplement",
+        "fusion selection uses rank/score/family caps only; no golden label leakage"
+      ],
+      "matched_expected": [
+        "table:hive.dwt.dwt_rsk_ask_loan_info_base_d",
+        "field:ask_loan_uuid",
+        "field:user_uuid",
+        "field:apply_create_at",
+        "glossary:ask_loan_risk"
+      ],
+      "missing_expected": [],
+      "unexpected": [],
+      "judgment": "pass"
+    },
+    {
+      "case_id": "th-third-party-risk-query",
+      "request": "查询泰国三方风险和征信供应商信息",
+      "retrieved_tables": [
+        "dwt_rsk_ask_loan_info_base_d",
+        "dwt_rsk_apply_info_base_d"
+      ],
+      "retrieved_fields": [],
+      "retrieved_glossary_terms": [
+        "third_party_risk",
+        "credit_report",
+        "ask_loan_risk",
+        "risk_apply",
+        "never_overdue"
+      ],
+      "retrieved_examples": [],
+      "retrieved_error_cases": [],
+      "vector_supplements": [],
+      "rejected_vector_candidates": [
+        {
+          "record_id": "sha256:b7fe0cc859da5be8870d0134bfff8245f47b936d6c9eda6a704c63925384eeb0",
+          "source_key": "glossary.th.third_party_risk",
+          "asset_family": "glossary_term",
+          "title": "third_party_risk",
+          "score": 0.446316,
+          "rank": 1,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:5ee5417402ef70df932b12285abd30821bf9644417d609d9d54caa741439c003",
+          "source_key": "glossary.th.credit_report",
+          "asset_family": "glossary_term",
+          "title": "credit_report",
+          "score": 0.260726,
+          "rank": 2,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:5b329543bf7c6697240ed9f357ae6c4662ae713a71af096da29eef120ee7287f",
+          "source_key": "glossary.th.risk_apply",
+          "asset_family": "glossary_term",
+          "title": "risk_apply",
+          "score": 0.169641,
+          "rank": 3,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:f70d5e296aa72c6f673aaec50a0376b6785d2d97753e5cec6ffd9a1a5e3d028e",
+          "source_key": "glossary.th.ask_loan_risk",
+          "asset_family": "glossary_term",
+          "title": "ask_loan_risk",
+          "score": 0.144926,
+          "rank": 4,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:4882d7503a427749e5b65e002e0f808cf387b25b4bacc9ad3784032327a269f4",
+          "source_key": "field.th.dwt_rsk_ask_loan_info_base_d.pre_user_loan_label",
+          "asset_family": "catalog_field",
+          "title": "dwt_rsk_ask_loan_info_base_d.pre_user_loan_label",
+          "score": 0.134828,
+          "rank": 5,
+          "rejected_reason": "below_family_threshold"
+        },
+        {
+          "record_id": "sha256:d5e1e9e52809f5c1111cf8d9769479d3de39e31b287dc2d9d061467ac7657dd6",
+          "source_key": "table.th.dwt_rsk_ask_loan_info_base_d",
+          "asset_family": "catalog_table",
+          "title": "dwt_rsk_ask_loan_info_base_d",
+          "score": 0.121078,
+          "rank": 6,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:fc8611f64e18da6348a49c14322d655344d2f2301a7c2de61e40f86dbf1e26ca",
+          "source_key": "table.th.dwt_rsk_apply_info_base_d",
+          "asset_family": "catalog_table",
+          "title": "dwt_rsk_apply_info_base_d",
+          "score": 0.101654,
+          "rank": 7,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:adac3bdecf4d710cd726904393209a03ad1a4c1e996ea79b917818086b686c93",
+          "source_key": "table.th.dwt_asset_info_base_snap",
+          "asset_family": "catalog_table",
+          "title": "dwt_asset_info_base_snap",
+          "score": 0.097786,
+          "rank": 8,
+          "rejected_reason": "below_family_threshold"
+        },
+        {
+          "record_id": "sha256:7ddc4040275ad1f22e1e7f58c9f2649ea3e20675c505876b3901031d833eaad2",
+          "source_key": "field.th.dwt_rsk_ask_loan_info_base_d.from_system",
+          "asset_family": "catalog_field",
+          "title": "dwt_rsk_ask_loan_info_base_d.from_system",
+          "score": 0.097208,
+          "rank": 9,
+          "rejected_reason": "rank_above_limit"
+        },
+        {
+          "record_id": "sha256:77a13b64b666ab828b0493851faf461cc83aa8416a04e14a4140b6be5fb892ea",
+          "source_key": "field.th.dwt_rsk_apply_info_base_d.user_loan_label",
+          "asset_family": "catalog_field",
+          "title": "dwt_rsk_apply_info_base_d.user_loan_label",
+          "score": 0.094089,
+          "rank": 10,
+          "rejected_reason": "rank_above_limit"
+        }
+      ],
+      "notes": [
+        "primary_merge_v1: deterministic primary with vector supplement",
+        "fusion selection uses rank/score/family caps only; no golden label leakage"
+      ],
+      "matched_expected": [
+        "glossary:third_party_risk",
+        "glossary:credit_report"
+      ],
+      "missing_expected": [
+        "table:hive.third_party.thailand_sources",
+        "field:supplier_name",
+        "field:product_name",
+        "field:parse_table_name"
+      ],
+      "unexpected": [],
+      "judgment": "partial"
+    },
+    {
+      "case_id": "dws-renewal-loan-segment-query",
+      "request": "查询 dws_user_renewal_loan_seg_d 的续贷和 mob 分层字段",
+      "retrieved_tables": [
+        "dws_user_renewal_loan_seg_d",
+        "dws_fox_boc_behavior_log_d"
+      ],
+      "retrieved_fields": [
+        "mob_code",
+        "first_grant_time",
+        "cur_loan_cnt",
+        "dt",
+        "last_finish_time",
+        "behavior_status_name",
+        "contact_type",
+        "user_uuid"
+      ],
+      "retrieved_glossary_terms": [
+        "settled_over_3m",
+        "contact_outcome",
+        "first_loan",
+        "never_overdue",
+        "mob1"
+      ],
+      "retrieved_examples": [],
+      "retrieved_error_cases": [],
+      "vector_supplements": [],
+      "rejected_vector_candidates": [
+        {
+          "record_id": "sha256:0a3154b0444880b8589ba572d09ef591cef642268cd03b965030f08425643b55",
+          "source_key": "field.multi.dws_user_renewal_loan_seg_d.mob_code",
+          "asset_family": "catalog_field",
+          "title": "dws_user_renewal_loan_seg_d.mob_code",
+          "score": 0.575293,
+          "rank": 1,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:d1e8ad8807baaed0aa6a3caa691b22eddadcd0a43ec7530a5074d24182aad881",
+          "source_key": "table.multi.dws_user_renewal_loan_seg_d",
+          "asset_family": "catalog_table",
+          "title": "dws_user_renewal_loan_seg_d",
+          "score": 0.535872,
+          "rank": 2,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:6199791fb1f216d26e21f0fda4cd67712992720e2571aca9a4bd1ae401ef51e3",
+          "source_key": "field.multi.dws_user_renewal_loan_seg_d.dt",
+          "asset_family": "catalog_field",
+          "title": "dws_user_renewal_loan_seg_d.dt",
+          "score": 0.479489,
+          "rank": 3,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:31a01944973838ad28a000f19a4cebad2f2fd6b24b9e6be2148a2bff4b9914b3",
+          "source_key": "field.multi.dws_user_renewal_loan_seg_d.user_uuid",
+          "asset_family": "catalog_field",
+          "title": "dws_user_renewal_loan_seg_d.user_uuid",
+          "score": 0.437689,
+          "rank": 4,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:08dfbad689258e2f0e5fd6c7776d34ae0fcbf46634fad3782f401d6a57c68e29",
+          "source_key": "field.multi.dws_user_renewal_loan_seg_d.first_grant_time",
+          "asset_family": "catalog_field",
+          "title": "dws_user_renewal_loan_seg_d.first_grant_time",
+          "score": 0.427291,
+          "rank": 5,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:5ffe30e59bd71981c1bfa26dba54fcb464880a795f3427883161b8ab0bde1117",
+          "source_key": "field.multi.dws_user_renewal_loan_seg_d.cur_loan_cnt",
+          "asset_family": "catalog_field",
+          "title": "dws_user_renewal_loan_seg_d.cur_loan_cnt",
+          "score": 0.42702,
+          "rank": 6,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:2ea9aa8f22da832c594b99cd85afd575dafc39edb7622d617e0472eec998255a",
+          "source_key": "field.multi.dws_user_renewal_loan_seg_d.last_finish_time",
+          "asset_family": "catalog_field",
+          "title": "dws_user_renewal_loan_seg_d.last_finish_time",
+          "score": 0.41739,
+          "rank": 7,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:9f03319ccae044e684efcd40a96215ff2a042a1e688b149bab4e7360b4c23f88",
+          "source_key": "glossary.multi.settled_over_3m",
+          "asset_family": "glossary_term",
+          "title": "settled_over_3m",
+          "score": 0.308441,
+          "rank": 8,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:b42667e95d8ab8dcf2799ae3e13fe1a762c451d98f53b6e3db16f25d2613509a",
+          "source_key": "field.multi.dws_fox_boc_behavior_log_d.contact_type",
+          "asset_family": "catalog_field",
+          "title": "dws_fox_boc_behavior_log_d.contact_type",
+          "score": 0.218421,
+          "rank": 9,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:a2677e171469a91974c2fc152d72c041d0471e6316b43820c552e5a925bf8778",
+          "source_key": "glossary.multi.collection_behavior",
+          "asset_family": "glossary_term",
+          "title": "collection_behavior",
+          "score": 0.20193,
+          "rank": 10,
+          "rejected_reason": "deterministic_pass_guard"
+        }
+      ],
+      "notes": [
+        "primary_merge_v1: deterministic primary with vector supplement",
+        "fusion selection uses rank/score/family caps only; no golden label leakage"
+      ],
+      "matched_expected": [
+        "table:dws.dws_user_renewal_loan_seg_d",
+        "field:user_uuid",
+        "field:mob_code",
+        "field:last_finish_time",
+        "field:cur_loan_cnt",
+        "glossary:mob1",
+        "glossary:settled_over_3m"
+      ],
+      "missing_expected": [],
+      "unexpected": [],
+      "judgment": "pass"
+    },
+    {
+      "case_id": "dws-fox-boc-behavior-query",
+      "request": "查询 dws_fox_boc_behavior_log_d 的行为字段和催收触达含义",
+      "retrieved_tables": [
+        "dws_fox_boc_behavior_log_d",
+        "dws_user_renewal_loan_seg_d"
+      ],
+      "retrieved_fields": [
+        "behavior_status_name",
+        "behavior_time",
+        "behavior_type",
+        "contact_type",
+        "debtor_id",
+        "last_finish_time",
+        "mob_code",
+        "user_uuid"
+      ],
+      "retrieved_glossary_terms": [
+        "collection_behavior",
+        "contact_outcome",
+        "settled_over_3m",
+        "never_overdue",
+        "mob1"
+      ],
+      "retrieved_examples": [],
+      "retrieved_error_cases": [],
+      "vector_supplements": [],
+      "rejected_vector_candidates": [
+        {
+          "record_id": "sha256:a2677e171469a91974c2fc152d72c041d0471e6316b43820c552e5a925bf8778",
+          "source_key": "glossary.multi.collection_behavior",
+          "asset_family": "glossary_term",
+          "title": "collection_behavior",
+          "score": 0.538261,
+          "rank": 1,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:a0778daa8246fb5dc42cfd0232247eb70b3a7e8083e498086846713cac1f72f6",
+          "source_key": "field.multi.dws_fox_boc_behavior_log_d.behavior_time",
+          "asset_family": "catalog_field",
+          "title": "dws_fox_boc_behavior_log_d.behavior_time",
+          "score": 0.52949,
+          "rank": 2,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:0c1cc9658d1aa45597a11efdf10257fa3ef42b62e2f7fbd8f54459f85a73ab99",
+          "source_key": "table.multi.dws_fox_boc_behavior_log_d",
+          "asset_family": "catalog_table",
+          "title": "dws_fox_boc_behavior_log_d",
+          "score": 0.522445,
+          "rank": 3,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:e48947f9f6122ceaa0ee456a10222763d671bbadeb4663f500b1a473c0d304d1",
+          "source_key": "field.multi.dws_fox_boc_behavior_log_d.behavior_type",
+          "asset_family": "catalog_field",
+          "title": "dws_fox_boc_behavior_log_d.behavior_type",
+          "score": 0.475915,
+          "rank": 4,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:b42667e95d8ab8dcf2799ae3e13fe1a762c451d98f53b6e3db16f25d2613509a",
+          "source_key": "field.multi.dws_fox_boc_behavior_log_d.contact_type",
+          "asset_family": "catalog_field",
+          "title": "dws_fox_boc_behavior_log_d.contact_type",
+          "score": 0.450248,
+          "rank": 5,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:f4e2c9ed263e963454b378f029e5b1d13aa129d92fd0252704c9c681454ba5c9",
+          "source_key": "field.multi.dws_fox_boc_behavior_log_d.source_table",
+          "asset_family": "catalog_field",
+          "title": "dws_fox_boc_behavior_log_d.source_table",
+          "score": 0.437397,
+          "rank": 6,
+          "rejected_reason": "deterministic_pass_guard"
+        },
+        {
+          "record_id": "sha256:34f3545b80360f63f1915ce51936d895f8d357a36d4e928bedaf5d0a9d3143ac",
+          "source_key": "field.multi.dws_fox_boc_behavior_log_d.behavior_status_name",
+          "asset_family": "catalog_field",
+          "title": "dws_fox_boc_behavior_log_d.behavior_status_name",
+          "score": 0.42278,
+          "rank": 7,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:b3700eee2e2c6f1f448ace1535a69bbfcab724d9cdc62e96b40bce3909c70289",
+          "source_key": "field.multi.dws_fox_boc_behavior_log_d.debtor_id",
+          "asset_family": "catalog_field",
+          "title": "dws_fox_boc_behavior_log_d.debtor_id",
+          "score": 0.407584,
+          "rank": 8,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:da06ad624dcd25d1b9eb90fb444b0b73e762ff9ccdb2b6009e11bba35c4e2092",
+          "source_key": "glossary.multi.contact_outcome",
+          "asset_family": "glossary_term",
+          "title": "contact_outcome",
+          "score": 0.35194,
+          "rank": 9,
+          "rejected_reason": "duplicate_with_deterministic"
+        },
+        {
+          "record_id": "sha256:5ffe30e59bd71981c1bfa26dba54fcb464880a795f3427883161b8ab0bde1117",
+          "source_key": "field.multi.dws_user_renewal_loan_seg_d.cur_loan_cnt",
+          "asset_family": "catalog_field",
+          "title": "dws_user_renewal_loan_seg_d.cur_loan_cnt",
+          "score": 0.192542,
+          "rank": 10,
+          "rejected_reason": "deterministic_pass_guard"
+        }
+      ],
+      "notes": [
+        "primary_merge_v1: deterministic primary with vector supplement",
+        "fusion selection uses rank/score/family caps only; no golden label leakage"
+      ],
+      "matched_expected": [
+        "table:dws.dws_fox_boc_behavior_log_d",
+        "field:debtor_id",
+        "field:behavior_type",
+        "field:behavior_time",
+        "field:behavior_status_name",
+        "glossary:collection_behavior",
+        "glossary:contact_outcome"
+      ],
+      "missing_expected": [],
+      "unexpected": [],
+      "judgment": "pass"
+    }
+  ]
+}

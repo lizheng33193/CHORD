@@ -5,6 +5,33 @@
 - 整体架构：单体 FastAPI 后端，五层（API → 编排 → Skill 执行 → 数据访问 → 外部服务）
 - 入口文件：`app/main.py`
 
+## 2026-06-28 M2B-5 Hybrid Retrieval Fusion
+
+- `M2B-4` 已完成，当前进入 `M2B-5`：
+  - `docs/plans/m2b-5-hybrid-retrieval-fusion-plan.md`
+  - `docs/reviews/m2b-5-hybrid-retrieval-fusion-results.md`
+  - `docs/reviews/m2b-5-deterministic-vs-vector-vs-hybrid-comparison.md`
+- 本阶段只做离线 hybrid baseline：
+  - 输入固定为 deterministic/vector baseline 与 golden set
+  - 使用 `primary_merge_v1`
+  - deterministic 作为主召回，vector 只做受控补充
+- 本阶段继续保持不变：
+  - 不改 `app/data_knowledge/retriever.py`
+  - 不改 `app/data_knowledge/service.py`
+  - 不接 Data Agent runtime
+  - 不调用 LLM
+  - 不生成或执行 SQL
+  - 不重跑 seed / embedding / vector index
+- 当前 `M2B-5` 结果：
+  - deterministic：`11 pass / 8 partial / 0 fail`
+  - vector：`2 pass / 17 partial / 0 fail`
+  - hybrid：`13 pass / 6 partial / 0 fail`
+  - 明确改善：
+    - `mx-no-withdraw-cohort`：`partial -> pass`
+    - `th-asset-snapshot-query`：`partial -> pass`
+    - `mx-app-profile-query`：missing 收缩但仍为 `partial`
+  - 当前结论是：hybrid fusion 已有稳定收益，下一步可进入更 runtime-facing 的 hybrid 设计阶段
+
 ## 2026-06-25 M2B-4 Vector Index Prototype
 
 - `M2B-3` 已完成，当前进入 `M2B-4`：
