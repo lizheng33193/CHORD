@@ -101,6 +101,21 @@ class ShadowTraceBuildResult:
     audit_summary: dict[str, Any]
 
 
+def _build_audit_summary(
+    *,
+    configured_mode: HybridRetrievalMode,
+    effective_mode: HybridRetrievalMode,
+    fallback_reason: str | None,
+    trace_present: bool,
+) -> dict[str, Any]:
+    return {
+        "hybrid_configured_mode": configured_mode.value,
+        "hybrid_effective_mode": effective_mode.value,
+        "hybrid_fallback_reason": fallback_reason,
+        "hybrid_trace_present": trace_present,
+    }
+
+
 def _as_bool(raw: str | None) -> bool:
     return str(raw or "").strip().lower() in _BOOL_TRUE
 
@@ -147,6 +162,42 @@ def _parse_json_mapping(raw: str | None, *, label: str) -> tuple[dict[str, Any],
         return {}, [f"invalid {label}: {raw!r}"]
 
 
+def _normalize_thresholds(raw: dict[str, Any]) -> tuple[dict[str, float], list[str]]:
+    normalized: dict[str, float] = {}
+    errors: list[str] = []
+    for family, default_value in DEFAULT_FAMILY_THRESHOLDS.items():
+        value = raw.get(family, default_value)
+        try:
+            converted = float(value)
+            if converted < 0:
+                raise ValueError
+        except Exception:
+            normalized[family] = default_value
+            errors.append(f"invalid family_score_threshold for {family}: {value!r}")
+            continue
+        normalized[family] = converted
+    return normalized, errors
+
+
+def _normalize_caps(raw: dict[str, Any]) -> tuple[dict[str, int], list[str]]:
+    normalized: dict[str, int] = {}
+    errors: list[str] = []
+    for family, default_value in DEFAULT_FAMILY_CAPS.items():
+        value = raw.get(family, default_value)
+        try:
+            if isinstance(value, bool):
+                raise ValueError
+            converted = int(value)
+            if converted < 0:
+                raise ValueError
+        except Exception:
+            normalized[family] = default_value
+            errors.append(f"invalid family_cap for {family}: {value!r}")
+            continue
+        normalized[family] = converted
+    return normalized, errors
+
+
 def load_hybrid_config(settings: Any) -> HybridRetrievalConfigV1:
     mode, mode_errors = _parse_mode(getattr(settings, "hybrid_retrieval_mode_raw", None))
     rank_limit, rank_errors = _parse_int(
@@ -171,14 +222,8 @@ def load_hybrid_config(settings: Any) -> HybridRetrievalConfigV1:
         getattr(settings, "hybrid_retrieval_family_caps_json_raw", None),
         label="family_caps_json",
     )
-    normalized_thresholds = {
-        family: float(thresholds.get(family, DEFAULT_FAMILY_THRESHOLDS[family]))
-        for family in DEFAULT_FAMILY_THRESHOLDS
-    }
-    normalized_caps = {
-        family: int(caps.get(family, DEFAULT_FAMILY_CAPS[family]))
-        for family in DEFAULT_FAMILY_CAPS
-    }
+    normalized_thresholds, threshold_value_errors = _normalize_thresholds(thresholds)
+    normalized_caps, cap_value_errors = _normalize_caps(caps)
     return HybridRetrievalConfigV1(
         enabled=_as_bool(getattr(settings, "hybrid_retrieval_enabled_raw", None)),
         retrieval_mode=mode,
@@ -195,7 +240,16 @@ def load_hybrid_config(settings: Any) -> HybridRetrievalConfigV1:
         total_vector_supplement_cap=total_cap,
         deterministic_pass_guard=_as_bool(getattr(settings, "hybrid_retrieval_deterministic_pass_guard_raw", None)),
         shadow_sample_rate=sample_rate,
-        errors=mode_errors + rank_errors + total_cap_errors + sample_rate_errors + threshold_errors + cap_errors,
+        errors=(
+            mode_errors
+            + rank_errors
+            + total_cap_errors
+            + sample_rate_errors
+            + threshold_errors
+            + cap_errors
+            + threshold_value_errors
+            + cap_value_errors
+        ),
     )
 
 
@@ -524,28 +578,52 @@ def _build_deterministic_candidates(retrieved_context: Any) -> list[dict[str, An
     return candidates
 
 
-def _table_tokens(record: dict[str, Any]) -> set[str]:
+def _stable_unique(tokens: list[str]) -> list[str]:
+    deduped: list[str] = []
+    seen: set[str] = set()
+    for token in tokens:
+        normalized = _normalize_text(token)
+        if not normalized or normalized in seen:
+            continue
+        deduped.append(normalized)
+        seen.add(normalized)
+    return deduped
+
+
+def _table_tokens(record: dict[str, Any]) -> list[str]:
     metadata = dict(record.get("metadata") or {})
-    tokens = {
-        normalize_table_name(metadata.get("table_name") or record.get("title") or ""),
-        _normalize_text(metadata.get("table_name") or record.get("title") or ""),
-    }
-    return {token for token in tokens if token}
+    candidates = [
+        normalize_table_name(metadata.get("table_name") or ""),
+        normalize_table_name(record.get("title") or ""),
+        _normalize_text(record.get("source_key") or ""),
+    ]
+    return _stable_unique(candidates)
 
 
-def _field_tokens(record: dict[str, Any]) -> set[str]:
+def _field_tokens(record: dict[str, Any]) -> list[str]:
     metadata = dict(record.get("metadata") or {})
-    field = normalize_field_name(metadata.get("field_name") or "")
-    tokens = {field}
-    tokens.update(normalize_field_name(item) for item in (metadata.get("aliases") or []))
-    return {token for token in tokens if token}
+    title = str(record.get("title") or "")
+    title_field = title.rsplit(".", 1)[-1] if "." in title else title
+    candidates = [normalize_field_name(metadata.get("field_name") or "")]
+    candidates.extend(normalize_field_name(item) for item in (metadata.get("aliases") or []))
+    candidates.extend(
+        [
+            normalize_field_name(title_field),
+            normalize_field_name(record.get("source_key") or ""),
+        ]
+    )
+    return _stable_unique(candidates)
 
 
-def _glossary_tokens(record: dict[str, Any]) -> set[str]:
+def _glossary_tokens(record: dict[str, Any]) -> list[str]:
     metadata = dict(record.get("metadata") or {})
-    tokens = {_normalize_text(record.get("title") or "")}
-    tokens.update(_normalize_text(item) for item in (metadata.get("synonyms") or []))
-    return {token for token in tokens if token}
+    candidates = [
+        _normalize_text(metadata.get("term") or ""),
+        _normalize_text(record.get("title") or ""),
+    ]
+    candidates.extend(_normalize_text(item) for item in (metadata.get("synonyms") or []))
+    candidates.append(_normalize_text(record.get("source_key") or ""))
+    return _stable_unique(candidates)
 
 
 def _canonical_key_for_record(record: dict[str, Any]) -> tuple[str | None, str | None, str]:
@@ -741,7 +819,18 @@ def build_shadow_trace(
     retrieved_context: Any,
     request_key: str,
 ) -> ShadowTraceBuildResult:
-    config = load_hybrid_config(settings)
+    try:
+        config = load_hybrid_config(settings)
+    except Exception:
+        return ShadowTraceBuildResult(
+            trace=None,
+            audit_summary=_build_audit_summary(
+                configured_mode=HybridRetrievalMode.DETERMINISTIC_ONLY,
+                effective_mode=HybridRetrievalMode.DETERMINISTIC_ONLY,
+                fallback_reason=HybridFallbackReason.CONFIG_INVALID.value,
+                trace_present=False,
+            ),
+        )
     decision = evaluate_effective_mode(
         config=config,
         country=country,
@@ -752,11 +841,12 @@ def build_shadow_trace(
     if not config.enabled:
         return ShadowTraceBuildResult(
             trace=None,
-            audit_summary={
-                "hybrid_trace_present": False,
-                "hybrid_effective_mode": decision.effective_mode.value,
-                "hybrid_fallback_reason": _safe_reason(decision.fallback_reason),
-            },
+            audit_summary=_build_audit_summary(
+                configured_mode=decision.configured_mode,
+                effective_mode=decision.effective_mode,
+                fallback_reason=_safe_reason(decision.fallback_reason),
+                trace_present=False,
+            ),
         )
 
     deterministic_candidates = _build_deterministic_candidates(retrieved_context)
@@ -804,11 +894,12 @@ def build_shadow_trace(
         json.dumps(trace, ensure_ascii=False)
         return ShadowTraceBuildResult(
             trace=trace,
-            audit_summary={
-                "hybrid_trace_present": True,
-                "hybrid_effective_mode": str(trace["effective_mode"]),
-                "hybrid_fallback_reason": trace.get("fallback_reason"),
-            },
+            audit_summary=_build_audit_summary(
+                configured_mode=decision.configured_mode,
+                effective_mode=HybridRetrievalMode(str(trace["effective_mode"])),
+                fallback_reason=trace.get("fallback_reason"),
+                trace_present=True,
+            ),
         )
     except (FileNotFoundError, ValueError, json.JSONDecodeError):
         trace = _fallback_trace(
@@ -840,20 +931,22 @@ def build_shadow_trace(
         json.dumps(trace, ensure_ascii=False)
         return ShadowTraceBuildResult(
             trace=trace,
-            audit_summary={
-                "hybrid_trace_present": True,
-                "hybrid_effective_mode": str(trace["effective_mode"]),
-                "hybrid_fallback_reason": trace.get("fallback_reason"),
-            },
+            audit_summary=_build_audit_summary(
+                configured_mode=decision.configured_mode,
+                effective_mode=HybridRetrievalMode(str(trace["effective_mode"])),
+                fallback_reason=trace.get("fallback_reason"),
+                trace_present=True,
+            ),
         )
     except Exception:
         return ShadowTraceBuildResult(
             trace=None,
-            audit_summary={
-                "hybrid_trace_present": False,
-                "hybrid_effective_mode": HybridRetrievalMode.DETERMINISTIC_ONLY.value,
-                "hybrid_fallback_reason": HybridFallbackReason.AUDIT_TRACE_UNAVAILABLE.value,
-            },
+            audit_summary=_build_audit_summary(
+                configured_mode=decision.configured_mode,
+                effective_mode=HybridRetrievalMode.DETERMINISTIC_ONLY,
+                fallback_reason=HybridFallbackReason.AUDIT_TRACE_UNAVAILABLE.value,
+                trace_present=False,
+            ),
         )
 
 
@@ -878,13 +971,17 @@ def finalize_shadow_trace_for_sql_kind(
 def extract_hybrid_audit_summary(snapshot: dict[str, Any] | None) -> dict[str, Any]:
     trace = dict((snapshot or {}).get("hybrid_trace") or {})
     if not trace:
-        return {
-            "hybrid_trace_present": False,
-            "hybrid_effective_mode": HybridRetrievalMode.DETERMINISTIC_ONLY.value,
-            "hybrid_fallback_reason": HybridFallbackReason.HYBRID_DISABLED.value,
-        }
-    return {
-        "hybrid_trace_present": True,
-        "hybrid_effective_mode": str(trace.get("effective_mode") or HybridRetrievalMode.DETERMINISTIC_ONLY.value),
-        "hybrid_fallback_reason": trace.get("fallback_reason"),
-    }
+        return _build_audit_summary(
+            configured_mode=HybridRetrievalMode.DETERMINISTIC_ONLY,
+            effective_mode=HybridRetrievalMode.DETERMINISTIC_ONLY,
+            fallback_reason=HybridFallbackReason.HYBRID_DISABLED.value,
+            trace_present=False,
+        )
+    configured_mode = str(trace.get("configured_mode") or HybridRetrievalMode.DETERMINISTIC_ONLY.value)
+    effective_mode = str(trace.get("effective_mode") or HybridRetrievalMode.DETERMINISTIC_ONLY.value)
+    return _build_audit_summary(
+        configured_mode=HybridRetrievalMode(configured_mode),
+        effective_mode=HybridRetrievalMode(effective_mode),
+        fallback_reason=trace.get("fallback_reason"),
+        trace_present=True,
+    )
