@@ -5,6 +5,36 @@
 - 整体架构：单体 FastAPI 后端，五层（API → 编排 → Skill 执行 → 数据访问 → 外部服务）
 - 入口文件：`app/main.py`
 
+## 2026-06-29 M2B-8 Hybrid Candidate Runtime Grounding
+
+- `M2B-7` 已完成并合并，当前进入 `M2B-8`：
+  - `docs/plans/m2b-8-hybrid-candidate-runtime-grounding-plan.md`
+  - `docs/reviews/m2b-8-hybrid-candidate-runtime-grounding-results.md`
+- 本阶段只让 `hybrid_candidate` 在严格 gate 下进入内部 prompt：
+  - deterministic retrieval 仍然是 primary grounding source
+  - accepted supplements 只作为 `supplemental_candidates_v1` 独立区块追加
+  - `hybrid_shadow` 继续只审计不进 prompt
+  - `hybrid_enabled` 继续强制 fallback
+- 本阶段新增的 runtime contract：
+  - `supplemental_candidates_v1`
+  - `prompt_candidate_count`
+  - `final_generation_pass`
+  - `candidate_attempt`
+  - final output provenance invariant
+- 本阶段明确保持不变：
+  - 不改 `app/data_knowledge/retriever.py`
+  - 不改 structured SQL plan 的 deterministic artifact 角色
+  - 不改 orchestrator 自动路由
+  - 不改 approve / execute / SQL HITL 语义
+  - 不改 public API response schema
+- rollback / rerun 边界固定为：
+  - candidate attempt 只有 `query_only` 才可保留
+  - candidate attempt 非 `query_only` 或 candidate generation 失败时，必须 deterministic rerun
+  - 只允许 final attempt 创建 public SQL version
+- 当前结论是：
+  - `M2B-8` 已把 hybrid candidate 接入 runtime prompt，但保持 deterministic primary 和 strict HITL boundary
+  - `hybrid_enabled` 仍留给后续阶段
+
 ## 2026-06-29 M2B-7 Hybrid Shadow Runtime Implementation
 
 - `M2B-6` 已完成并合并，当前进入 `M2B-7`：

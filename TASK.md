@@ -35,7 +35,33 @@
 - [x] E1 单用户埋点深度解析 → docs/plans/trace-analyzer-plan.md（2026-05-01）
 
 ## 当前进行中的功能
-- [ ] M2B-7：Hybrid Shadow Runtime Implementation — 进行中（2026-06-29）
+- [x] M2B-8：Hybrid Candidate Runtime Grounding — 已完成（2026-06-29）
+  - plan / review：
+    - `docs/plans/m2b-8-hybrid-candidate-runtime-grounding-plan.md`
+    - `docs/reviews/m2b-8-hybrid-candidate-runtime-grounding-results.md`
+  - 本阶段产出：
+    - `hybrid_candidate` 在严格 gate 下可进入 prompt
+    - `supplemental_candidates_v1`
+    - `final_generation_pass`
+    - `candidate_attempt`
+    - deterministic rerun on mismatch / candidate failure
+  - 本阶段结果：
+    - `hybrid_candidate` 不再依赖 `shadow_sample_rate`
+    - accepted supplements 只以独立 supplemental section 追加，不覆盖 deterministic context
+    - candidate result 非 `query_only` 时会被丢弃并 deterministic rerun
+    - 只持久化 final public SQL version
+    - public API / SQL HITL / approve / execute 语义保持不变
+  - 同步更新：
+    - `docs/specs/m2b-6-hybrid-runtime-contract.md`
+    - `docs/specs/m2b-6-hybrid-audit-schema.md`
+    - `PLANNING.md`
+    - `TASK.md`
+  - 验证：
+    - `pytest tests/data_agent/test_hybrid_shadow_config.py tests/data_agent/test_hybrid_shadow_runtime.py -q`
+  - 下一步：
+    - 若后续要推进 `hybrid_enabled`，需先补更严格 gate 与 reviewer / safety no-regression 证明
+
+- [x] M2B-7：Hybrid Shadow Runtime Implementation — 已完成（2026-06-29）
   - plan / review：
     - `docs/plans/m2b-7-hybrid-shadow-runtime-implementation-plan.md`
     - `docs/reviews/m2b-7-hybrid-shadow-runtime-implementation-results.md`
@@ -57,8 +83,7 @@
     - 不生成或执行 SQL
     - 不让 supplements 进入 prompt/context
   - 下一步：
-    - 完成 runtime shadow wiring 验证
-    - 若 shadow trace 稳定，再进入后续 candidate/runtime-facing 阶段设计
+    - 进入 `M2B-8 Hybrid Candidate Runtime Grounding`
 
 - [x] M2B-6：Hybrid Retrieval Governance / Runtime-facing Design — 已完成（2026-06-29）
   - plan / specs / review：
