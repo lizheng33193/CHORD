@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 from app.auth.database import AuthSessionLocal
+from app.auth.models import AuditEvent
 from app.data_agent.models import DataAgentSqlVersion
 
 
@@ -392,3 +393,121 @@ def test_create_run_vector_index_failure_does_not_fail_request(
         assert trace is not None
         assert trace["effective_mode"] == "deterministic_only"
         assert trace["fallback_reason"] == "vector_backend_unavailable"
+
+
+@pytest.mark.parametrize(
+    ("setting_name", "setting_value"),
+    [
+        ("hybrid_retrieval_family_score_thresholds_json_raw", '{"catalog_field":"oops"}'),
+        ("hybrid_retrieval_family_caps_json_raw", '{"catalog_field":"oops"}'),
+    ],
+)
+def test_create_run_invalid_hybrid_config_does_not_fail_request(
+    client: TestClient,
+    monkeypatch,
+    setting_name: str,
+    setting_value: str,
+) -> None:
+    from app.core.config import settings
+    from tests.data_agent.test_api import _login, _register_privileged_user, _retrieved_context, _stub_generate_result
+
+    _register_privileged_user(username=f"da-hybrid-config-{setting_name}", email=f"{setting_name}@example.com", role_codes=["data_admin"])
+    token, _ = _login(client, f"da-hybrid-config-{setting_name}", "passw0rd123")
+
+    monkeypatch.setattr(settings, "hybrid_retrieval_enabled_raw", "1", raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_mode_raw", "hybrid_shadow", raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_allow_countries_raw", "mx", raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_allow_project_ids_raw", "1", raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_shadow_sample_rate_raw", "1.0", raising=False)
+    monkeypatch.setattr(settings, setting_name, setting_value, raising=False)
+    monkeypatch.setattr("app.data_agent.service.DataKnowledgeRetriever.retrieve", lambda *_args, **_kwargs: _retrieved_context())
+    monkeypatch.setattr(
+        "app.data_agent.service._generate_sql_response",
+        lambda *_args, **_kwargs: _stub_generate_result("SELECT uid FROM users LIMIT 17"),
+    )
+
+    create = client.post(
+        "/api/data-agent/runs",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "natural_language_request": "查询首贷用户",
+            "target_country": "mexico",
+            "run_type": "cohort_query",
+        },
+    )
+    assert create.status_code == 201
+    run_id = create.json()["run_id"]
+
+    with AuthSessionLocal() as db:
+        version = db.scalar(
+            select(DataAgentSqlVersion).where(DataAgentSqlVersion.run_id == run_id).order_by(DataAgentSqlVersion.id.desc())
+        )
+        assert version is not None
+        trace = (version.retrieval_snapshot_json or {}).get("hybrid_trace")
+        assert trace is not None
+        assert trace["effective_mode"] == "deterministic_only"
+        assert trace["fallback_reason"] == "config_invalid"
+
+
+def test_create_run_audit_summary_preserves_audit_trace_unavailable_without_full_trace(
+    client: TestClient,
+    monkeypatch,
+) -> None:
+    from app.core.config import settings
+    from tests.data_agent.test_api import _login, _register_privileged_user, _retrieved_context, _stub_generate_result
+
+    _register_privileged_user(username="da-hybrid-audit-fallback", email="da-hybrid-audit-fallback@example.com", role_codes=["data_admin"])
+    token, _ = _login(client, "da-hybrid-audit-fallback", "passw0rd123")
+
+    monkeypatch.setattr(settings, "hybrid_retrieval_enabled_raw", "1", raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_mode_raw", "hybrid_shadow", raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_allow_countries_raw", "mx", raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_allow_project_ids_raw", "1", raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_shadow_sample_rate_raw", "1.0", raising=False)
+    monkeypatch.setattr("app.data_agent.service.DataKnowledgeRetriever.retrieve", lambda *_args, **_kwargs: _retrieved_context())
+    monkeypatch.setattr(
+        "app.data_agent.service.build_shadow_trace",
+        lambda **_kwargs: __import__("app.data_agent.hybrid_runtime", fromlist=["ShadowTraceBuildResult"]).ShadowTraceBuildResult(
+            trace=None,
+            audit_summary={
+                "hybrid_configured_mode": "hybrid_shadow",
+                "hybrid_effective_mode": "deterministic_only",
+                "hybrid_fallback_reason": "audit_trace_unavailable",
+                "hybrid_trace_present": False,
+            },
+        ),
+    )
+    monkeypatch.setattr(
+        "app.data_agent.service._generate_sql_response",
+        lambda *_args, **_kwargs: _stub_generate_result("SELECT uid FROM users LIMIT 21"),
+    )
+
+    create = client.post(
+        "/api/data-agent/runs",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "natural_language_request": "查询首贷用户",
+            "target_country": "mexico",
+            "run_type": "cohort_query",
+        },
+    )
+    assert create.status_code == 201
+    run_id = create.json()["run_id"]
+
+    with AuthSessionLocal() as db:
+        version = db.scalar(
+            select(DataAgentSqlVersion).where(DataAgentSqlVersion.run_id == run_id).order_by(DataAgentSqlVersion.id.desc())
+        )
+        assert version is not None
+        assert "hybrid_trace" not in (version.retrieval_snapshot_json or {})
+        audit_event = db.scalar(
+            select(AuditEvent)
+            .where(AuditEvent.resource_id == run_id, AuditEvent.event_type == "data.query.run_created")
+            .order_by(AuditEvent.id.desc())
+        )
+        assert audit_event is not None
+        metadata = audit_event.metadata_json or {}
+        assert metadata["hybrid_fallback_reason"] == "audit_trace_unavailable"
+        assert metadata["hybrid_trace_present"] is False
+        assert metadata["hybrid_effective_mode"] == "deterministic_only"
+        assert metadata["hybrid_configured_mode"] == "hybrid_shadow"

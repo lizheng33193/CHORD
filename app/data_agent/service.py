@@ -552,17 +552,28 @@ class DataAgentService:
         )
         return original_source, repaired_sql_kind, repaired_safety_result
 
+    @staticmethod
+    def _unpack_generation_context(result):
+        if isinstance(result, tuple) and len(result) == 4:
+            return result
+        if isinstance(result, tuple) and len(result) == 3:
+            retrieved_context, prompt_context, retrieval_snapshot = result
+            return retrieved_context, prompt_context, retrieval_snapshot, {}
+        raise ValueError("unexpected _build_generation_context return shape")
+
     def create_run(self, *, ctx: UserContext, body: DataAgentRunCreateRequest) -> DataAgentRunDetail:
         require_permissions(ctx, ("data:query:generate", "data:query:view_sql"))
         target_country = normalize_country_scope_value(body.target_country) or body.target_country.lower()
         require_country_access(ctx, target_country, project_id=ctx.project_id)
-        _retrieved_context, prompt_context, retrieval_snapshot = self._build_generation_context(
-            natural_language_request=body.natural_language_request,
-            target_country=target_country,
-            run_type=body.run_type,
-            output_bucket=body.output_bucket,
-            ctx=ctx,
-            run_id=None,
+        _retrieved_context, prompt_context, retrieval_snapshot, hybrid_audit_summary = self._unpack_generation_context(
+            self._build_generation_context(
+                natural_language_request=body.natural_language_request,
+                target_country=target_country,
+                run_type=body.run_type,
+                output_bucket=body.output_bucket,
+                ctx=ctx,
+                run_id=None,
+            )
         )
 
         try:
@@ -609,6 +620,7 @@ class DataAgentService:
         )
         if finalized_hybrid_trace is not None:
             retrieval_snapshot["hybrid_trace"] = finalized_hybrid_trace
+            hybrid_audit_summary = extract_hybrid_audit_summary(retrieval_snapshot)
         run_id = uuid.uuid4().hex
         run = self.repo.create_run(
             run_id=run_id,
@@ -646,7 +658,7 @@ class DataAgentService:
             action="create",
             run=run,
             sql_hash=version.sql_hash,
-            extra_metadata=extract_hybrid_audit_summary(retrieval_snapshot),
+            extra_metadata=hybrid_audit_summary,
         )
         self._audit(
             ctx=ctx,
@@ -654,7 +666,7 @@ class DataAgentService:
             action="generate",
             run=run,
             sql_hash=version.sql_hash,
-            extra_metadata=extract_hybrid_audit_summary(retrieval_snapshot),
+            extra_metadata=hybrid_audit_summary,
         )
         return self.get_run_detail(ctx=ctx, run_id=run_id)
 
@@ -736,13 +748,15 @@ class DataAgentService:
         run = self._get_scoped_run(ctx, run_id)
         current = self.repo.get_sql_version(run.current_sql_version_id)
         revised_request = run.natural_language_request if not body.comment else f"{run.natural_language_request}\n\nReviewer feedback:\n{body.comment}"
-        _retrieved_context, prompt_context, retrieval_snapshot = self._build_generation_context(
-            natural_language_request=revised_request,
-            target_country=run.country,
-            run_type=run.run_type,
-            output_bucket=run.output_bucket,
-            ctx=ctx,
-            run_id=run.run_id,
+        _retrieved_context, prompt_context, retrieval_snapshot, hybrid_audit_summary = self._unpack_generation_context(
+            self._build_generation_context(
+                natural_language_request=revised_request,
+                target_country=run.country,
+                run_type=run.run_type,
+                output_bucket=run.output_bucket,
+                ctx=ctx,
+                run_id=run.run_id,
+            )
         )
         try:
             generated = _generate_sql_response(
@@ -790,6 +804,7 @@ class DataAgentService:
         )
         if finalized_hybrid_trace is not None:
             retrieval_snapshot["hybrid_trace"] = finalized_hybrid_trace
+            hybrid_audit_summary = extract_hybrid_audit_summary(retrieval_snapshot)
         version = self.repo.add_sql_version(
             run_id=run.run_id,
             version_no=self.repo.next_version_no(run.run_id),
@@ -825,7 +840,7 @@ class DataAgentService:
             action="revise",
             run=run,
             sql_hash=version.sql_hash,
-            extra_metadata=extract_hybrid_audit_summary(retrieval_snapshot),
+            extra_metadata=hybrid_audit_summary,
         )
         return self._to_detail(run, can_view_sql="data:query:view_sql" in ctx.permissions)
 
@@ -1194,9 +1209,10 @@ class DataAgentService:
             retrieved_context=retrieved_context,
             request_key=request_key,
         )
+        hybrid_audit_summary = dict(shadow_result.audit_summary)
         if shadow_result.trace is not None:
             snapshot["hybrid_trace"] = shadow_result.trace
-        return retrieved_context, prompt_context, snapshot
+        return retrieved_context, prompt_context, snapshot, hybrid_audit_summary
 
     @staticmethod
     def _serialize_review_event(event) -> ReviewEventView:
