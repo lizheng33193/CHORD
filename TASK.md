@@ -35,6 +35,38 @@
 - [x] E1 单用户埋点深度解析 → docs/plans/trace-analyzer-plan.md（2026-05-01）
 
 ## 当前进行中的功能
+- [ ] M2B-6：Hybrid Retrieval Governance / Runtime-facing Design — 进行中（2026-06-29）
+  - plan / specs / review：
+    - `docs/plans/m2b-6-hybrid-retrieval-governance-plan.md`
+    - `docs/specs/m2b-6-hybrid-retrieval-governance-spec.md`
+    - `docs/specs/m2b-6-hybrid-runtime-contract.md`
+    - `docs/specs/m2b-6-hybrid-audit-schema.md`
+    - `docs/specs/m2b-6-hybrid-eval-gate.md`
+    - `docs/reviews/m2b-6-hybrid-retrieval-governance-results.md`
+  - 本阶段目标：
+    - 定义 retrieval mode enum
+    - 定义 env-backed config contract
+    - 定义 fallback policy 与 fallback reasons
+    - 定义 audit trace schema
+    - 定义 eval gate
+    - 定义 rollout scope matrix
+    - 定义 SQL safety boundary
+  - 首个实际 rollout boundary：
+    - `MX + query_only + cohort_query`
+  - future gated scope：
+    - `MX bucket_writeback`
+    - `TH cohort_query`
+    - `TH bucket_writeback` 继续 out of scope
+  - 保持不变：
+    - 不改 runtime retriever
+    - 不改 Data Agent runtime
+    - 不调用 LLM
+    - 不生成或执行 SQL
+    - 不修改 M2B-5 产物 / seed / embedding / vector index
+  - 下一步：
+    - 完成 M2B-6 文档评审与合并
+    - 后续 runtime 接入进入 `M2B-7`
+
 - [x] M2B-5：Hybrid Retrieval Fusion — 已完成（2026-06-28）
   - plan / reviews：
     - `docs/plans/m2b-5-hybrid-retrieval-fusion-plan.md`

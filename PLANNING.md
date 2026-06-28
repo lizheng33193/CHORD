@@ -5,6 +5,46 @@
 - 整体架构：单体 FastAPI 后端，五层（API → 编排 → Skill 执行 → 数据访问 → 外部服务）
 - 入口文件：`app/main.py`
 
+## 2026-06-29 M2B-6 Hybrid Retrieval Governance / Runtime-facing Design
+
+- `M2B-5` 已完成并合并，当前进入 `M2B-6`：
+  - `docs/plans/m2b-6-hybrid-retrieval-governance-plan.md`
+  - `docs/specs/m2b-6-hybrid-retrieval-governance-spec.md`
+  - `docs/specs/m2b-6-hybrid-runtime-contract.md`
+  - `docs/specs/m2b-6-hybrid-audit-schema.md`
+  - `docs/specs/m2b-6-hybrid-eval-gate.md`
+  - `docs/reviews/m2b-6-hybrid-retrieval-governance-results.md`
+- 本阶段只做 runtime-facing governance design：
+  - retrieval modes
+  - feature flag / config contract
+  - fallback policy
+  - audit trace schema
+  - evaluation gate
+  - rollout scope matrix
+  - SQL safety boundary
+- 首个实际 runtime rollout boundary 固定为：
+  - `country=mx`
+  - `sql_kind=query_only`
+  - `run_type=cohort_query`
+  - mode 从 `deterministic_only / hybrid_shadow` 起步
+- future gated design 只保留：
+  - `MX bucket_writeback`
+  - `TH cohort_query`
+  - `TH bucket_writeback` 继续 out of scope
+- 本阶段明确不做：
+  - 不改 `app/data_knowledge/retriever.py`
+  - 不改 `app/data_knowledge/service.py`
+  - 不改 `app/data_agent/service.py`
+  - 不改 `app/data_agent/sql_plan.py`
+  - 不改 `data_acquisition_agent/orchestrator.py`
+  - 不接 runtime hybrid implementation
+  - 不调用 LLM
+  - 不生成或执行 SQL
+  - 不修改 M2B-5 产物、`m2b_legacy_v3` seed、embedding records、vector index
+- 当前结论是：
+  - `M2B-6` 只负责把 hybrid runtime contract 和 gate 设计清楚
+  - 真正 runtime 接入必须进入 `M2B-7` 或新阶段单独 PR
+
 ## 2026-06-28 M2B-5 Hybrid Retrieval Fusion
 
 - `M2B-4` 已完成，当前进入 `M2B-5`：
