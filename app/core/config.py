@@ -81,6 +81,33 @@ class Settings(BaseModel):
     mysql_user: str = os.getenv("MYSQL_USER", "maps_lz").strip() or "maps_lz"
     mysql_password: str = os.getenv("MYSQL_PASSWORD", "maps_lz").strip()
     mysql_database: str = os.getenv("MYSQL_DATABASE", "maps_lz").strip() or "maps_lz"
+    hybrid_retrieval_enabled_raw: str = os.getenv("HYBRID_RETRIEVAL_ENABLED", "0")
+    hybrid_retrieval_mode_raw: str = os.getenv("HYBRID_RETRIEVAL_MODE", "deterministic_only")
+    hybrid_retrieval_source_namespace_raw: str = os.getenv("HYBRID_RETRIEVAL_SOURCE_NAMESPACE", "m2b_legacy_v3")
+    hybrid_retrieval_vector_index_path_raw: str = os.getenv("HYBRID_RETRIEVAL_VECTOR_INDEX_PATH", "")
+    hybrid_retrieval_allow_countries_raw: str = os.getenv("HYBRID_RETRIEVAL_ALLOW_COUNTRIES", "")
+    hybrid_retrieval_allow_project_ids_raw: str = os.getenv("HYBRID_RETRIEVAL_ALLOW_PROJECT_IDS", "")
+    hybrid_retrieval_vector_rank_limit_raw: str = os.getenv("HYBRID_RETRIEVAL_VECTOR_RANK_LIMIT", "8")
+    hybrid_retrieval_family_score_thresholds_json_raw: str = os.getenv(
+        "HYBRID_RETRIEVAL_FAMILY_SCORE_THRESHOLDS_JSON",
+        '{"catalog_table": 0.18, "catalog_field": 0.16, "glossary_term": 0.17, "sql_example": 0.15}',
+    )
+    hybrid_retrieval_family_caps_json_raw: str = os.getenv(
+        "HYBRID_RETRIEVAL_FAMILY_CAPS_JSON",
+        '{"catalog_table": 1, "catalog_field": 2, "glossary_term": 1, "sql_example": 1}',
+    )
+    hybrid_retrieval_total_vector_supplement_cap_raw: str = os.getenv(
+        "HYBRID_RETRIEVAL_TOTAL_VECTOR_SUPPLEMENT_CAP",
+        "3",
+    )
+    hybrid_retrieval_deterministic_pass_guard_raw: str = os.getenv(
+        "HYBRID_RETRIEVAL_DETERMINISTIC_PASS_GUARD",
+        "1",
+    )
+    hybrid_retrieval_shadow_sample_rate_raw: str = os.getenv(
+        "HYBRID_RETRIEVAL_SHADOW_SAMPLE_RATE",
+        "0.0",
+    )
 
     @property
     def project_root(self) -> Path:

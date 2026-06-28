@@ -1,0 +1,394 @@
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import pytest
+
+from fastapi.testclient import TestClient
+from sqlalchemy import select
+
+from app.auth.database import AuthSessionLocal
+from app.data_agent.models import DataAgentSqlVersion
+
+
+@pytest.fixture()
+def client(tmp_path: Path, monkeypatch):
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "auth_enabled", True, raising=False)
+    monkeypatch.setattr(settings, "auth_database_url", f"sqlite:///{tmp_path / 'auth.sqlite3'}", raising=False)
+    monkeypatch.setattr(settings, "auth_jwt_secret", "test-secret-for-data-agent", raising=False)
+    monkeypatch.setattr(settings, "default_admin_username", "admin", raising=False)
+    monkeypatch.setattr(settings, "default_admin_email", "admin@example.com", raising=False)
+    monkeypatch.setattr(settings, "default_admin_password", "admin123456", raising=False)
+
+    from app.auth.database import AuthSessionLocal, create_auth_schema, reset_auth_engine
+    from app.auth.seed import seed_auth_data
+    from app.main import app
+
+    reset_auth_engine()
+    create_auth_schema()
+    with AuthSessionLocal() as db:
+        seed_auth_data(db)
+
+    with TestClient(app) as test_client:
+        yield test_client
+
+    reset_auth_engine()
+
+
+def _write_vector_index(path: Path) -> None:
+    payload = {
+        "schema_version": "m2b_vector_index_v1",
+        "source_namespace": "m2b_legacy_v3",
+        "vectorizer_name": "local_hashing_bow_v1",
+        "vector_dim": 512,
+        "vector_format": "sparse_hash_weight_map",
+        "records": [
+            {
+                "record_id": "sha256:test-record-1",
+                "source_key": "glossary.mx.mob1",
+                "source_namespace": "m2b_legacy_v3",
+                "asset_family": "glossary_term",
+                "country": "mx",
+                "title": "mob1",
+                "vector": {"1": 0.8, "2": 0.6},
+                "metadata": {"source_key": "glossary.mx.mob1"},
+            },
+            {
+                "record_id": "sha256:test-record-2",
+                "source_key": "field.mx.dwd_w_apply.withdraw_uuid",
+                "source_namespace": "m2b_legacy_v3",
+                "asset_family": "catalog_field",
+                "country": "mx",
+                "title": "dwd_w_apply.withdraw_uuid",
+                "vector": {"3": 1.0},
+                "metadata": {"source_key": "field.mx.dwd_w_apply.withdraw_uuid", "field_name": "withdraw_uuid"},
+            },
+        ],
+    }
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def test_create_run_default_disabled_does_not_write_hybrid_trace(
+    client: TestClient,
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    from app.core.config import settings
+    from tests.data_agent.test_api import _login, _register_privileged_user, _retrieved_context, _stub_generate_result
+
+    _register_privileged_user(username="da-hybrid-off", email="da-hybrid-off@example.com", role_codes=["data_admin"])
+    token, _ = _login(client, "da-hybrid-off", "passw0rd123")
+
+    index_path = tmp_path / "vector_index.json"
+    _write_vector_index(index_path)
+    monkeypatch.setattr(settings, "hybrid_retrieval_enabled_raw", "0", raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_mode_raw", "hybrid_shadow", raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_vector_index_path_raw", str(index_path), raising=False)
+    monkeypatch.setattr("app.data_agent.service.DataKnowledgeRetriever.retrieve", lambda *_args, **_kwargs: _retrieved_context())
+    monkeypatch.setattr(
+        "app.data_agent.service._generate_sql_response",
+        lambda *_args, **_kwargs: _stub_generate_result("SELECT uid FROM users LIMIT 5"),
+    )
+
+    create = client.post(
+        "/api/data-agent/runs",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "natural_language_request": "查询首贷用户",
+            "target_country": "mexico",
+            "run_type": "cohort_query",
+        },
+    )
+    assert create.status_code == 201
+    run_id = create.json()["run_id"]
+
+    with AuthSessionLocal() as db:
+        version = db.scalar(
+            select(DataAgentSqlVersion).where(DataAgentSqlVersion.run_id == run_id).order_by(DataAgentSqlVersion.id.desc())
+        )
+        assert version is not None
+        snapshot = version.retrieval_snapshot_json or {}
+        assert "hybrid_trace" not in snapshot
+
+
+def test_create_run_hybrid_shadow_writes_trace_without_changing_prompt_or_api(
+    client: TestClient,
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    from app.core.config import settings
+    from tests.data_agent.test_api import _login, _register_privileged_user, _retrieved_context, _stub_generate_result
+
+    _register_privileged_user(username="da-hybrid-on", email="da-hybrid-on@example.com", role_codes=["data_admin"])
+    token, _ = _login(client, "da-hybrid-on", "passw0rd123")
+
+    index_path = tmp_path / "vector_index.json"
+    _write_vector_index(index_path)
+    captured: dict[str, object] = {}
+
+    def _fake_generate(**kwargs):
+        captured["knowledge_prompt_context"] = kwargs.get("knowledge_prompt_context")
+        return _stub_generate_result("SELECT uid FROM users LIMIT 7")
+
+    monkeypatch.setattr(settings, "hybrid_retrieval_enabled_raw", "1", raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_mode_raw", "hybrid_shadow", raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_source_namespace_raw", "m2b_legacy_v3", raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_vector_index_path_raw", str(index_path), raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_allow_countries_raw", "mx", raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_allow_project_ids_raw", "1", raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_shadow_sample_rate_raw", "1.0", raising=False)
+    monkeypatch.setattr("app.data_agent.service.DataKnowledgeRetriever.retrieve", lambda *_args, **_kwargs: _retrieved_context())
+    monkeypatch.setattr("app.data_agent.service._generate_sql_response", _fake_generate)
+
+    create = client.post(
+        "/api/data-agent/runs",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "natural_language_request": "查询首贷用户",
+            "target_country": "mexico",
+            "run_type": "cohort_query",
+        },
+    )
+    assert create.status_code == 201
+    body = create.json()
+    assert "retrieval_snapshot_json" not in body["current_sql"]
+    rendered = getattr(captured["knowledge_prompt_context"], "rendered_text", "")
+    assert "hybrid_trace" not in rendered
+
+    run_id = body["run_id"]
+    with AuthSessionLocal() as db:
+        version = db.scalar(
+            select(DataAgentSqlVersion).where(DataAgentSqlVersion.run_id == run_id).order_by(DataAgentSqlVersion.id.desc())
+        )
+        assert version is not None
+        snapshot = version.retrieval_snapshot_json or {}
+        trace = snapshot.get("hybrid_trace")
+        assert trace is not None
+        assert trace["configured_mode"] == "hybrid_shadow"
+        assert trace["effective_mode"] == "hybrid_shadow"
+        assert trace["prompt_injection_mode"] == "none"
+        assert "expected_tables" not in json.dumps(trace, ensure_ascii=False)
+        assert "matched_expected" not in json.dumps(trace, ensure_ascii=False)
+        assert "missing_expected" not in json.dumps(trace, ensure_ascii=False)
+        assert len(trace["deterministic_candidates"]) <= 20
+        assert len(trace["vector_candidates"]) <= 10
+        assert len(trace["accepted_supplements"]) <= 3
+        assert len(trace["rejected_candidates"]) <= 20
+
+
+def test_revise_run_hybrid_shadow_writes_trace(
+    client: TestClient,
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    from app.core.config import settings
+    from tests.data_agent.test_api import _login, _register_privileged_user, _retrieved_context, _stub_generate_result
+
+    _register_privileged_user(username="da-hybrid-revise", email="da-hybrid-revise@example.com", role_codes=["data_admin"])
+    token, _ = _login(client, "da-hybrid-revise", "passw0rd123")
+
+    index_path = tmp_path / "vector_index.json"
+    _write_vector_index(index_path)
+    responses = iter(
+        [
+            _stub_generate_result("SELECT uid FROM users LIMIT 9"),
+            _stub_generate_result("SELECT uid FROM users LIMIT 11"),
+        ]
+    )
+
+    monkeypatch.setattr(settings, "hybrid_retrieval_enabled_raw", "1", raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_mode_raw", "hybrid_shadow", raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_source_namespace_raw", "m2b_legacy_v3", raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_vector_index_path_raw", str(index_path), raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_allow_countries_raw", "mx", raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_allow_project_ids_raw", "1", raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_shadow_sample_rate_raw", "1.0", raising=False)
+    monkeypatch.setattr("app.data_agent.service.DataKnowledgeRetriever.retrieve", lambda *_args, **_kwargs: _retrieved_context())
+    monkeypatch.setattr("app.data_agent.service._generate_sql_response", lambda *_args, **_kwargs: next(responses))
+
+    create = client.post(
+        "/api/data-agent/runs",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "natural_language_request": "查询首贷用户",
+            "target_country": "mexico",
+            "run_type": "cohort_query",
+        },
+    )
+    assert create.status_code == 201
+    run_id = create.json()["run_id"]
+
+    revise = client.post(
+        f"/api/data-agent/runs/{run_id}/revise",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"comment": "请保留首贷语义"},
+    )
+    assert revise.status_code == 200
+
+    with AuthSessionLocal() as db:
+        version = db.scalar(
+            select(DataAgentSqlVersion).where(DataAgentSqlVersion.run_id == run_id).order_by(DataAgentSqlVersion.id.desc())
+        )
+        assert version is not None
+        trace = (version.retrieval_snapshot_json or {}).get("hybrid_trace")
+        assert trace is not None
+        assert trace["configured_mode"] == "hybrid_shadow"
+        assert trace["effective_mode"] == "hybrid_shadow"
+
+
+def test_create_run_bucket_writeback_falls_back_with_unsupported_run_type_trace(
+    client: TestClient,
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    from app.core.config import settings
+    from tests.data_agent.test_api import _login, _register_privileged_user, _retrieved_context, _stub_generate_result
+
+    _register_privileged_user(username="da-hybrid-writeback", email="da-hybrid-writeback@example.com", role_codes=["data_admin"])
+    token, _ = _login(client, "da-hybrid-writeback", "passw0rd123")
+
+    index_path = tmp_path / "vector_index.json"
+    _write_vector_index(index_path)
+    monkeypatch.setattr(settings, "hybrid_retrieval_enabled_raw", "1", raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_mode_raw", "hybrid_shadow", raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_vector_index_path_raw", str(index_path), raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_allow_countries_raw", "mx", raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_allow_project_ids_raw", "1", raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_shadow_sample_rate_raw", "1.0", raising=False)
+    monkeypatch.setattr("app.data_agent.service.DataKnowledgeRetriever.retrieve", lambda *_args, **_kwargs: _retrieved_context())
+    monkeypatch.setattr(
+        "app.data_agent.service._generate_sql_response",
+        lambda *_args, **_kwargs: _stub_generate_result(
+            "WITH target_users AS (SELECT uid FROM dwd_w_apply WHERE risk_level = 'high') "
+            "SELECT b.uid, b.timestamp_, b.eventname FROM dwb_b1_data_burying_point b "
+            "JOIN target_users t ON b.uid = t.uid"
+        ),
+    )
+
+    create = client.post(
+        "/api/data-agent/runs",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "natural_language_request": "给首贷用户补齐 behavior 数据",
+            "target_country": "mexico",
+            "run_type": "bucket_writeback",
+            "output_bucket": "behavior",
+            "output_format": "json",
+        },
+    )
+    assert create.status_code == 201
+    run_id = create.json()["run_id"]
+
+    with AuthSessionLocal() as db:
+        version = db.scalar(
+            select(DataAgentSqlVersion).where(DataAgentSqlVersion.run_id == run_id).order_by(DataAgentSqlVersion.id.desc())
+        )
+        assert version is not None
+        trace = (version.retrieval_snapshot_json or {}).get("hybrid_trace")
+        assert trace is not None
+        assert trace["effective_mode"] == "deterministic_only"
+        assert trace["fallback_reason"] == "unsupported_run_type"
+
+
+def test_create_run_non_query_only_sql_marks_trace_as_unsupported_sql_kind(
+    client: TestClient,
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    from app.core.config import settings
+    from tests.data_agent.test_api import _login, _register_privileged_user, _retrieved_context, _stub_generate_result
+
+    _register_privileged_user(username="da-hybrid-ddl", email="da-hybrid-ddl@example.com", role_codes=["data_admin"])
+    token, _ = _login(client, "da-hybrid-ddl", "passw0rd123")
+
+    index_path = tmp_path / "vector_index.json"
+    _write_vector_index(index_path)
+    monkeypatch.setattr(settings, "hybrid_retrieval_enabled_raw", "1", raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_mode_raw", "hybrid_shadow", raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_vector_index_path_raw", str(index_path), raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_allow_countries_raw", "mx", raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_allow_project_ids_raw", "1", raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_shadow_sample_rate_raw", "1.0", raising=False)
+    monkeypatch.setattr("app.data_agent.service.DataKnowledgeRetriever.retrieve", lambda *_args, **_kwargs: _retrieved_context())
+    monkeypatch.setattr(
+        "app.data_agent.service._generate_sql_response",
+        lambda *_args, **_kwargs: _stub_generate_result(
+            "CREATE TABLE tmp.test AS SELECT uid FROM users",
+            sql_kind="build_table_script",
+        ),
+    )
+
+    create = client.post(
+        "/api/data-agent/runs",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "natural_language_request": "建表保存首贷用户",
+            "target_country": "mexico",
+            "run_type": "cohort_query",
+        },
+    )
+    assert create.status_code == 201
+    run_id = create.json()["run_id"]
+
+    with AuthSessionLocal() as db:
+        version = db.scalar(
+            select(DataAgentSqlVersion).where(DataAgentSqlVersion.run_id == run_id).order_by(DataAgentSqlVersion.id.desc())
+        )
+        assert version is not None
+        trace = (version.retrieval_snapshot_json or {}).get("hybrid_trace")
+        assert trace is not None
+        assert trace["effective_mode"] == "deterministic_only"
+        assert trace["fallback_applied"] is True
+        assert trace["fallback_reason"] == "unsupported_sql_kind"
+        assert trace["prompt_injection_mode"] == "none"
+
+
+def test_create_run_vector_index_failure_does_not_fail_request(
+    client: TestClient,
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    from app.core.config import settings
+    from tests.data_agent.test_api import _login, _register_privileged_user, _retrieved_context, _stub_generate_result
+
+    _register_privileged_user(username="da-hybrid-bad-index", email="da-hybrid-bad-index@example.com", role_codes=["data_admin"])
+    token, _ = _login(client, "da-hybrid-bad-index", "passw0rd123")
+
+    broken_index = tmp_path / "broken_vector_index.json"
+    broken_index.write_text("{not-json", encoding="utf-8")
+    monkeypatch.setattr(settings, "hybrid_retrieval_enabled_raw", "1", raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_mode_raw", "hybrid_shadow", raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_vector_index_path_raw", str(broken_index), raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_allow_countries_raw", "mx", raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_allow_project_ids_raw", "1", raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_shadow_sample_rate_raw", "1.0", raising=False)
+    monkeypatch.setattr("app.data_agent.service.DataKnowledgeRetriever.retrieve", lambda *_args, **_kwargs: _retrieved_context())
+    monkeypatch.setattr(
+        "app.data_agent.service._generate_sql_response",
+        lambda *_args, **_kwargs: _stub_generate_result("SELECT uid FROM users LIMIT 17"),
+    )
+
+    create = client.post(
+        "/api/data-agent/runs",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "natural_language_request": "查询首贷用户",
+            "target_country": "mexico",
+            "run_type": "cohort_query",
+        },
+    )
+    assert create.status_code == 201
+    run_id = create.json()["run_id"]
+
+    with AuthSessionLocal() as db:
+        version = db.scalar(
+            select(DataAgentSqlVersion).where(DataAgentSqlVersion.run_id == run_id).order_by(DataAgentSqlVersion.id.desc())
+        )
+        assert version is not None
+        trace = (version.retrieval_snapshot_json or {}).get("hybrid_trace")
+        assert trace is not None
+        assert trace["effective_mode"] == "deterministic_only"
+        assert trace["fallback_reason"] == "vector_backend_unavailable"

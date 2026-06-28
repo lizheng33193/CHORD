@@ -35,7 +35,32 @@
 - [x] E1 单用户埋点深度解析 → docs/plans/trace-analyzer-plan.md（2026-05-01）
 
 ## 当前进行中的功能
-- [ ] M2B-6：Hybrid Retrieval Governance / Runtime-facing Design — 进行中（2026-06-29）
+- [ ] M2B-7：Hybrid Shadow Runtime Implementation — 进行中（2026-06-29）
+  - plan / review：
+    - `docs/plans/m2b-7-hybrid-shadow-runtime-implementation-plan.md`
+    - `docs/reviews/m2b-7-hybrid-shadow-runtime-implementation-results.md`
+  - 本阶段目标：
+    - 增加 env-backed hybrid shadow raw settings
+    - 增加 runtime mode evaluator 与 fallback reason
+    - 增加 shadow-only vector artifact reader
+    - 在 `create_run` / `revise_run` 中写入 bounded `retrieval_snapshot_json.hybrid_trace`
+    - 保持 prompt / SQL plan / approve / execute / public API 无差异
+  - rollout boundary：
+    - 仅 `MX + cohort_query`
+    - `bucket_writeback` / `TH` 全部 fallback
+    - `hybrid_candidate` / `hybrid_enabled` 本阶段强制 deterministic fallback
+  - 保持不变：
+    - 不改 runtime retriever
+    - 不改 SQL plan
+    - 不改 orchestrator 自动路由
+    - 不调用 LLM
+    - 不生成或执行 SQL
+    - 不让 supplements 进入 prompt/context
+  - 下一步：
+    - 完成 runtime shadow wiring 验证
+    - 若 shadow trace 稳定，再进入后续 candidate/runtime-facing 阶段设计
+
+- [x] M2B-6：Hybrid Retrieval Governance / Runtime-facing Design — 已完成（2026-06-29）
   - plan / specs / review：
     - `docs/plans/m2b-6-hybrid-retrieval-governance-plan.md`
     - `docs/specs/m2b-6-hybrid-retrieval-governance-spec.md`
@@ -59,13 +84,12 @@
     - `TH bucket_writeback` 继续 out of scope
   - 保持不变：
     - 不改 runtime retriever
-    - 不改 Data Agent runtime
+    - 不改 Data Agent runtime code path
     - 不调用 LLM
     - 不生成或执行 SQL
     - 不修改 M2B-5 产物 / seed / embedding / vector index
   - 下一步：
-    - 完成 M2B-6 文档评审与合并
-    - 后续 runtime 接入进入 `M2B-7`
+    - 进入 `M2B-7 Hybrid Shadow Runtime Implementation`
 
 - [x] M2B-5：Hybrid Retrieval Fusion — 已完成（2026-06-28）
   - plan / reviews：

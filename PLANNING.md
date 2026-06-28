@@ -5,6 +5,36 @@
 - 整体架构：单体 FastAPI 后端，五层（API → 编排 → Skill 执行 → 数据访问 → 外部服务）
 - 入口文件：`app/main.py`
 
+## 2026-06-29 M2B-7 Hybrid Shadow Runtime Implementation
+
+- `M2B-6` 已完成并合并，当前进入 `M2B-7`：
+  - `docs/plans/m2b-7-hybrid-shadow-runtime-implementation-plan.md`
+  - `docs/reviews/m2b-7-hybrid-shadow-runtime-implementation-results.md`
+- 本阶段只做 `hybrid_shadow` runtime skeleton：
+  - deterministic retrieval 仍然是唯一生效输入
+  - hybrid 只生成 bounded internal audit trace
+  - trace 只写入 `retrieval_snapshot_json.hybrid_trace`
+- 本阶段新增的 runtime contract：
+  - env-backed raw settings
+  - `HybridRetrievalMode` / `HybridFallbackReason`
+  - `HybridRetrievalConfigV1`
+  - shadow-only vector artifact reader
+  - bounded audit trace builder
+- 本阶段明确保持不变：
+  - 不改 `app/data_knowledge/retriever.py`
+  - 不改 `app/data_agent/sql_plan.py`
+  - 不改 orchestrator 自动路由
+  - 不改 prompt text
+  - 不改 approve / execute / SQL HITL 语义
+  - 不改 public API response schema
+- rollout boundary 继续保守收口：
+  - 只允许 `MX + cohort_query` 尝试 shadow
+  - `bucket_writeback` / `TH` 全部 fallback
+  - `hybrid_candidate` / `hybrid_enabled` 在本阶段不会生效
+- 当前结论是：
+  - `M2B-7` 只证明 hybrid shadow 可配置、可降级、可审计、且不影响 SQL 决策
+  - 真正让 supplements 进入 prompt/context 必须进入后续独立阶段
+
 ## 2026-06-29 M2B-6 Hybrid Retrieval Governance / Runtime-facing Design
 
 - `M2B-5` 已完成并合并，当前进入 `M2B-6`：

@@ -18,6 +18,11 @@ from app.data_agent.repair import (
     build_plan_guided_repair_instruction,
     select_repairable_plan_warnings,
 )
+from app.data_agent.hybrid_runtime import (
+    build_shadow_trace,
+    extract_hybrid_audit_summary,
+    finalize_shadow_trace_for_sql_kind,
+)
 from app.data_agent.sql_plan import (
     build_structured_sql_plan,
     validate_structured_sql_plan,
@@ -41,6 +46,7 @@ from app.data_agent.schemas import (
 from app.data_knowledge.prompt_context import PromptContextAssembler
 from app.data_knowledge.retriever import DataKnowledgeRetriever
 from app.data_knowledge.models import DataSqlErrorCase, DataSqlExample
+from app.core.config import settings
 from data_acquisition_agent.executor import (
     enforce_pre_execution_gates,
     execute_query,
@@ -597,6 +603,12 @@ class DataAgentService:
             original_safety_result=safety_result,
             original_source="agent_generated",
         )
+        finalized_hybrid_trace = finalize_shadow_trace_for_sql_kind(
+            retrieval_snapshot.get("hybrid_trace"),
+            sql_kind=sql_kind,
+        )
+        if finalized_hybrid_trace is not None:
+            retrieval_snapshot["hybrid_trace"] = finalized_hybrid_trace
         run_id = uuid.uuid4().hex
         run = self.repo.create_run(
             run_id=run_id,
@@ -634,6 +646,7 @@ class DataAgentService:
             action="create",
             run=run,
             sql_hash=version.sql_hash,
+            extra_metadata=extract_hybrid_audit_summary(retrieval_snapshot),
         )
         self._audit(
             ctx=ctx,
@@ -641,6 +654,7 @@ class DataAgentService:
             action="generate",
             run=run,
             sql_hash=version.sql_hash,
+            extra_metadata=extract_hybrid_audit_summary(retrieval_snapshot),
         )
         return self.get_run_detail(ctx=ctx, run_id=run_id)
 
@@ -770,6 +784,12 @@ class DataAgentService:
             original_source="agent_revised",
             run_id=run.run_id,
         )
+        finalized_hybrid_trace = finalize_shadow_trace_for_sql_kind(
+            retrieval_snapshot.get("hybrid_trace"),
+            sql_kind=sql_kind,
+        )
+        if finalized_hybrid_trace is not None:
+            retrieval_snapshot["hybrid_trace"] = finalized_hybrid_trace
         version = self.repo.add_sql_version(
             run_id=run.run_id,
             version_no=self.repo.next_version_no(run.run_id),
@@ -799,7 +819,14 @@ class DataAgentService:
         )
         self._resolve_latest_open_error_case(run=run, current=version, comment=body.comment, ctx=ctx)
         self.db.commit()
-        self._audit(ctx=ctx, event_type="data.query.sql_revised", action="revise", run=run, sql_hash=version.sql_hash)
+        self._audit(
+            ctx=ctx,
+            event_type="data.query.sql_revised",
+            action="revise",
+            run=run,
+            sql_hash=version.sql_hash,
+            extra_metadata=extract_hybrid_audit_summary(retrieval_snapshot),
+        )
         return self._to_detail(run, can_view_sql="data:query:view_sql" in ctx.permissions)
 
     def reject_run(self, *, ctx: UserContext, run_id: str, comment: str | None = None) -> DataAgentRunDetail:
@@ -1147,6 +1174,28 @@ class DataAgentService:
             structured_plan=structured_plan_payload,
             structured_plan_validation=structured_validation_payload,
         )
+        request_key = "::".join(
+            [
+                str(ctx.project_id or ""),
+                str(run_id or ""),
+                target_country,
+                run_type,
+                str(output_bucket or ""),
+                natural_language_request,
+            ]
+        )
+        shadow_result = build_shadow_trace(
+            settings=settings,
+            natural_language_request=natural_language_request,
+            country=target_country,
+            project_id=str(ctx.project_id or "").strip() or None,
+            run_type=run_type,
+            output_bucket=output_bucket,
+            retrieved_context=retrieved_context,
+            request_key=request_key,
+        )
+        if shadow_result.trace is not None:
+            snapshot["hybrid_trace"] = shadow_result.trace
         return retrieved_context, prompt_context, snapshot
 
     @staticmethod
