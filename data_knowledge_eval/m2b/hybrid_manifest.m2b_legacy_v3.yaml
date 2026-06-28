@@ -1,0 +1,39 @@
+schema_version: m2b_hybrid_manifest_v1
+source_namespace: m2b_legacy_v3
+fusion_strategy: primary_merge_v1
+deterministic_baseline: data_knowledge_eval/m2b/baseline_results.m2b_legacy_v3.deterministic.json
+vector_baseline: data_knowledge_eval/m2b/vector_results.m2b_legacy_v3.json
+generated_at: '2026-06-28T00:00:00Z'
+fusion_config:
+  vector_rank_limit: 8
+  family_score_thresholds:
+    catalog_table: 0.18
+    catalog_field: 0.16
+    glossary_term: 0.17
+    sql_example: 0.15
+  family_caps:
+    catalog_table: 1
+    catalog_field: 2
+    glossary_term: 1
+    sql_example: 1
+  total_vector_supplement_cap: 3
+  deterministic_pass_guard: true
+  threshold_policy: conservative prototype defaults
+case_count: 19
+deterministic_pass_partial_fail:
+  pass: 11
+  partial: 8
+  fail: 0
+vector_pass_partial_fail:
+  pass: 2
+  partial: 17
+  fail: 0
+hybrid_pass_partial_fail:
+  pass: 13
+  partial: 6
+  fail: 0
+input_hashes:
+  deterministic_baseline_sha256: cd4f7a1b9f64a03840fb9f6f226dd61c0ba6d1ef627dbbad1695e8f9e49db771
+  vector_baseline_sha256: 892600bb0c00cbb1f03a9123e6284c3c1e2b51c0268a799044e6cdb8a6d8a401
+  golden_set_sha256: 30995a1caecc3884ed1a834948d0ea632aeec8ded9d237fddd47bf26db4de888
+sanity_checks_passed: true

@@ -35,6 +35,35 @@
 - [x] E1 单用户埋点深度解析 → docs/plans/trace-analyzer-plan.md（2026-05-01）
 
 ## 当前进行中的功能
+- [x] M2B-5：Hybrid Retrieval Fusion — 已完成（2026-06-28）
+  - plan / reviews：
+    - `docs/plans/m2b-5-hybrid-retrieval-fusion-plan.md`
+    - `docs/reviews/m2b-5-hybrid-retrieval-fusion-results.md`
+    - `docs/reviews/m2b-5-deterministic-vs-vector-vs-hybrid-comparison.md`
+  - 本阶段产出：
+    - `data_knowledge_eval/m2b/hybrid_results.m2b_legacy_v3.json`
+    - `data_knowledge_eval/m2b/hybrid_coverage.m2b_legacy_v3.yaml`
+    - `data_knowledge_eval/m2b/hybrid_manifest.m2b_legacy_v3.yaml`
+    - `scripts/run_m2b_hybrid_baseline.py`
+    - `tests/test_m2b_hybrid_baseline.py`
+  - 本轮结果：
+    - `primary_merge_v1` 已实现，且 fusion 决策不读取 golden expected/missing labels
+    - deterministic：`11 pass / 8 partial / 0 fail`
+    - vector：`2 pass / 17 partial / 0 fail`
+    - hybrid：`13 pass / 6 partial / 0 fail`
+    - `mx-no-withdraw-cohort`：`partial -> pass`
+    - `th-asset-snapshot-query`：`partial -> pass`
+    - `mx-app-profile-query`：missing 收缩，但仍是 `partial`
+    - `rejected_vector_candidates` / `input_hashes` / 三方 comparison 均已输出
+  - 保持不变：
+    - 不改 runtime retriever
+    - 不改 Data Agent runtime
+    - 不调用 LLM
+    - 不生成或执行 SQL
+    - 不重跑 seed / embedding / vector index
+  - 下一步：
+    - 进入更 runtime-facing 的 hybrid retrieval design / governance 阶段
+
 - [x] M2B-4：Vector Index Prototype — 已完成（2026-06-25）
   - plan / reviews：
     - `docs/plans/m2b-4-vector-index-prototype-plan.md`
