@@ -35,6 +35,29 @@
 - [x] E1 单用户埋点深度解析 → docs/plans/trace-analyzer-plan.md（2026-05-01）
 
 ## 当前进行中的功能
+- [x] M2B-9-0：Hybrid Enabled Rollout Preflight Guardrails — 已完成（2026-06-29）
+  - plan / specs：
+    - `docs/plans/m2b-9-hybrid-enabled-gated-rollout-plan.md`
+    - `docs/specs/m2b-9-hybrid-enabled-eval-gate.md`
+    - `docs/specs/m2b-9-hybrid-enabled-runtime-contract.md`
+  - 本阶段产出：
+    - `tests/data_agent/test_hybrid_candidate_guardrails.py`
+    - closer-to-runtime candidate plan invalid fallback regression
+    - deterministic rerun final failure surfacing regression
+    - rollout / eval / rollback / kill switch contract 文档
+  - 本阶段结果：
+    - `hybrid_enabled` 仍 forced deterministic-only
+    - public API / SQL HITL / approve / execute 语义保持不变
+    - `M2B-8.1` final-attempt provenance invariant 继续保持
+    - discarded candidate 不进入 public API
+  - 同步更新：
+    - `PLANNING.md`
+    - `TASK.md`
+  - 验证：
+    - `pytest tests/data_agent/test_hybrid_candidate_guardrails.py -q`
+  - 下一步：
+    - `M2B-9` implementation not started；后续只允许在显式 gated rollout + eval gate + rollback contract 下推进
+
 - [x] M2B-8.1：Hybrid Candidate Provenance & Fallback Hardening — 已完成（2026-06-29）
   - review：
     - `docs/reviews/m2b-8-hybrid-candidate-runtime-grounding-results.md`
