@@ -5,6 +5,30 @@
 - 整体架构：单体 FastAPI 后端，五层（API → 编排 → Skill 执行 → 数据访问 → 外部服务）
 - 入口文件：`app/main.py`
 
+## 2026-06-29 M2B-9-0 Hybrid Enabled Rollout Preflight Guardrails
+
+- `M2B-8.1` 已完成并合并，当前完成 `M2B-9-0` 前置护栏阶段：
+  - `docs/plans/m2b-9-hybrid-enabled-gated-rollout-plan.md`
+  - `docs/specs/m2b-9-hybrid-enabled-eval-gate.md`
+  - `docs/specs/m2b-9-hybrid-enabled-runtime-contract.md`
+- 本阶段目标：
+  - 补齐 `hybrid_enabled` rollout 前的 guardrail regression tests
+  - 写清 rollout / eval / rollback / kill switch contract
+  - 保持 `M2B-8.1` 的 runtime invariant 不变
+- 本阶段新增或强化的 guardrails：
+  - closer-to-runtime `candidate structured plan invalid` fallback regression
+  - `deterministic rerun final failure` surfacing regression
+  - gated rollout / eval gate / runtime rollback contract
+- 本阶段明确保持不变：
+  - `hybrid_enabled` 继续 forced deterministic-only
+  - 不改 public API response schema
+  - 不改 approve / execute / SQL HITL 语义
+  - 不改 orchestrator 自动路由
+  - 不改 seed / embedding records / vector index artifact
+- 当前结论是：
+  - `M2B-9-0` 只补护栏，不打开能力
+  - `M2B-9` implementation not started，后续只能在显式 gated rollout 下讨论 `hybrid_enabled`
+
 ## 2026-06-29 M2B-8.1 Hybrid Candidate Provenance & Fallback Hardening
 
 - `M2B-8` 已完成并合并，当前进入 `M2B-8.1`：
