@@ -86,7 +86,38 @@ def test_load_hybrid_config_marks_invalid_cap_value_as_config_error() -> None:
     assert config.family_caps["catalog_field"] == 2
 
 
-def test_effective_mode_forces_deterministic_when_candidate_or_enabled_is_configured() -> None:
+def test_effective_mode_allows_hybrid_candidate_when_allowlist_scope_and_config_pass() -> None:
+    from app.data_agent.hybrid_runtime import (
+        HybridRetrievalMode,
+        evaluate_effective_mode,
+        load_hybrid_config,
+    )
+
+    config = load_hybrid_config(
+        _settings(
+            hybrid_retrieval_enabled_raw="1",
+            hybrid_retrieval_mode_raw="hybrid_candidate",
+            hybrid_retrieval_allow_countries_raw="mx",
+            hybrid_retrieval_allow_project_ids_raw="agent-user-profile-fork",
+            hybrid_retrieval_shadow_sample_rate_raw="0.0",
+        )
+    )
+    decision = evaluate_effective_mode(
+        config=config,
+        country="mx",
+        project_id="agent-user-profile-fork",
+        run_type="cohort_query",
+        request_key="stable-request",
+    )
+
+    assert decision.configured_mode is HybridRetrievalMode.HYBRID_CANDIDATE
+    assert decision.effective_mode is HybridRetrievalMode.HYBRID_CANDIDATE
+    assert decision.sample_hit is True
+    assert decision.should_attempt_shadow is True
+    assert decision.fallback_reason is None
+
+
+def test_effective_mode_keeps_hybrid_enabled_forced_to_deterministic() -> None:
     from app.data_agent.hybrid_runtime import (
         HybridFallbackReason,
         HybridRetrievalMode,
@@ -94,25 +125,25 @@ def test_effective_mode_forces_deterministic_when_candidate_or_enabled_is_config
         load_hybrid_config,
     )
 
-    for configured in ("hybrid_candidate", "hybrid_enabled"):
-        config = load_hybrid_config(
-            _settings(
-                hybrid_retrieval_enabled_raw="1",
-                hybrid_retrieval_mode_raw=configured,
-                hybrid_retrieval_allow_countries_raw="mx",
-                hybrid_retrieval_allow_project_ids_raw="agent-user-profile-fork",
-            )
+    config = load_hybrid_config(
+        _settings(
+            hybrid_retrieval_enabled_raw="1",
+            hybrid_retrieval_mode_raw="hybrid_enabled",
+            hybrid_retrieval_allow_countries_raw="mx",
+            hybrid_retrieval_allow_project_ids_raw="agent-user-profile-fork",
         )
-        decision = evaluate_effective_mode(
-            config=config,
-            country="mx",
-            project_id="agent-user-profile-fork",
-            run_type="cohort_query",
-            request_key="stable-request",
-        )
-        assert decision.configured_mode is not HybridRetrievalMode.DETERMINISTIC_ONLY
-        assert decision.effective_mode is HybridRetrievalMode.DETERMINISTIC_ONLY
-        assert decision.fallback_reason is HybridFallbackReason.MODE_FORCED_DETERMINISTIC
+    )
+    decision = evaluate_effective_mode(
+        config=config,
+        country="mx",
+        project_id="agent-user-profile-fork",
+        run_type="cohort_query",
+        request_key="stable-request",
+    )
+
+    assert decision.configured_mode is HybridRetrievalMode.HYBRID_ENABLED
+    assert decision.effective_mode is HybridRetrievalMode.DETERMINISTIC_ONLY
+    assert decision.fallback_reason is HybridFallbackReason.MODE_FORCED_DETERMINISTIC
 
 
 def test_effective_mode_rejects_empty_allowlists_by_default() -> None:

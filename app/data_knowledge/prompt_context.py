@@ -24,6 +24,25 @@ class AssembledPromptContext:
     trimmed: bool
 
 
+def append_prompt_section(assembled: AssembledPromptContext, section_text: str) -> AssembledPromptContext:
+    extra = str(section_text or "").strip()
+    if not extra:
+        return assembled
+    rendered_text = assembled.rendered_text.strip()
+    if rendered_text:
+        rendered_text = f"{rendered_text}\n\n{extra}"
+    else:
+        rendered_text = extra
+    context_hash = hashlib.sha256(rendered_text.encode("utf-8")).hexdigest() if rendered_text else ""
+    return AssembledPromptContext(
+        rendered_text=rendered_text,
+        context_hash=context_hash,
+        section_counts=dict(assembled.section_counts),
+        source_ids={key: list(values) for key, values in assembled.source_ids.items()},
+        trimmed=assembled.trimmed,
+    )
+
+
 class PromptContextAssembler:
     def assemble(
         self,

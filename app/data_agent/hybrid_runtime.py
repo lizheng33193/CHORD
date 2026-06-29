@@ -22,8 +22,10 @@ DEFAULT_MAX_DETERMINISTIC_CANDIDATES = 20
 DEFAULT_MAX_VECTOR_CANDIDATES = 10
 DEFAULT_MAX_ACCEPTED_SUPPLEMENTS = 3
 DEFAULT_MAX_REJECTED_CANDIDATES = 20
+DEFAULT_MAX_SUPPLEMENTAL_SECTION_CHARS = 3000
 MAX_TITLE_LENGTH = 200
 MAX_SOURCE_KEY_LENGTH = 300
+MAX_DETAIL_LENGTH = 240
 DEFAULT_FAMILY_THRESHOLDS = {
     "catalog_table": 0.18,
     "catalog_field": 0.16,
@@ -45,6 +47,25 @@ FIELD_EQUIVALENCE_TOKENS = {
     "useruuid": {"useruuid"},
 }
 _VECTOR_INDEX_CACHE: dict[str, tuple[int, dict[str, Any]]] = {}
+PROMPT_INJECTION_NONE = "none"
+PROMPT_INJECTION_SUPPLEMENTAL_CANDIDATES_V1 = "supplemental_candidates_v1"
+FINAL_GENERATION_PASS_DETERMINISTIC = "deterministic"
+FINAL_GENERATION_PASS_HYBRID_CANDIDATE = "hybrid_candidate"
+FINAL_GENERATION_PASS_DETERMINISTIC_RERUN = "deterministic_rerun"
+DISCARD_REASON_POST_SQL_KIND_MISMATCH = "post_sql_kind_mismatch"
+DISCARD_REASON_CANDIDATE_GENERATION_FAILED = "candidate_generation_failed"
+DISCARD_REASON_CANDIDATE_PLAN_INVALID = "candidate_plan_invalid"
+_SUPPLEMENTAL_FAMILY_ORDER = {
+    "catalog_table": 0,
+    "catalog_field": 1,
+    "glossary_term": 2,
+    "sql_example": 3,
+}
+_NON_QUERY_ONLY_INTENT_PATTERN = re.compile(
+    r"(create\s+(a\s+)?table|build\s+(a\s+)?(result\s+)?table|persist|materiali[sz]e"
+    r"|save\s+.*\b(table|cohort)\b|writeback|bucket_writeback|建表|物化|落表|写回|沉淀.*表)",
+    re.IGNORECASE,
+)
 
 
 class HybridRetrievalMode(str, Enum):
@@ -99,6 +120,7 @@ class EffectiveModeDecision:
 class ShadowTraceBuildResult:
     trace: dict[str, Any] | None
     audit_summary: dict[str, Any]
+    supplemental_prompt_section: str = ""
 
 
 def _build_audit_summary(
@@ -107,11 +129,25 @@ def _build_audit_summary(
     effective_mode: HybridRetrievalMode,
     fallback_reason: str | None,
     trace_present: bool,
+    attempted_mode: str | None = None,
+    final_generation_pass: str = FINAL_GENERATION_PASS_DETERMINISTIC,
+    prompt_injection_mode: str = PROMPT_INJECTION_NONE,
+    prompt_candidate_count: int = 0,
+    candidate_attempted: bool = False,
+    candidate_discarded: bool = False,
+    candidate_discard_reason: str | None = None,
 ) -> dict[str, Any]:
     return {
         "hybrid_configured_mode": configured_mode.value,
+        "hybrid_attempted_mode": attempted_mode,
         "hybrid_effective_mode": effective_mode.value,
         "hybrid_fallback_reason": fallback_reason,
+        "hybrid_final_generation_pass": final_generation_pass,
+        "hybrid_prompt_injection_mode": prompt_injection_mode,
+        "hybrid_prompt_candidate_count": prompt_candidate_count,
+        "hybrid_candidate_attempted": candidate_attempted,
+        "hybrid_candidate_discarded": candidate_discarded,
+        "hybrid_candidate_discard_reason": candidate_discard_reason,
         "hybrid_trace_present": trace_present,
     }
 
@@ -295,7 +331,6 @@ def evaluate_effective_mode(
             should_attempt_shadow=False,
         )
     if configured_mode in {
-        HybridRetrievalMode.HYBRID_CANDIDATE,
         HybridRetrievalMode.HYBRID_ENABLED,
     }:
         return EffectiveModeDecision(
@@ -341,6 +376,15 @@ def evaluate_effective_mode(
             fallback_applied=True,
             sample_hit=False,
             should_attempt_shadow=False,
+        )
+    if configured_mode is HybridRetrievalMode.HYBRID_CANDIDATE:
+        return EffectiveModeDecision(
+            configured_mode=configured_mode,
+            effective_mode=HybridRetrievalMode.HYBRID_CANDIDATE,
+            fallback_reason=None,
+            fallback_applied=False,
+            sample_hit=True,
+            should_attempt_shadow=True,
         )
     sample_hit = _stable_sample_hit(request_key=request_key, sample_rate=config.shadow_sample_rate)
     if not sample_hit:
@@ -695,6 +739,7 @@ def _rank_vector_candidates(
                 "canonical_key": canonical_key,
                 "title": _candidate_title(title),
                 "score": round(float(score), 6),
+                "metadata": dict(entry.get("metadata") or {}),
             }
         )
     candidates.sort(key=lambda item: (-item["score"], item["asset_family"], item["source_key"]))
@@ -758,9 +803,225 @@ def _select_vector_supplements(
                 "score": candidate["score"],
                 "rank": candidate["rank"],
                 "accepted_reason": "shadow_candidate_selected",
+                "metadata": dict(candidate.get("metadata") or {}),
             }
         )
     return accepted[:DEFAULT_MAX_ACCEPTED_SUPPLEMENTS], rejected[:DEFAULT_MAX_REJECTED_CANDIDATES]
+
+
+def _serialize_vector_candidate(candidate: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "record_id": candidate["record_id"],
+        "source_key": candidate["source_key"],
+        "asset_family": candidate["asset_family"],
+        "title": candidate["title"],
+        "score": candidate["score"],
+        "rank": candidate["rank"],
+    }
+
+
+def _serialize_accepted_supplement(candidate: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "record_id": candidate["record_id"],
+        "source_key": candidate["source_key"],
+        "asset_family": candidate["asset_family"],
+        "title": candidate["title"],
+        "score": candidate["score"],
+        "rank": candidate["rank"],
+        "accepted_reason": candidate["accepted_reason"],
+    }
+
+
+def _default_candidate_attempt(
+    *,
+    attempted_mode: str | None = None,
+    prompt_injection_mode: str = PROMPT_INJECTION_NONE,
+    prompt_candidate_count: int = 0,
+) -> dict[str, Any]:
+    return {
+        "attempted": False,
+        "attempted_mode": attempted_mode,
+        "prompt_injection_mode": prompt_injection_mode,
+        "prompt_candidate_count": prompt_candidate_count,
+        "output_sql_kind": None,
+        "output_sql_hash": None,
+        "discarded": False,
+        "discard_reason": None,
+    }
+
+
+def _sorted_supplemental_candidates(supplements: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return sorted(
+        supplements,
+        key=lambda item: (
+            int(item.get("rank") or 0),
+            -float(item.get("score") or 0.0),
+            _SUPPLEMENTAL_FAMILY_ORDER.get(str(item.get("asset_family") or ""), 99),
+            str(item.get("source_key") or ""),
+        ),
+    )
+
+
+def _extract_table_name(candidate: dict[str, Any]) -> str:
+    metadata = dict(candidate.get("metadata") or {})
+    table_name = normalize_table_name(metadata.get("table_name") or "")
+    if table_name:
+        return table_name
+    title = str(candidate.get("title") or "")
+    if "." in title:
+        return normalize_table_name(title.rsplit(".", 1)[0])
+    source_key = str(candidate.get("source_key") or "")
+    parts = source_key.split(".")
+    if len(parts) >= 4 and parts[0] in {"field", "table"}:
+        return normalize_table_name(parts[2])
+    return ""
+
+
+def _extract_field_name(candidate: dict[str, Any]) -> str:
+    metadata = dict(candidate.get("metadata") or {})
+    field_name = normalize_field_name(metadata.get("field_name") or "")
+    if field_name:
+        return field_name
+    title = str(candidate.get("title") or "")
+    if "." in title:
+        return normalize_field_name(title.rsplit(".", 1)[-1])
+    source_key = str(candidate.get("source_key") or "")
+    return normalize_field_name(source_key.split(".")[-1] if source_key else "")
+
+
+def _supplemental_lines(candidate: dict[str, Any], index: int) -> list[str]:
+    metadata = dict(candidate.get("metadata") or {})
+    family = str(candidate.get("asset_family") or "")
+    lines = [
+        f"{index}. asset_family: {family}",
+        f"   source_key: {_candidate_source_key(str(candidate.get('source_key') or ''))}",
+        f"   title: {_candidate_title(str(candidate.get('title') or ''))}",
+    ]
+    if family == "catalog_table":
+        table_name = _extract_table_name(candidate)
+        detail = _truncate(
+            str(metadata.get("purpose") or metadata.get("description") or metadata.get("business_meaning") or ""),
+            limit=MAX_DETAIL_LENGTH,
+        )
+        if table_name:
+            lines.append(f"   table: {table_name}")
+        if detail:
+            lines.append(f"   description: {detail}")
+    elif family == "catalog_field":
+        table_name = _extract_table_name(candidate)
+        field_name = _extract_field_name(candidate)
+        detail = _truncate(
+            str(metadata.get("business_meaning") or metadata.get("description") or metadata.get("definition") or ""),
+            limit=MAX_DETAIL_LENGTH,
+        )
+        if table_name:
+            lines.append(f"   table: {table_name}")
+        if field_name:
+            lines.append(f"   field: {field_name}")
+        if detail:
+            lines.append(f"   description: {detail}")
+    elif family == "glossary_term":
+        definition = _truncate(
+            str(metadata.get("definition") or metadata.get("description") or ""),
+            limit=MAX_DETAIL_LENGTH,
+        )
+        if definition:
+            lines.append(f"   definition: {definition}")
+    elif family == "sql_example":
+        summary = _truncate(
+            str(metadata.get("pattern_summary") or metadata.get("summary") or metadata.get("description") or ""),
+            limit=MAX_DETAIL_LENGTH,
+        )
+        if summary:
+            lines.append(f"   summary: {summary}")
+    return lines
+
+
+def build_supplemental_prompt_section(
+    accepted_supplements: list[dict[str, Any]],
+) -> tuple[str, int, str]:
+    ordered = _sorted_supplemental_candidates(list(accepted_supplements or []))
+    if not ordered:
+        return "", 0, PROMPT_INJECTION_NONE
+    lines = [
+        "# === Supplemental Hybrid Knowledge Candidates ===",
+        "These candidates are supplemental retrieval hints.",
+        "They do not override deterministic knowledge.",
+        "Use them only when they are consistent with the primary schema context.",
+        "If there is any conflict, prefer the deterministic context.",
+        "",
+    ]
+    added = 0
+    for index, candidate in enumerate(ordered, start=1):
+        candidate_lines = _supplemental_lines(candidate, index)
+        projected = "\n".join(lines + candidate_lines).strip()
+        if len(projected) > DEFAULT_MAX_SUPPLEMENTAL_SECTION_CHARS:
+            break
+        lines.extend(candidate_lines)
+        lines.append("")
+        added += 1
+    if not added:
+        return "", 0, PROMPT_INJECTION_NONE
+    section = "\n".join(lines).strip()
+    return section, added, PROMPT_INJECTION_SUPPLEMENTAL_CANDIDATES_V1
+
+
+def _trace_payload(
+    *,
+    config: HybridRetrievalConfigV1,
+    configured_mode: HybridRetrievalMode,
+    effective_mode: HybridRetrievalMode,
+    fallback_applied: bool,
+    fallback_reason: str | None,
+    prompt_injection_mode: str,
+    prompt_candidate_count: int,
+    final_generation_pass: str,
+    deterministic_candidates: list[dict[str, Any]],
+    vector_candidates: list[dict[str, Any]],
+    accepted_supplements: list[dict[str, Any]],
+    rejected_candidates: list[dict[str, Any]],
+) -> dict[str, Any]:
+    return {
+        "schema_version": DEFAULT_TRACE_SCHEMA_VERSION,
+        "configured_mode": configured_mode.value,
+        "effective_mode": effective_mode.value,
+        "source_namespace": config.source_namespace,
+        "fallback_applied": fallback_applied,
+        "fallback_reason": fallback_reason,
+        "config_snapshot": _config_snapshot(
+            config,
+            EffectiveModeDecision(
+                configured_mode=configured_mode,
+                effective_mode=effective_mode,
+                fallback_reason=HybridFallbackReason(fallback_reason) if fallback_reason in {reason.value for reason in HybridFallbackReason} else None,
+                fallback_applied=fallback_applied,
+                sample_hit=(configured_mode is not HybridRetrievalMode.HYBRID_SHADOW) or not fallback_applied,
+                should_attempt_shadow=effective_mode is not HybridRetrievalMode.DETERMINISTIC_ONLY,
+            ),
+        ),
+        "prompt_injection_mode": prompt_injection_mode,
+        "prompt_candidate_count": prompt_candidate_count,
+        "final_generation_pass": final_generation_pass,
+        "candidate_counts": {
+            "deterministic_total": len(deterministic_candidates),
+            "vector_total": len(vector_candidates),
+            "accepted_total": len(accepted_supplements),
+            "rejected_total": len(rejected_candidates),
+        },
+        "candidate_attempt": _default_candidate_attempt(
+            attempted_mode=(
+                configured_mode.value
+                if configured_mode is HybridRetrievalMode.HYBRID_CANDIDATE and prompt_injection_mode == PROMPT_INJECTION_SUPPLEMENTAL_CANDIDATES_V1
+                else None
+            ),
+            prompt_injection_mode=prompt_injection_mode,
+            prompt_candidate_count=prompt_candidate_count,
+        ),
+        "deterministic_candidates": deterministic_candidates[:DEFAULT_MAX_DETERMINISTIC_CANDIDATES],
+        "vector_candidates": [_serialize_vector_candidate(item) for item in vector_candidates[:DEFAULT_MAX_VECTOR_CANDIDATES]],
+        "accepted_supplements": [_serialize_accepted_supplement(item) for item in accepted_supplements[:DEFAULT_MAX_ACCEPTED_SUPPLEMENTS]],
+        "rejected_candidates": rejected_candidates[:DEFAULT_MAX_REJECTED_CANDIDATES],
+    }
 
 
 def _config_snapshot(config: HybridRetrievalConfigV1, decision: EffectiveModeDecision) -> dict[str, Any]:
@@ -786,26 +1047,26 @@ def _fallback_trace(
     decision: EffectiveModeDecision,
     deterministic_candidates: list[dict[str, Any]],
 ) -> dict[str, Any]:
-    return {
-        "schema_version": DEFAULT_TRACE_SCHEMA_VERSION,
-        "configured_mode": decision.configured_mode.value,
-        "effective_mode": decision.effective_mode.value,
-        "source_namespace": config.source_namespace,
-        "fallback_applied": True,
-        "fallback_reason": _safe_reason(decision.fallback_reason),
-        "config_snapshot": _config_snapshot(config, decision),
-        "prompt_injection_mode": "none",
-        "candidate_counts": {
-            "deterministic_total": len(deterministic_candidates),
-            "vector_total": 0,
-            "accepted_total": 0,
-            "rejected_total": 0,
-        },
-        "deterministic_candidates": deterministic_candidates[:DEFAULT_MAX_DETERMINISTIC_CANDIDATES],
-        "vector_candidates": [],
-        "accepted_supplements": [],
-        "rejected_candidates": [],
-    }
+    trace = _trace_payload(
+        config=config,
+        configured_mode=decision.configured_mode,
+        effective_mode=decision.effective_mode,
+        fallback_applied=True,
+        fallback_reason=_safe_reason(decision.fallback_reason),
+        prompt_injection_mode=PROMPT_INJECTION_NONE,
+        prompt_candidate_count=0,
+        final_generation_pass=FINAL_GENERATION_PASS_DETERMINISTIC,
+        deterministic_candidates=deterministic_candidates,
+        vector_candidates=[],
+        accepted_supplements=[],
+        rejected_candidates=[],
+    )
+    trace["config_snapshot"] = _config_snapshot(config, decision)
+    return trace
+
+
+def _looks_like_non_query_only_intent(natural_language_request: str) -> bool:
+    return bool(_NON_QUERY_ONLY_INTENT_PATTERN.search(str(natural_language_request or "").strip()))
 
 
 def build_shadow_trace(
@@ -850,6 +1111,7 @@ def build_shadow_trace(
         )
 
     deterministic_candidates = _build_deterministic_candidates(retrieved_context)
+    supplemental_prompt_section = ""
     try:
         if not decision.should_attempt_shadow:
             trace = _fallback_trace(
@@ -871,35 +1133,72 @@ def build_shadow_trace(
                 deterministic_candidates=deterministic_candidates,
                 vector_candidates=vector_candidates,
             )
-            trace = {
-                "schema_version": DEFAULT_TRACE_SCHEMA_VERSION,
-                "configured_mode": decision.configured_mode.value,
-                "effective_mode": decision.effective_mode.value,
-                "source_namespace": config.source_namespace,
-                "fallback_applied": False,
-                "fallback_reason": None,
-                "config_snapshot": _config_snapshot(config, decision),
-                "prompt_injection_mode": "none",
-                "candidate_counts": {
-                    "deterministic_total": len(deterministic_candidates),
-                    "vector_total": len(vector_candidates),
-                    "accepted_total": len(accepted),
-                    "rejected_total": len(rejected),
-                },
-                "deterministic_candidates": deterministic_candidates[:DEFAULT_MAX_DETERMINISTIC_CANDIDATES],
-                "vector_candidates": vector_candidates[:DEFAULT_MAX_VECTOR_CANDIDATES],
-                "accepted_supplements": accepted[:DEFAULT_MAX_ACCEPTED_SUPPLEMENTS],
-                "rejected_candidates": rejected[:DEFAULT_MAX_REJECTED_CANDIDATES],
-            }
+            if decision.effective_mode is HybridRetrievalMode.HYBRID_CANDIDATE:
+                if _looks_like_non_query_only_intent(natural_language_request):
+                    trace = _fallback_trace(
+                        config=config,
+                        decision=EffectiveModeDecision(
+                            configured_mode=decision.configured_mode,
+                            effective_mode=HybridRetrievalMode.DETERMINISTIC_ONLY,
+                            fallback_reason=HybridFallbackReason.UNSUPPORTED_SQL_KIND,
+                            fallback_applied=True,
+                            sample_hit=decision.sample_hit,
+                            should_attempt_shadow=False,
+                        ),
+                        deterministic_candidates=deterministic_candidates,
+                    )
+                else:
+                    supplemental_prompt_section, prompt_candidate_count, prompt_injection_mode = build_supplemental_prompt_section(accepted)
+                    if not supplemental_prompt_section or prompt_candidate_count <= 0:
+                        trace = _fallback_trace(
+                            config=config,
+                            decision=EffectiveModeDecision(
+                                configured_mode=decision.configured_mode,
+                                effective_mode=HybridRetrievalMode.DETERMINISTIC_ONLY,
+                                fallback_reason=HybridFallbackReason.FUSION_GUARD_FAILED,
+                                fallback_applied=True,
+                                sample_hit=decision.sample_hit,
+                                should_attempt_shadow=False,
+                            ),
+                            deterministic_candidates=deterministic_candidates,
+                        )
+                    else:
+                        trace = _trace_payload(
+                            config=config,
+                            configured_mode=decision.configured_mode,
+                            effective_mode=decision.effective_mode,
+                            fallback_applied=False,
+                            fallback_reason=None,
+                            prompt_injection_mode=prompt_injection_mode,
+                            prompt_candidate_count=prompt_candidate_count,
+                            final_generation_pass=FINAL_GENERATION_PASS_HYBRID_CANDIDATE,
+                            deterministic_candidates=deterministic_candidates,
+                            vector_candidates=vector_candidates,
+                            accepted_supplements=accepted,
+                            rejected_candidates=rejected,
+                        )
+                        trace["config_snapshot"] = _config_snapshot(config, decision)
+            else:
+                trace = _trace_payload(
+                    config=config,
+                    configured_mode=decision.configured_mode,
+                    effective_mode=decision.effective_mode,
+                    fallback_applied=False,
+                    fallback_reason=None,
+                    prompt_injection_mode=PROMPT_INJECTION_NONE,
+                    prompt_candidate_count=0,
+                    final_generation_pass=FINAL_GENERATION_PASS_DETERMINISTIC,
+                    deterministic_candidates=deterministic_candidates,
+                    vector_candidates=vector_candidates,
+                    accepted_supplements=accepted,
+                    rejected_candidates=rejected,
+                )
+                trace["config_snapshot"] = _config_snapshot(config, decision)
         json.dumps(trace, ensure_ascii=False)
         return ShadowTraceBuildResult(
             trace=trace,
-            audit_summary=_build_audit_summary(
-                configured_mode=decision.configured_mode,
-                effective_mode=HybridRetrievalMode(str(trace["effective_mode"])),
-                fallback_reason=trace.get("fallback_reason"),
-                trace_present=True,
-            ),
+            audit_summary=extract_hybrid_audit_summary({"hybrid_trace": trace}),
+            supplemental_prompt_section=supplemental_prompt_section,
         )
     except (FileNotFoundError, ValueError, json.JSONDecodeError):
         trace = _fallback_trace(
@@ -931,12 +1230,7 @@ def build_shadow_trace(
         json.dumps(trace, ensure_ascii=False)
         return ShadowTraceBuildResult(
             trace=trace,
-            audit_summary=_build_audit_summary(
-                configured_mode=decision.configured_mode,
-                effective_mode=HybridRetrievalMode(str(trace["effective_mode"])),
-                fallback_reason=trace.get("fallback_reason"),
-                trace_present=True,
-            ),
+            audit_summary=extract_hybrid_audit_summary({"hybrid_trace": trace}),
         )
     except Exception:
         return ShadowTraceBuildResult(
@@ -964,7 +1258,8 @@ def finalize_shadow_trace_for_sql_kind(
     finalized["effective_mode"] = HybridRetrievalMode.DETERMINISTIC_ONLY.value
     finalized["fallback_applied"] = True
     finalized["fallback_reason"] = HybridFallbackReason.UNSUPPORTED_SQL_KIND.value
-    finalized["prompt_injection_mode"] = "none"
+    finalized["prompt_injection_mode"] = PROMPT_INJECTION_NONE
+    finalized["prompt_candidate_count"] = 0
     return finalized
 
 
@@ -983,5 +1278,12 @@ def extract_hybrid_audit_summary(snapshot: dict[str, Any] | None) -> dict[str, A
         configured_mode=HybridRetrievalMode(configured_mode),
         effective_mode=HybridRetrievalMode(effective_mode),
         fallback_reason=trace.get("fallback_reason"),
+        attempted_mode=(trace.get("candidate_attempt") or {}).get("attempted_mode"),
+        final_generation_pass=str(trace.get("final_generation_pass") or FINAL_GENERATION_PASS_DETERMINISTIC),
+        prompt_injection_mode=str(trace.get("prompt_injection_mode") or PROMPT_INJECTION_NONE),
+        prompt_candidate_count=int(trace.get("prompt_candidate_count") or 0),
+        candidate_attempted=bool((trace.get("candidate_attempt") or {}).get("attempted")),
+        candidate_discarded=bool((trace.get("candidate_attempt") or {}).get("discarded")),
+        candidate_discard_reason=(trace.get("candidate_attempt") or {}).get("discard_reason"),
         trace_present=True,
     )

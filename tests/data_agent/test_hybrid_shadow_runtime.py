@@ -180,6 +180,71 @@ def test_create_run_hybrid_shadow_writes_trace_without_changing_prompt_or_api(
         assert len(trace["rejected_candidates"]) <= 20
 
 
+def test_create_run_hybrid_candidate_injects_supplemental_prompt_and_persists_final_candidate_result(
+    client: TestClient,
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    from app.core.config import settings
+    from tests.data_agent.test_api import _login, _register_privileged_user, _retrieved_context, _stub_generate_result
+
+    _register_privileged_user(username="da-hybrid-candidate", email="da-hybrid-candidate@example.com", role_codes=["data_admin"])
+    token, _ = _login(client, "da-hybrid-candidate", "passw0rd123")
+
+    index_path = tmp_path / "vector_index.json"
+    _write_vector_index(index_path)
+    captured: dict[str, object] = {}
+
+    def _fake_generate(**kwargs):
+        prompt_context = kwargs.get("knowledge_prompt_context")
+        captured["rendered_text"] = getattr(prompt_context, "rendered_text", "")
+        return _stub_generate_result("SELECT uid FROM users LIMIT 13")
+
+    monkeypatch.setattr(settings, "hybrid_retrieval_enabled_raw", "1", raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_mode_raw", "hybrid_candidate", raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_source_namespace_raw", "m2b_legacy_v3", raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_vector_index_path_raw", str(index_path), raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_allow_countries_raw", "mx", raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_allow_project_ids_raw", "1", raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_shadow_sample_rate_raw", "0.0", raising=False)
+    monkeypatch.setattr(
+        settings,
+        "hybrid_retrieval_family_score_thresholds_json_raw",
+        '{"catalog_table": 0.0, "catalog_field": 0.0, "glossary_term": 0.0, "sql_example": 0.0}',
+        raising=False,
+    )
+    monkeypatch.setattr("app.data_agent.service.DataKnowledgeRetriever.retrieve", lambda *_args, **_kwargs: _retrieved_context())
+    monkeypatch.setattr("app.data_agent.service._generate_sql_response", _fake_generate)
+
+    create = client.post(
+        "/api/data-agent/runs",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "natural_language_request": "查询首贷用户",
+            "target_country": "mexico",
+            "run_type": "cohort_query",
+        },
+    )
+    assert create.status_code == 201
+    assert "Supplemental Hybrid Knowledge Candidates" in str(captured["rendered_text"])
+
+    run_id = create.json()["run_id"]
+    with AuthSessionLocal() as db:
+        version = db.scalar(
+            select(DataAgentSqlVersion).where(DataAgentSqlVersion.run_id == run_id).order_by(DataAgentSqlVersion.id.desc())
+        )
+        assert version is not None
+        trace = (version.retrieval_snapshot_json or {}).get("hybrid_trace")
+        assert trace is not None
+        assert trace["configured_mode"] == "hybrid_candidate"
+        assert trace["effective_mode"] == "hybrid_candidate"
+        assert trace["prompt_injection_mode"] == "supplemental_candidates_v1"
+        assert trace["final_generation_pass"] == "hybrid_candidate"
+        assert trace["candidate_attempt"]["attempted"] is True
+        assert trace["candidate_attempt"]["discarded"] is False
+        assert trace["prompt_candidate_count"] > 0
+
+
 def test_revise_run_hybrid_shadow_writes_trace(
     client: TestClient,
     monkeypatch,
@@ -238,6 +303,153 @@ def test_revise_run_hybrid_shadow_writes_trace(
         assert trace is not None
         assert trace["configured_mode"] == "hybrid_shadow"
         assert trace["effective_mode"] == "hybrid_shadow"
+
+
+def test_create_run_hybrid_candidate_build_table_script_discards_candidate_and_reruns_deterministic(
+    client: TestClient,
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    from app.core.config import settings
+    from tests.data_agent.test_api import _login, _register_privileged_user, _retrieved_context, _stub_generate_result
+
+    _register_privileged_user(username="da-hybrid-rerun", email="da-hybrid-rerun@example.com", role_codes=["data_admin"])
+    token, _ = _login(client, "da-hybrid-rerun", "passw0rd123")
+
+    index_path = tmp_path / "vector_index.json"
+    _write_vector_index(index_path)
+    prompts: list[str] = []
+    responses = iter(
+        [
+            _stub_generate_result("CREATE TABLE tmp.hybrid_candidate AS SELECT uid FROM users", sql_kind="build_table_script"),
+            _stub_generate_result("CREATE TABLE tmp.deterministic_rerun AS SELECT uid FROM users", sql_kind="build_table_script"),
+        ]
+    )
+
+    def _fake_generate(**kwargs):
+        prompt_context = kwargs.get("knowledge_prompt_context")
+        prompts.append(getattr(prompt_context, "rendered_text", ""))
+        return next(responses)
+
+    monkeypatch.setattr(settings, "hybrid_retrieval_enabled_raw", "1", raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_mode_raw", "hybrid_candidate", raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_source_namespace_raw", "m2b_legacy_v3", raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_vector_index_path_raw", str(index_path), raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_allow_countries_raw", "mx", raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_allow_project_ids_raw", "1", raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_shadow_sample_rate_raw", "0.0", raising=False)
+    monkeypatch.setattr(
+        settings,
+        "hybrid_retrieval_family_score_thresholds_json_raw",
+        '{"catalog_table": 0.0, "catalog_field": 0.0, "glossary_term": 0.0, "sql_example": 0.0}',
+        raising=False,
+    )
+    monkeypatch.setattr("app.data_agent.service.DataKnowledgeRetriever.retrieve", lambda *_args, **_kwargs: _retrieved_context())
+    monkeypatch.setattr("app.data_agent.service._generate_sql_response", _fake_generate)
+
+    create = client.post(
+        "/api/data-agent/runs",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "natural_language_request": "请整理首贷用户 cohort",
+            "target_country": "mexico",
+            "run_type": "cohort_query",
+        },
+    )
+    assert create.status_code == 201
+    assert len(prompts) == 2
+    assert "Supplemental Hybrid Knowledge Candidates" in prompts[0]
+    assert "Supplemental Hybrid Knowledge Candidates" not in prompts[1]
+
+    run_id = create.json()["run_id"]
+    with AuthSessionLocal() as db:
+        versions = db.scalars(
+            select(DataAgentSqlVersion).where(DataAgentSqlVersion.run_id == run_id).order_by(DataAgentSqlVersion.id.asc())
+        ).all()
+        assert len(versions) == 1
+        version = versions[-1]
+        assert version.sql_text == "CREATE TABLE tmp.deterministic_rerun AS SELECT uid FROM users"
+        trace = (version.retrieval_snapshot_json or {}).get("hybrid_trace")
+        assert trace is not None
+        assert trace["configured_mode"] == "hybrid_candidate"
+        assert trace["effective_mode"] == "deterministic_only"
+        assert trace["prompt_injection_mode"] == "none"
+        assert trace["final_generation_pass"] == "deterministic_rerun"
+        assert trace["fallback_reason"] == "unsupported_sql_kind"
+        assert trace["candidate_attempt"]["attempted"] is True
+        assert trace["candidate_attempt"]["discarded"] is True
+        assert trace["candidate_attempt"]["discard_reason"] == "post_sql_kind_mismatch"
+        assert trace["candidate_attempt"]["output_sql_kind"] == "build_table_script"
+
+
+def test_create_run_hybrid_candidate_generation_failure_falls_back_to_deterministic_rerun(
+    client: TestClient,
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    from app.core.config import settings
+    from data_acquisition_agent.orchestrator import OrchestratorError
+    from data_acquisition_agent.schemas import ErrorType
+    from tests.data_agent.test_api import _login, _register_privileged_user, _retrieved_context, _stub_generate_result
+
+    _register_privileged_user(username="da-hybrid-failure", email="da-hybrid-failure@example.com", role_codes=["data_admin"])
+    token, _ = _login(client, "da-hybrid-failure", "passw0rd123")
+
+    index_path = tmp_path / "vector_index.json"
+    _write_vector_index(index_path)
+    prompts: list[str] = []
+
+    def _fake_generate(**kwargs):
+        prompt_context = kwargs.get("knowledge_prompt_context")
+        rendered_text = getattr(prompt_context, "rendered_text", "")
+        prompts.append(rendered_text)
+        if "Supplemental Hybrid Knowledge Candidates" in rendered_text:
+            raise OrchestratorError(ErrorType.UPSTREAM_LLM_ERROR, "candidate failed", request_id="candidate-failed")
+        return _stub_generate_result("SELECT uid FROM users LIMIT 23")
+
+    monkeypatch.setattr(settings, "hybrid_retrieval_enabled_raw", "1", raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_mode_raw", "hybrid_candidate", raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_source_namespace_raw", "m2b_legacy_v3", raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_vector_index_path_raw", str(index_path), raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_allow_countries_raw", "mx", raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_allow_project_ids_raw", "1", raising=False)
+    monkeypatch.setattr(settings, "hybrid_retrieval_shadow_sample_rate_raw", "0.0", raising=False)
+    monkeypatch.setattr(
+        settings,
+        "hybrid_retrieval_family_score_thresholds_json_raw",
+        '{"catalog_table": 0.0, "catalog_field": 0.0, "glossary_term": 0.0, "sql_example": 0.0}',
+        raising=False,
+    )
+    monkeypatch.setattr("app.data_agent.service.DataKnowledgeRetriever.retrieve", lambda *_args, **_kwargs: _retrieved_context())
+    monkeypatch.setattr("app.data_agent.service._generate_sql_response", _fake_generate)
+
+    create = client.post(
+        "/api/data-agent/runs",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "natural_language_request": "查询首贷用户",
+            "target_country": "mexico",
+            "run_type": "cohort_query",
+        },
+    )
+    assert create.status_code == 201
+    assert len(prompts) == 2
+    assert "Supplemental Hybrid Knowledge Candidates" in prompts[0]
+    assert "Supplemental Hybrid Knowledge Candidates" not in prompts[1]
+
+    run_id = create.json()["run_id"]
+    with AuthSessionLocal() as db:
+        version = db.scalar(
+            select(DataAgentSqlVersion).where(DataAgentSqlVersion.run_id == run_id).order_by(DataAgentSqlVersion.id.desc())
+        )
+        assert version is not None
+        trace = (version.retrieval_snapshot_json or {}).get("hybrid_trace")
+        assert trace is not None
+        assert trace["effective_mode"] == "deterministic_only"
+        assert trace["final_generation_pass"] == "deterministic_rerun"
+        assert trace["candidate_attempt"]["attempted"] is True
+        assert trace["candidate_attempt"]["discarded"] is True
+        assert trace["candidate_attempt"]["discard_reason"] == "candidate_generation_failed"
 
 
 def test_create_run_bucket_writeback_falls_back_with_unsupported_run_type_trace(
