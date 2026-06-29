@@ -104,6 +104,18 @@ class Settings(BaseModel):
         "HYBRID_RETRIEVAL_DETERMINISTIC_PASS_GUARD",
         "1",
     )
+    hybrid_retrieval_hybrid_enabled_projects_raw: str = os.getenv(
+        "HYBRID_RETRIEVAL_HYBRID_ENABLED_PROJECTS",
+        "",
+    )
+    hybrid_retrieval_hybrid_enabled_eval_gate_raw: str = os.getenv(
+        "HYBRID_RETRIEVAL_HYBRID_ENABLED_EVAL_GATE",
+        "0",
+    )
+    hybrid_retrieval_hybrid_enabled_kill_switch_raw: str = os.getenv(
+        "HYBRID_RETRIEVAL_HYBRID_ENABLED_KILL_SWITCH",
+        "0",
+    )
     hybrid_retrieval_shadow_sample_rate_raw: str = os.getenv(
         "HYBRID_RETRIEVAL_SHADOW_SAMPLE_RATE",
         "0.0",
