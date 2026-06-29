@@ -4,7 +4,7 @@
 
 定义 `M2B` hybrid retrieval 进入 Data Agent runtime 后的正式内部 contract，统一 mode、config、fallback、prompt 注入和 final output provenance 约束。
 
-本文件最初在 `M2B-6` 建立治理边界，并在 `M2B-8` 更新为当前已落地的 runtime contract。
+本文件最初在 `M2B-6` 建立治理边界，并在 `M2B-8.1` 更新为当前已落地的 runtime contract。
 
 ## Contract Style
 
@@ -109,20 +109,26 @@ runtime 计算 `effective_mode` 和 candidate eligibility 时遵循：
 ## Final Output Provenance Invariant
 
 ```text
-最终采用的 SQL / SQL plan / SQL version，
+最终采用的 SQL / structured_sql_plan / SQL version / context_hash，
 必须来自 final effective_mode 对应的 prompt。
 ```
 
 也就是：
 
 - `effective_mode=hybrid_candidate`
-  - final SQL 才允许来自 hybrid candidate prompt
+  - final SQL / structured_sql_plan / SQL version / context_hash 才允许来自 hybrid candidate prompt
 - `effective_mode=deterministic_only`
-  - final SQL 必须来自 deterministic-only prompt
+  - final SQL / structured_sql_plan / SQL version / context_hash 必须来自 deterministic-only prompt
+
+并且：
+
+- `retrieval_snapshot_json` 只能持久化 final attempt snapshot
+- discarded candidate snapshot 不得成为 final `retrieval_snapshot_json`
+- `M2B-9` 前必须继续保持这些不变量
 
 ## Candidate Runtime Flow
 
-`M2B-8` 的 candidate contract 固定为：
+`M2B-8.1` 的 candidate contract 固定为：
 
 1. 先构造 deterministic retrieval 和 deterministic prompt
 2. 只有 `hybrid_candidate` 且 gate 全通过时，才构造 `supplemental_candidates_v1`
@@ -137,6 +143,45 @@ runtime 计算 `effective_mode` 和 candidate eligibility 时遵循：
    - `final_generation_pass=deterministic_rerun`
    - 用 deterministic-only prompt 重跑
    - 只持久化 rerun 结果
+
+### Candidate-only failure fallback
+
+candidate attempt 期间以下情况都必须 discard candidate 并 deterministic rerun：
+
+- `OrchestratorError`
+- `_require_generated_sql()` 抛出的 `HTTPException(422)`
+- candidate `sql=None`
+- candidate SQL 为空字符串或全空白
+- candidate structured plan invalid
+
+candidate-only failure 只能触发 deterministic rerun，不能吞掉 final deterministic failure。
+
+## Structured Plan Provenance
+
+`structured_sql_plan` 必须是 final-attempt scoped，不允许再沿用“candidate SQL + deterministic plan artifact”的混合来源。
+
+final snapshot 中新增内部字段：
+
+```text
+structured_sql_plan_provenance
+  plan_generation_pass
+  prompt_injection_mode
+  source_context
+```
+
+固定枚举：
+
+- `plan_generation_pass`
+  - `deterministic`
+  - `hybrid_candidate`
+  - `deterministic_rerun`
+- `prompt_injection_mode`
+  - `none`
+  - `supplemental_candidates_v1`
+- `source_context`
+  - `deterministic_attempt`
+  - `hybrid_candidate_attempt`
+  - `deterministic_rerun_attempt`
 
 ## Future Integration Touchpoints
 
@@ -162,7 +207,7 @@ runtime 计算 `effective_mode` 和 candidate eligibility 时遵循：
 
 ## Retrieval Snapshot Compatibility
 
-`retrieval_snapshot_json` 继续保留 deterministic snapshot 现有字段，并新增可选 `hybrid_trace`。
+`retrieval_snapshot_json` 继续保留 deterministic snapshot 现有字段，并新增可选 `hybrid_trace` 与内部 `structured_sql_plan_provenance`。
 
 当前 `hybrid_trace` 至少允许包含：
 
@@ -204,6 +249,8 @@ candidate_attempt
 
 - 只允许 final attempt 创建 public SQL version
 - discarded candidate attempt：
+  - 只能以 bounded `candidate_attempt` summary 形式留在 final attempt snapshot 的 `hybrid_trace`
+  - 不能成为 final snapshot 本体
   - 不能创建 reviewable SQL version
   - 不能进入 HITL approval flow
   - 不能暴露给前端

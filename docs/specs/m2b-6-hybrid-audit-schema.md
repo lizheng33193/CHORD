@@ -4,7 +4,7 @@
 
 定义 hybrid retrieval 在 runtime 中的正式审计轨迹，确保 `hybrid_shadow` 与 `hybrid_candidate` 都可解释、可回退、可审核。
 
-本文件在 `M2B-8` 更新为当前已落地 schema contract。
+本文件在 `M2B-8.1` 更新为当前已落地 schema contract。
 
 ## Core Rule
 
@@ -77,7 +77,7 @@ HybridRetrievalAuditTraceV1
 
 ## Candidate Attempt
 
-`candidate_attempt` 是 `M2B-8` 新增正式 contract：
+`candidate_attempt` 是 `M2B-8` 新增并在 `M2B-8.1` hardened 的正式 contract：
 
 ```text
 candidate_attempt
@@ -96,8 +96,8 @@ candidate_attempt
 当前至少支持：
 
 - `post_sql_kind_mismatch`
+- `candidate_sql_empty`
 - `candidate_generation_failed`
-- `candidate_plan_invalid`
 
 ## Fallback Reasons
 
@@ -176,9 +176,32 @@ trace 必须能够区分：
 这保证以下不变量可审计：
 
 ```text
-如果 final effective_mode=deterministic_only，
-最终 SQL 必须来自 deterministic-only prompt。
+最终 SQL / structured_sql_plan / SQL version / context_hash
+必须来自 final generation attempt。
 ```
+
+对应的 internal snapshot provenance contract 固定为：
+
+```text
+structured_sql_plan_provenance
+  plan_generation_pass
+  prompt_injection_mode
+  source_context
+```
+
+固定枚举：
+
+- `plan_generation_pass`
+  - `deterministic`
+  - `hybrid_candidate`
+  - `deterministic_rerun`
+- `prompt_injection_mode`
+  - `none`
+  - `supplemental_candidates_v1`
+- `source_context`
+  - `deterministic_attempt`
+  - `hybrid_candidate_attempt`
+  - `deterministic_rerun_attempt`
 
 ## Audit Metadata Summary
 
@@ -208,6 +231,7 @@ trace 必须能够区分：
 - 不保存 raw docs 内容
 - 不保存 SQL expected labels
 - 不保存 discarded candidate SQL 正文
+- 不保存完整 accepted supplements 明细到 audit metadata
 
 允许保存：
 
@@ -217,6 +241,8 @@ trace 必须能够区分：
 ## Persistence Rule
 
 - `hybrid_trace` 写入 `retrieval_snapshot_json.hybrid_trace`
+- discarded candidate 只能通过 bounded `candidate_attempt` summary 进入 final attempt snapshot
+- discarded candidate 不得进入 public artifact / HITL / approve flow
 - 若 trace 无法安全生成或无法持久化，必须降级：
   - `effective_mode=deterministic_only`
   - `fallback_applied=true`

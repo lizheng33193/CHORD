@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import re
 import uuid
@@ -20,8 +21,10 @@ from app.data_agent.repair import (
     select_repairable_plan_warnings,
 )
 from app.data_agent.hybrid_runtime import (
+    DISCARD_REASON_CANDIDATE_SQL_EMPTY,
     DISCARD_REASON_CANDIDATE_GENERATION_FAILED,
     DISCARD_REASON_POST_SQL_KIND_MISMATCH,
+    FINAL_GENERATION_PASS_DETERMINISTIC,
     FINAL_GENERATION_PASS_DETERMINISTIC_RERUN,
     FINAL_GENERATION_PASS_HYBRID_CANDIDATE,
     PROMPT_INJECTION_NONE,
@@ -84,6 +87,10 @@ _FROM_JOIN_RE = re.compile(
 _WITH_CTE_RE = re.compile(r"\bwith\s+([A-Za-z_][A-Za-z0-9_]*)\s+as\s*\(", re.IGNORECASE)
 _FUNCTION_RE = re.compile(r"\b([A-Za-z_][A-Za-z0-9_]*)\s*\(", re.IGNORECASE)
 _AS_ALIAS_RE = re.compile(r"\bas\s+([A-Za-z_][A-Za-z0-9_]*)\b", re.IGNORECASE)
+_STRUCTURED_SQL_PLAN_PROVENANCE_KEY = "structured_sql_plan_provenance"
+_SOURCE_CONTEXT_DETERMINISTIC_ATTEMPT = "deterministic_attempt"
+_SOURCE_CONTEXT_HYBRID_CANDIDATE_ATTEMPT = "hybrid_candidate_attempt"
+_SOURCE_CONTEXT_DETERMINISTIC_RERUN_ATTEMPT = "deterministic_rerun_attempt"
 
 
 def _normalize_column_name(name: Any) -> str:
@@ -561,15 +568,127 @@ class DataAgentService:
 
     @staticmethod
     def _unpack_generation_context(result):
-        if isinstance(result, tuple) and len(result) == 5:
+        if isinstance(result, tuple) and len(result) == 6:
             return result
+        if isinstance(result, tuple) and len(result) == 5:
+            retrieved_context, deterministic_prompt_context, prompt_context, retrieval_snapshot, hybrid_audit_summary = result
+            return retrieved_context, deterministic_prompt_context, prompt_context, retrieval_snapshot, retrieval_snapshot, hybrid_audit_summary
         if isinstance(result, tuple) and len(result) == 4:
             retrieved_context, prompt_context, retrieval_snapshot, hybrid_audit_summary = result
-            return retrieved_context, prompt_context, prompt_context, retrieval_snapshot, hybrid_audit_summary
+            return retrieved_context, prompt_context, prompt_context, retrieval_snapshot, retrieval_snapshot, hybrid_audit_summary
         if isinstance(result, tuple) and len(result) == 3:
             retrieved_context, prompt_context, retrieval_snapshot = result
-            return retrieved_context, prompt_context, prompt_context, retrieval_snapshot, {}
+            return retrieved_context, prompt_context, prompt_context, retrieval_snapshot, retrieval_snapshot, {}
         raise ValueError("unexpected _build_generation_context return shape")
+
+    @staticmethod
+    def _is_candidate_only_http_exception(exc: HTTPException) -> bool:
+        if int(getattr(exc, "status_code", 0) or 0) != 422:
+            return False
+        detail = exc.detail if isinstance(exc.detail, dict) else {}
+        stage = str(detail.get("stage") or "").strip().lower()
+        return stage in {"data_agent_sql_generation", "data_agent_sql_planning"}
+
+    @staticmethod
+    def _build_structured_plan_provenance(
+        *,
+        plan_generation_pass: str,
+        prompt_injection_mode: str,
+        source_context: str,
+    ) -> dict[str, str]:
+        return {
+            "plan_generation_pass": plan_generation_pass,
+            "prompt_injection_mode": prompt_injection_mode,
+            "source_context": source_context,
+        }
+
+    @staticmethod
+    def _build_attempt_trace(
+        trace: dict[str, Any] | None,
+        *,
+        plan_generation_pass: str,
+        prompt_injection_mode: str,
+    ) -> dict[str, Any] | None:
+        if trace is None:
+            return None
+        updated = copy.deepcopy(trace)
+        configured_mode = str(updated.get("configured_mode") or "")
+        effective_mode = str(updated.get("effective_mode") or "")
+        if configured_mode == "hybrid_candidate" and effective_mode == "hybrid_candidate" and prompt_injection_mode == PROMPT_INJECTION_NONE:
+            updated["effective_mode"] = "deterministic_only"
+            updated["prompt_injection_mode"] = PROMPT_INJECTION_NONE
+            updated["prompt_candidate_count"] = 0
+        updated["final_generation_pass"] = plan_generation_pass
+        return updated
+
+    def _build_attempt_generation_artifacts(
+        self,
+        *,
+        natural_language_request: str,
+        target_country: str,
+        run_type: str,
+        output_bucket: str | None,
+        run_id: str | None,
+        project_id: int | None,
+        retrieved_context,
+        base_snapshot: dict[str, Any],
+        hybrid_trace: dict[str, Any] | None,
+        prompt_injection_mode: str,
+        plan_generation_pass: str,
+        source_context: str,
+        supplemental_prompt_section: str = "",
+    ):
+        assembler = PromptContextAssembler()
+        provenance = self._build_structured_plan_provenance(
+            plan_generation_pass=plan_generation_pass,
+            prompt_injection_mode=prompt_injection_mode,
+            source_context=source_context,
+        )
+        planning_snapshot = dict(base_snapshot)
+        planning_snapshot[_STRUCTURED_SQL_PLAN_PROVENANCE_KEY] = provenance
+        if hybrid_trace is not None:
+            planning_snapshot["hybrid_trace"] = copy.deepcopy(hybrid_trace)
+        structured_plan = build_structured_sql_plan(
+            natural_language_request=natural_language_request,
+            run_type=run_type,
+            output_bucket=output_bucket,
+            country=target_country,
+            retrieval_snapshot=planning_snapshot,
+        )
+        validation = validate_structured_sql_plan(
+            plan=structured_plan,
+            retrieval_snapshot=planning_snapshot,
+        )
+        if not validation.valid:
+            self._raise_plan_validation_http_error(validation_result=validation, run_id=run_id)
+        structured_plan_payload = structured_plan.model_dump(mode="json")
+        structured_validation_payload = validation.model_dump(mode="json")
+        prompt_context = assembler.assemble(
+            natural_language_request=natural_language_request,
+            country=target_country,
+            run_type=run_type,
+            output_bucket=output_bucket,
+            context=retrieved_context,
+            structured_plan=structured_plan_payload,
+        )
+        if prompt_injection_mode == PROMPT_INJECTION_SUPPLEMENTAL_CANDIDATES_V1 and supplemental_prompt_section:
+            prompt_context = append_prompt_section(prompt_context, supplemental_prompt_section)
+        snapshot = assembler.build_snapshot(
+            country=target_country,
+            project_id=project_id,
+            natural_language_request=natural_language_request,
+            run_type=run_type,
+            output_bucket=output_bucket,
+            context=retrieved_context,
+            assembled=prompt_context,
+            structured_plan=structured_plan_payload,
+            structured_plan_validation=structured_validation_payload,
+        )
+        snapshot[_STRUCTURED_SQL_PLAN_PROVENANCE_KEY] = provenance
+        if hybrid_trace is not None:
+            snapshot["hybrid_trace"] = copy.deepcopy(hybrid_trace)
+        hybrid_audit_summary = extract_hybrid_audit_summary({"hybrid_trace": snapshot.get("hybrid_trace")})
+        return prompt_context, snapshot, hybrid_audit_summary
 
     @staticmethod
     def _is_hybrid_candidate_prompt_context(*, prompt_context, retrieval_snapshot: dict[str, Any]) -> bool:
@@ -640,6 +759,7 @@ class DataAgentService:
         target_action: str,
         candidate_prompt_context,
         deterministic_prompt_context,
+        deterministic_retrieval_snapshot: dict[str, Any],
         retrieval_snapshot: dict[str, Any],
         hybrid_audit_summary: dict[str, Any],
         run_id: str | None = None,
@@ -665,8 +785,9 @@ class DataAgentService:
                 knowledge_prompt_context=candidate_prompt_context,
             )
         except OrchestratorError:
-            retrieval_snapshot["hybrid_trace"] = self._mark_candidate_attempt(
-                retrieval_snapshot.get("hybrid_trace"),
+            deterministic_snapshot = copy.deepcopy(deterministic_retrieval_snapshot)
+            deterministic_snapshot["hybrid_trace"] = self._mark_candidate_attempt(
+                deterministic_snapshot.get("hybrid_trace"),
                 discarded=True,
                 discard_reason=DISCARD_REASON_CANDIDATE_GENERATION_FAILED,
                 final_effective_mode="deterministic_only",
@@ -676,17 +797,50 @@ class DataAgentService:
                 fallback_reason=DISCARD_REASON_CANDIDATE_GENERATION_FAILED,
                 fallback_applied=True,
             )
-            retrieval_snapshot["context_hash"] = deterministic_prompt_context.context_hash
-            hybrid_audit_summary = extract_hybrid_audit_summary(retrieval_snapshot)
+            deterministic_snapshot[_STRUCTURED_SQL_PLAN_PROVENANCE_KEY] = self._build_structured_plan_provenance(
+                plan_generation_pass=FINAL_GENERATION_PASS_DETERMINISTIC_RERUN,
+                prompt_injection_mode=PROMPT_INJECTION_NONE,
+                source_context=_SOURCE_CONTEXT_DETERMINISTIC_RERUN_ATTEMPT,
+            )
+            hybrid_audit_summary = extract_hybrid_audit_summary({"hybrid_trace": deterministic_snapshot.get("hybrid_trace")})
             rerun_generated = _generate_sql_response(
                 natural_language_request=natural_language_request,
                 target_country=target_country,
                 target_action=target_action,
                 knowledge_prompt_context=deterministic_prompt_context,
             )
-            return rerun_generated, deterministic_prompt_context, retrieval_snapshot, hybrid_audit_summary
+            return rerun_generated, deterministic_prompt_context, deterministic_snapshot, hybrid_audit_summary
 
-        candidate_sql_text = self._require_generated_sql(generated, run_id=run_id)
+        try:
+            candidate_sql_text = self._require_generated_sql(generated, run_id=run_id)
+        except HTTPException as exc:
+            if not self._is_candidate_only_http_exception(exc):
+                raise
+            deterministic_snapshot = copy.deepcopy(deterministic_retrieval_snapshot)
+            deterministic_snapshot["hybrid_trace"] = self._mark_candidate_attempt(
+                deterministic_snapshot.get("hybrid_trace"),
+                discarded=True,
+                discard_reason=DISCARD_REASON_CANDIDATE_SQL_EMPTY,
+                final_effective_mode="deterministic_only",
+                final_prompt_injection_mode=PROMPT_INJECTION_NONE,
+                final_prompt_candidate_count=0,
+                final_generation_pass=FINAL_GENERATION_PASS_DETERMINISTIC_RERUN,
+                fallback_reason=DISCARD_REASON_CANDIDATE_GENERATION_FAILED,
+                fallback_applied=True,
+            )
+            deterministic_snapshot[_STRUCTURED_SQL_PLAN_PROVENANCE_KEY] = self._build_structured_plan_provenance(
+                plan_generation_pass=FINAL_GENERATION_PASS_DETERMINISTIC_RERUN,
+                prompt_injection_mode=PROMPT_INJECTION_NONE,
+                source_context=_SOURCE_CONTEXT_DETERMINISTIC_RERUN_ATTEMPT,
+            )
+            hybrid_audit_summary = extract_hybrid_audit_summary({"hybrid_trace": deterministic_snapshot.get("hybrid_trace")})
+            rerun_generated = _generate_sql_response(
+                natural_language_request=natural_language_request,
+                target_country=target_country,
+                target_action=target_action,
+                knowledge_prompt_context=deterministic_prompt_context,
+            )
+            return rerun_generated, deterministic_prompt_context, deterministic_snapshot, hybrid_audit_summary
         candidate_sql_kind = str(generated.get("sql_kind") or "query_only")
         if str(candidate_sql_kind).strip().lower() == "query_only":
             retrieval_snapshot["hybrid_trace"] = self._mark_candidate_attempt(
@@ -702,12 +856,17 @@ class DataAgentService:
                 fallback_reason=None,
                 fallback_applied=False,
             )
-            retrieval_snapshot["context_hash"] = candidate_prompt_context.context_hash
+            retrieval_snapshot[_STRUCTURED_SQL_PLAN_PROVENANCE_KEY] = self._build_structured_plan_provenance(
+                plan_generation_pass=FINAL_GENERATION_PASS_HYBRID_CANDIDATE,
+                prompt_injection_mode=PROMPT_INJECTION_SUPPLEMENTAL_CANDIDATES_V1,
+                source_context=_SOURCE_CONTEXT_HYBRID_CANDIDATE_ATTEMPT,
+            )
             hybrid_audit_summary = extract_hybrid_audit_summary(retrieval_snapshot)
             return generated, candidate_prompt_context, retrieval_snapshot, hybrid_audit_summary
 
-        retrieval_snapshot["hybrid_trace"] = self._mark_candidate_attempt(
-            retrieval_snapshot.get("hybrid_trace"),
+        deterministic_snapshot = copy.deepcopy(deterministic_retrieval_snapshot)
+        deterministic_snapshot["hybrid_trace"] = self._mark_candidate_attempt(
+            deterministic_snapshot.get("hybrid_trace"),
             sql_kind=candidate_sql_kind,
             sql_text=candidate_sql_text,
             discarded=True,
@@ -719,21 +878,25 @@ class DataAgentService:
             fallback_reason="unsupported_sql_kind",
             fallback_applied=True,
         )
-        retrieval_snapshot["context_hash"] = deterministic_prompt_context.context_hash
-        hybrid_audit_summary = extract_hybrid_audit_summary(retrieval_snapshot)
+        deterministic_snapshot[_STRUCTURED_SQL_PLAN_PROVENANCE_KEY] = self._build_structured_plan_provenance(
+            plan_generation_pass=FINAL_GENERATION_PASS_DETERMINISTIC_RERUN,
+            prompt_injection_mode=PROMPT_INJECTION_NONE,
+            source_context=_SOURCE_CONTEXT_DETERMINISTIC_RERUN_ATTEMPT,
+        )
+        hybrid_audit_summary = extract_hybrid_audit_summary({"hybrid_trace": deterministic_snapshot.get("hybrid_trace")})
         rerun_generated = _generate_sql_response(
             natural_language_request=natural_language_request,
             target_country=target_country,
             target_action=target_action,
             knowledge_prompt_context=deterministic_prompt_context,
         )
-        return rerun_generated, deterministic_prompt_context, retrieval_snapshot, hybrid_audit_summary
+        return rerun_generated, deterministic_prompt_context, deterministic_snapshot, hybrid_audit_summary
 
     def create_run(self, *, ctx: UserContext, body: DataAgentRunCreateRequest) -> DataAgentRunDetail:
         require_permissions(ctx, ("data:query:generate", "data:query:view_sql"))
         target_country = normalize_country_scope_value(body.target_country) or body.target_country.lower()
         require_country_access(ctx, target_country, project_id=ctx.project_id)
-        _retrieved_context, deterministic_prompt_context, prompt_context, retrieval_snapshot, hybrid_audit_summary = self._unpack_generation_context(
+        _retrieved_context, deterministic_prompt_context, prompt_context, deterministic_retrieval_snapshot, retrieval_snapshot, hybrid_audit_summary = self._unpack_generation_context(
             self._build_generation_context(
                 natural_language_request=body.natural_language_request,
                 target_country=target_country,
@@ -751,6 +914,7 @@ class DataAgentService:
                 target_action=body.target_action,
                 candidate_prompt_context=prompt_context,
                 deterministic_prompt_context=deterministic_prompt_context,
+                deterministic_retrieval_snapshot=deterministic_retrieval_snapshot,
                 retrieval_snapshot=retrieval_snapshot,
                 hybrid_audit_summary=hybrid_audit_summary,
             )
@@ -919,7 +1083,7 @@ class DataAgentService:
         run = self._get_scoped_run(ctx, run_id)
         current = self.repo.get_sql_version(run.current_sql_version_id)
         revised_request = run.natural_language_request if not body.comment else f"{run.natural_language_request}\n\nReviewer feedback:\n{body.comment}"
-        _retrieved_context, deterministic_prompt_context, prompt_context, retrieval_snapshot, hybrid_audit_summary = self._unpack_generation_context(
+        _retrieved_context, deterministic_prompt_context, prompt_context, deterministic_retrieval_snapshot, retrieval_snapshot, hybrid_audit_summary = self._unpack_generation_context(
             self._build_generation_context(
                 natural_language_request=revised_request,
                 target_country=run.country,
@@ -936,6 +1100,7 @@ class DataAgentService:
                 target_action="extract",
                 candidate_prompt_context=prompt_context,
                 deterministic_prompt_context=deterministic_prompt_context,
+                deterministic_retrieval_snapshot=deterministic_retrieval_snapshot,
                 retrieval_snapshot=retrieval_snapshot,
                 hybrid_audit_summary=hybrid_audit_summary,
                 run_id=run.run_id,
@@ -1321,48 +1486,13 @@ class DataAgentService:
             run_type=run_type,
             output_bucket=output_bucket,
         )
-        assembler = PromptContextAssembler()
-        base_snapshot = assembler.build_base_snapshot(
+        base_snapshot = PromptContextAssembler.build_base_snapshot(
             country=target_country,
             project_id=project_id,
             natural_language_request=natural_language_request,
             run_type=run_type,
             output_bucket=output_bucket,
             context=retrieved_context,
-        )
-        structured_plan = build_structured_sql_plan(
-            natural_language_request=natural_language_request,
-            run_type=run_type,
-            output_bucket=output_bucket,
-            country=target_country,
-            retrieval_snapshot=base_snapshot,
-        )
-        validation = validate_structured_sql_plan(
-            plan=structured_plan,
-            retrieval_snapshot=base_snapshot,
-        )
-        if not validation.valid:
-            self._raise_plan_validation_http_error(validation_result=validation, run_id=run_id)
-        structured_plan_payload = structured_plan.model_dump(mode="json")
-        structured_validation_payload = validation.model_dump(mode="json")
-        deterministic_prompt_context = assembler.assemble(
-            natural_language_request=natural_language_request,
-            country=target_country,
-            run_type=run_type,
-            output_bucket=output_bucket,
-            context=retrieved_context,
-            structured_plan=structured_plan_payload,
-        )
-        snapshot = assembler.build_snapshot(
-            country=target_country,
-            project_id=project_id,
-            natural_language_request=natural_language_request,
-            run_type=run_type,
-            output_bucket=output_bucket,
-            context=retrieved_context,
-            assembled=deterministic_prompt_context,
-            structured_plan=structured_plan_payload,
-            structured_plan_validation=structured_validation_payload,
         )
         request_key = "::".join(
             [
@@ -1384,14 +1514,81 @@ class DataAgentService:
             retrieved_context=retrieved_context,
             request_key=request_key,
         )
-        hybrid_audit_summary = dict(shadow_result.audit_summary)
+        fallback_audit_summary = dict(shadow_result.audit_summary)
+        deterministic_trace = self._build_attempt_trace(
+            shadow_result.trace,
+            plan_generation_pass=FINAL_GENERATION_PASS_DETERMINISTIC,
+            prompt_injection_mode=PROMPT_INJECTION_NONE,
+        )
+        deterministic_prompt_context, deterministic_snapshot, hybrid_audit_summary = self._build_attempt_generation_artifacts(
+            natural_language_request=natural_language_request,
+            target_country=target_country,
+            run_type=run_type,
+            output_bucket=output_bucket,
+            run_id=run_id,
+            project_id=project_id,
+            retrieved_context=retrieved_context,
+            base_snapshot=base_snapshot,
+            hybrid_trace=deterministic_trace,
+            prompt_injection_mode=PROMPT_INJECTION_NONE,
+            plan_generation_pass=FINAL_GENERATION_PASS_DETERMINISTIC,
+            source_context=_SOURCE_CONTEXT_DETERMINISTIC_ATTEMPT,
+        )
+        if shadow_result.trace is None:
+            hybrid_audit_summary = fallback_audit_summary
         prompt_context = deterministic_prompt_context
-        if shadow_result.supplemental_prompt_section:
-            prompt_context = append_prompt_section(deterministic_prompt_context, shadow_result.supplemental_prompt_section)
-            snapshot["context_hash"] = prompt_context.context_hash
-        if shadow_result.trace is not None:
-            snapshot["hybrid_trace"] = shadow_result.trace
-        return retrieved_context, deterministic_prompt_context, prompt_context, snapshot, hybrid_audit_summary
+        snapshot = deterministic_snapshot
+        trace = shadow_result.trace
+        if (
+            trace is not None
+            and shadow_result.supplemental_prompt_section
+            and str(trace.get("configured_mode") or "") == "hybrid_candidate"
+            and str(trace.get("effective_mode") or "") == "hybrid_candidate"
+            and str(trace.get("prompt_injection_mode") or "") == PROMPT_INJECTION_SUPPLEMENTAL_CANDIDATES_V1
+        ):
+            try:
+                prompt_context, snapshot, hybrid_audit_summary = self._build_attempt_generation_artifacts(
+                    natural_language_request=natural_language_request,
+                    target_country=target_country,
+                    run_type=run_type,
+                    output_bucket=output_bucket,
+                    run_id=run_id,
+                    project_id=project_id,
+                    retrieved_context=retrieved_context,
+                    base_snapshot=base_snapshot,
+                    hybrid_trace=self._build_attempt_trace(
+                        trace,
+                        plan_generation_pass=FINAL_GENERATION_PASS_HYBRID_CANDIDATE,
+                        prompt_injection_mode=PROMPT_INJECTION_SUPPLEMENTAL_CANDIDATES_V1,
+                    ),
+                    prompt_injection_mode=PROMPT_INJECTION_SUPPLEMENTAL_CANDIDATES_V1,
+                    plan_generation_pass=FINAL_GENERATION_PASS_HYBRID_CANDIDATE,
+                    source_context=_SOURCE_CONTEXT_HYBRID_CANDIDATE_ATTEMPT,
+                    supplemental_prompt_section=shadow_result.supplemental_prompt_section,
+                )
+            except HTTPException as exc:
+                if not self._is_candidate_only_http_exception(exc):
+                    raise
+                deterministic_snapshot["hybrid_trace"] = self._mark_candidate_attempt(
+                    deterministic_snapshot.get("hybrid_trace"),
+                    discarded=True,
+                    discard_reason=DISCARD_REASON_CANDIDATE_GENERATION_FAILED,
+                    final_effective_mode="deterministic_only",
+                    final_prompt_injection_mode=PROMPT_INJECTION_NONE,
+                    final_prompt_candidate_count=0,
+                    final_generation_pass=FINAL_GENERATION_PASS_DETERMINISTIC_RERUN,
+                    fallback_reason=DISCARD_REASON_CANDIDATE_GENERATION_FAILED,
+                    fallback_applied=True,
+                )
+                deterministic_snapshot[_STRUCTURED_SQL_PLAN_PROVENANCE_KEY] = self._build_structured_plan_provenance(
+                    plan_generation_pass=FINAL_GENERATION_PASS_DETERMINISTIC_RERUN,
+                    prompt_injection_mode=PROMPT_INJECTION_NONE,
+                    source_context=_SOURCE_CONTEXT_DETERMINISTIC_RERUN_ATTEMPT,
+                )
+                hybrid_audit_summary = extract_hybrid_audit_summary({"hybrid_trace": deterministic_snapshot.get("hybrid_trace")})
+                prompt_context = deterministic_prompt_context
+                snapshot = deterministic_snapshot
+        return retrieved_context, deterministic_prompt_context, prompt_context, deterministic_snapshot, snapshot, hybrid_audit_summary
 
     @staticmethod
     def _serialize_review_event(event) -> ReviewEventView:

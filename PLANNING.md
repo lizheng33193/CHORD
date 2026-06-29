@@ -5,6 +5,28 @@
 - 整体架构：单体 FastAPI 后端，五层（API → 编排 → Skill 执行 → 数据访问 → 外部服务）
 - 入口文件：`app/main.py`
 
+## 2026-06-29 M2B-8.1 Hybrid Candidate Provenance & Fallback Hardening
+
+- `M2B-8` 已完成并合并，当前进入 `M2B-8.1`：
+  - `docs/reviews/m2b-8-hybrid-candidate-runtime-grounding-results.md`
+- 本阶段目标：
+  - candidate empty / unusable SQL 必须 deterministic rerun
+  - `structured_sql_plan` 改为 final-attempt scoped
+  - final output provenance invariant 扩展覆盖 SQL、`structured_sql_plan`、SQL version、`context_hash`
+- 本阶段新增或强化的 runtime contract：
+  - `structured_sql_plan_provenance`
+  - `candidate_sql_empty`
+  - final snapshot 只能来自 final attempt
+- 本阶段明确保持不变：
+  - 不启用 `hybrid_enabled`
+  - 不改 public API response schema
+  - 不改 approve / execute / SQL HITL 语义
+  - 不改 orchestrator 自动路由
+  - 不改 seed / embedding records / vector index artifact
+- 当前结论是：
+  - `M2B-8.1` 已把 candidate-only fallback 和 final-attempt provenance 封口
+  - `M2B-9` 之前必须继续保持这些不变量
+
 ## 2026-06-29 M2B-8 Hybrid Candidate Runtime Grounding
 
 - `M2B-7` 已完成并合并，当前进入 `M2B-8`：
@@ -23,7 +45,6 @@
   - final output provenance invariant
 - 本阶段明确保持不变：
   - 不改 `app/data_knowledge/retriever.py`
-  - 不改 structured SQL plan 的 deterministic artifact 角色
   - 不改 orchestrator 自动路由
   - 不改 approve / execute / SQL HITL 语义
   - 不改 public API response schema

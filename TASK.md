@@ -35,6 +35,30 @@
 - [x] E1 单用户埋点深度解析 → docs/plans/trace-analyzer-plan.md（2026-05-01）
 
 ## 当前进行中的功能
+- [x] M2B-8.1：Hybrid Candidate Provenance & Fallback Hardening — 已完成（2026-06-29）
+  - review：
+    - `docs/reviews/m2b-8-hybrid-candidate-runtime-grounding-results.md`
+  - 本阶段产出：
+    - candidate `sql=None` / blank / candidate-only `HTTPException(422)` deterministic rerun
+    - final-attempt scoped `structured_sql_plan_provenance`
+    - final-attempt scoped `context_hash`
+    - discarded candidate 只保留 bounded `candidate_attempt` summary
+  - 本阶段结果：
+    - final SQL / `structured_sql_plan` / SQL version / `context_hash` 已对齐 final generation attempt
+    - discarded candidate snapshot 不会成为 final snapshot
+    - public API / SQL HITL / approve / execute 语义保持不变
+    - `hybrid_enabled` 继续 forced deterministic-only
+  - 同步更新：
+    - `docs/specs/m2b-6-hybrid-runtime-contract.md`
+    - `docs/specs/m2b-6-hybrid-audit-schema.md`
+    - `docs/reviews/m2b-8-hybrid-candidate-runtime-grounding-results.md`
+    - `PLANNING.md`
+    - `TASK.md`
+  - 验证：
+    - `pytest tests/data_agent/test_hybrid_shadow_runtime.py -q`
+  - 下一步：
+    - `M2B-9` 前继续保持 final-attempt provenance invariant 与 bounded trace boundary
+
 - [x] M2B-8：Hybrid Candidate Runtime Grounding — 已完成（2026-06-29）
   - plan / review：
     - `docs/plans/m2b-8-hybrid-candidate-runtime-grounding-plan.md`
