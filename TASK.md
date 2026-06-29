@@ -35,6 +35,29 @@
 - [x] E1 单用户埋点深度解析 → docs/plans/trace-analyzer-plan.md（2026-05-01）
 
 ## 当前进行中的功能
+- [x] M2B-9：Hybrid Enabled Gated Rollout — 已完成（2026-06-29）
+  - plan / specs / review：
+    - `docs/plans/m2b-9-hybrid-enabled-gated-rollout-plan.md`
+    - `docs/specs/m2b-9-hybrid-enabled-runtime-contract.md`
+    - `docs/specs/m2b-9-hybrid-enabled-eval-gate.md`
+    - `docs/reviews/m2b-9-hybrid-enabled-gated-rollout-results.md`
+  - 本阶段产出：
+    - `HYBRID_RETRIEVAL_HYBRID_ENABLED_PROJECTS`
+    - `HYBRID_RETRIEVAL_HYBRID_ENABLED_EVAL_GATE`
+    - `HYBRID_RETRIEVAL_HYBRID_ENABLED_KILL_SWITCH`
+    - `FINAL_GENERATION_PASS_HYBRID_ENABLED`
+    - `tests/data_agent/test_hybrid_enabled_rollout.py`
+  - 本阶段结果：
+    - `hybrid_enabled` 可在严格 gate 下成为 `effective_mode`
+    - default-off 继续保持
+    - accepted supplements 仍只通过 `supplemental_candidates_v1` 进入 prompt
+    - final-attempt provenance 与 deterministic rerun invariant 保持不变
+    - public API / SQL HITL / approve / execute / orchestrator 语义保持不变
+  - 验证：
+    - `pytest tests/data_agent/test_hybrid_shadow_config.py tests/data_agent/test_hybrid_shadow_runtime.py tests/data_agent/test_hybrid_candidate_guardrails.py tests/data_agent/test_hybrid_enabled_rollout.py -q`
+  - 下一步：
+    - 若后续扩大 rollout scope，必须先补新的 eval / reviewer / safety no-regression 证明
+
 - [x] M2B-9-0：Hybrid Enabled Rollout Preflight Guardrails — 已完成（2026-06-29）
   - plan / specs：
     - `docs/plans/m2b-9-hybrid-enabled-gated-rollout-plan.md`

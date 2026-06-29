@@ -51,6 +51,7 @@ PROMPT_INJECTION_NONE = "none"
 PROMPT_INJECTION_SUPPLEMENTAL_CANDIDATES_V1 = "supplemental_candidates_v1"
 FINAL_GENERATION_PASS_DETERMINISTIC = "deterministic"
 FINAL_GENERATION_PASS_HYBRID_CANDIDATE = "hybrid_candidate"
+FINAL_GENERATION_PASS_HYBRID_ENABLED = "hybrid_enabled"
 FINAL_GENERATION_PASS_DETERMINISTIC_RERUN = "deterministic_rerun"
 DISCARD_REASON_POST_SQL_KIND_MISMATCH = "post_sql_kind_mismatch"
 DISCARD_REASON_CANDIDATE_SQL_EMPTY = "candidate_sql_empty"
@@ -88,6 +89,13 @@ class HybridFallbackReason(str, Enum):
     FUSION_GUARD_FAILED = "fusion_guard_failed"
     AUDIT_TRACE_UNAVAILABLE = "audit_trace_unavailable"
     CONFIG_INVALID = "config_invalid"
+    HYBRID_ENABLED_ROLLOUT_NOT_ALLOWLISTED = "hybrid_enabled_rollout_not_allowlisted"
+    HYBRID_ENABLED_EVAL_GATE_NOT_PASSED = "hybrid_enabled_eval_gate_not_passed"
+    HYBRID_ENABLED_KILL_SWITCH_APPLIED = "hybrid_enabled_kill_switch_applied"
+    HYBRID_ENABLED_SCOPE_NOT_SUPPORTED = "hybrid_enabled_scope_not_supported"
+    HYBRID_ENABLED_VECTOR_UNAVAILABLE = "hybrid_enabled_vector_unavailable"
+    HYBRID_ENABLED_NO_ACCEPTED_SUPPLEMENTS = "hybrid_enabled_no_accepted_supplements"
+    HYBRID_ENABLED_AUDIT_UNAVAILABLE = "hybrid_enabled_audit_unavailable"
 
 
 @dataclass(slots=True)
@@ -103,6 +111,9 @@ class HybridRetrievalConfigV1:
     family_caps: dict[str, int]
     total_vector_supplement_cap: int
     deterministic_pass_guard: bool
+    hybrid_enabled_projects: list[str]
+    hybrid_enabled_eval_gate: bool
+    hybrid_enabled_kill_switch: bool
     shadow_sample_rate: float
     errors: list[str]
 
@@ -115,6 +126,9 @@ class EffectiveModeDecision:
     fallback_applied: bool
     sample_hit: bool
     should_attempt_shadow: bool
+    kill_switch_applied: bool = False
+    rollout_gate_passed: bool = False
+    eval_gate_passed: bool = False
 
 
 @dataclass(slots=True)
@@ -276,6 +290,9 @@ def load_hybrid_config(settings: Any) -> HybridRetrievalConfigV1:
         family_caps=normalized_caps,
         total_vector_supplement_cap=total_cap,
         deterministic_pass_guard=_as_bool(getattr(settings, "hybrid_retrieval_deterministic_pass_guard_raw", None)),
+        hybrid_enabled_projects=_parse_csv(getattr(settings, "hybrid_retrieval_hybrid_enabled_projects_raw", None)),
+        hybrid_enabled_eval_gate=_as_bool(getattr(settings, "hybrid_retrieval_hybrid_enabled_eval_gate_raw", None)),
+        hybrid_enabled_kill_switch=_as_bool(getattr(settings, "hybrid_retrieval_hybrid_enabled_kill_switch_raw", None)),
         shadow_sample_rate=sample_rate,
         errors=(
             mode_errors
@@ -307,10 +324,12 @@ def evaluate_effective_mode(
     project_id: str | None,
     run_type: str | None,
     request_key: str,
+    is_query_only_scope: bool = True,
 ) -> EffectiveModeDecision:
     configured_mode = config.retrieval_mode
     normalized_country = str(country or "").strip().lower()
     normalized_project_id = str(project_id or "").strip()
+    normalized_project_id_lower = normalized_project_id.lower()
     normalized_run_type = str(run_type or "").strip().lower()
 
     if not config.enabled:
@@ -331,17 +350,6 @@ def evaluate_effective_mode(
             sample_hit=False,
             should_attempt_shadow=False,
         )
-    if configured_mode in {
-        HybridRetrievalMode.HYBRID_ENABLED,
-    }:
-        return EffectiveModeDecision(
-            configured_mode=configured_mode,
-            effective_mode=HybridRetrievalMode.DETERMINISTIC_ONLY,
-            fallback_reason=HybridFallbackReason.MODE_FORCED_DETERMINISTIC,
-            fallback_applied=True,
-            sample_hit=False,
-            should_attempt_shadow=False,
-        )
     if configured_mode is HybridRetrievalMode.DETERMINISTIC_ONLY:
         return EffectiveModeDecision(
             configured_mode=configured_mode,
@@ -350,6 +358,81 @@ def evaluate_effective_mode(
             fallback_applied=True,
             sample_hit=False,
             should_attempt_shadow=False,
+        )
+    if configured_mode is HybridRetrievalMode.HYBRID_ENABLED:
+        if config.hybrid_enabled_kill_switch:
+            return EffectiveModeDecision(
+                configured_mode=configured_mode,
+                effective_mode=HybridRetrievalMode.DETERMINISTIC_ONLY,
+                fallback_reason=HybridFallbackReason.HYBRID_ENABLED_KILL_SWITCH_APPLIED,
+                fallback_applied=True,
+                sample_hit=False,
+                should_attempt_shadow=False,
+                kill_switch_applied=True,
+            )
+        if normalized_run_type != "cohort_query" or normalized_country != "mx" or not is_query_only_scope:
+            return EffectiveModeDecision(
+                configured_mode=configured_mode,
+                effective_mode=HybridRetrievalMode.DETERMINISTIC_ONLY,
+                fallback_reason=HybridFallbackReason.HYBRID_ENABLED_SCOPE_NOT_SUPPORTED,
+                fallback_applied=True,
+                sample_hit=False,
+                should_attempt_shadow=False,
+                kill_switch_applied=False,
+                rollout_gate_passed=False,
+                eval_gate_passed=config.hybrid_enabled_eval_gate,
+            )
+        if normalized_country not in set(config.allow_countries):
+            return EffectiveModeDecision(
+                configured_mode=configured_mode,
+                effective_mode=HybridRetrievalMode.DETERMINISTIC_ONLY,
+                fallback_reason=HybridFallbackReason.COUNTRY_NOT_ALLOWLISTED,
+                fallback_applied=True,
+                sample_hit=False,
+                should_attempt_shadow=False,
+                eval_gate_passed=config.hybrid_enabled_eval_gate,
+            )
+        if normalized_project_id not in set(config.allow_project_ids):
+            return EffectiveModeDecision(
+                configured_mode=configured_mode,
+                effective_mode=HybridRetrievalMode.DETERMINISTIC_ONLY,
+                fallback_reason=HybridFallbackReason.PROJECT_NOT_ALLOWLISTED,
+                fallback_applied=True,
+                sample_hit=False,
+                should_attempt_shadow=False,
+                eval_gate_passed=config.hybrid_enabled_eval_gate,
+            )
+        if normalized_project_id_lower not in set(config.hybrid_enabled_projects):
+            return EffectiveModeDecision(
+                configured_mode=configured_mode,
+                effective_mode=HybridRetrievalMode.DETERMINISTIC_ONLY,
+                fallback_reason=HybridFallbackReason.HYBRID_ENABLED_ROLLOUT_NOT_ALLOWLISTED,
+                fallback_applied=True,
+                sample_hit=False,
+                should_attempt_shadow=False,
+                eval_gate_passed=config.hybrid_enabled_eval_gate,
+            )
+        if not config.hybrid_enabled_eval_gate:
+            return EffectiveModeDecision(
+                configured_mode=configured_mode,
+                effective_mode=HybridRetrievalMode.DETERMINISTIC_ONLY,
+                fallback_reason=HybridFallbackReason.HYBRID_ENABLED_EVAL_GATE_NOT_PASSED,
+                fallback_applied=True,
+                sample_hit=False,
+                should_attempt_shadow=False,
+                rollout_gate_passed=True,
+                eval_gate_passed=False,
+            )
+        return EffectiveModeDecision(
+            configured_mode=configured_mode,
+            effective_mode=HybridRetrievalMode.HYBRID_ENABLED,
+            fallback_reason=None,
+            fallback_applied=False,
+            sample_hit=True,
+            should_attempt_shadow=True,
+            kill_switch_applied=False,
+            rollout_gate_passed=True,
+            eval_gate_passed=True,
         )
     if normalized_run_type != "cohort_query":
         return EffectiveModeDecision(
@@ -1038,6 +1121,9 @@ def _config_snapshot(config: HybridRetrievalConfigV1, decision: EffectiveModeDec
         "family_caps": dict(config.family_caps),
         "total_vector_supplement_cap": config.total_vector_supplement_cap,
         "deterministic_pass_guard": config.deterministic_pass_guard,
+        "hybrid_enabled_projects": list(config.hybrid_enabled_projects),
+        "hybrid_enabled_eval_gate": config.hybrid_enabled_eval_gate,
+        "hybrid_enabled_kill_switch": config.hybrid_enabled_kill_switch,
         "shadow_sample_rate": config.shadow_sample_rate,
     }
 
@@ -1099,6 +1185,7 @@ def build_shadow_trace(
         project_id=project_id,
         run_type=run_type,
         request_key=request_key,
+        is_query_only_scope=not _looks_like_non_query_only_intent(natural_language_request),
     )
     if not config.enabled:
         return ShadowTraceBuildResult(
@@ -1134,51 +1221,51 @@ def build_shadow_trace(
                 deterministic_candidates=deterministic_candidates,
                 vector_candidates=vector_candidates,
             )
-            if decision.effective_mode is HybridRetrievalMode.HYBRID_CANDIDATE:
-                if _looks_like_non_query_only_intent(natural_language_request):
+            if decision.effective_mode in {
+                HybridRetrievalMode.HYBRID_CANDIDATE,
+                HybridRetrievalMode.HYBRID_ENABLED,
+            }:
+                supplemental_prompt_section, prompt_candidate_count, prompt_injection_mode = build_supplemental_prompt_section(accepted)
+                if not supplemental_prompt_section or prompt_candidate_count <= 0:
                     trace = _fallback_trace(
                         config=config,
                         decision=EffectiveModeDecision(
                             configured_mode=decision.configured_mode,
                             effective_mode=HybridRetrievalMode.DETERMINISTIC_ONLY,
-                            fallback_reason=HybridFallbackReason.UNSUPPORTED_SQL_KIND,
+                            fallback_reason=(
+                                HybridFallbackReason.HYBRID_ENABLED_NO_ACCEPTED_SUPPLEMENTS
+                                if decision.effective_mode is HybridRetrievalMode.HYBRID_ENABLED
+                                else HybridFallbackReason.FUSION_GUARD_FAILED
+                            ),
                             fallback_applied=True,
                             sample_hit=decision.sample_hit,
                             should_attempt_shadow=False,
+                            kill_switch_applied=decision.kill_switch_applied,
+                            rollout_gate_passed=decision.rollout_gate_passed,
+                            eval_gate_passed=decision.eval_gate_passed,
                         ),
                         deterministic_candidates=deterministic_candidates,
                     )
                 else:
-                    supplemental_prompt_section, prompt_candidate_count, prompt_injection_mode = build_supplemental_prompt_section(accepted)
-                    if not supplemental_prompt_section or prompt_candidate_count <= 0:
-                        trace = _fallback_trace(
-                            config=config,
-                            decision=EffectiveModeDecision(
-                                configured_mode=decision.configured_mode,
-                                effective_mode=HybridRetrievalMode.DETERMINISTIC_ONLY,
-                                fallback_reason=HybridFallbackReason.FUSION_GUARD_FAILED,
-                                fallback_applied=True,
-                                sample_hit=decision.sample_hit,
-                                should_attempt_shadow=False,
-                            ),
-                            deterministic_candidates=deterministic_candidates,
-                        )
-                    else:
-                        trace = _trace_payload(
-                            config=config,
-                            configured_mode=decision.configured_mode,
-                            effective_mode=decision.effective_mode,
-                            fallback_applied=False,
-                            fallback_reason=None,
-                            prompt_injection_mode=prompt_injection_mode,
-                            prompt_candidate_count=prompt_candidate_count,
-                            final_generation_pass=FINAL_GENERATION_PASS_HYBRID_CANDIDATE,
-                            deterministic_candidates=deterministic_candidates,
-                            vector_candidates=vector_candidates,
-                            accepted_supplements=accepted,
-                            rejected_candidates=rejected,
-                        )
-                        trace["config_snapshot"] = _config_snapshot(config, decision)
+                    trace = _trace_payload(
+                        config=config,
+                        configured_mode=decision.configured_mode,
+                        effective_mode=decision.effective_mode,
+                        fallback_applied=False,
+                        fallback_reason=None,
+                        prompt_injection_mode=prompt_injection_mode,
+                        prompt_candidate_count=prompt_candidate_count,
+                        final_generation_pass=(
+                            FINAL_GENERATION_PASS_HYBRID_ENABLED
+                            if decision.effective_mode is HybridRetrievalMode.HYBRID_ENABLED
+                            else FINAL_GENERATION_PASS_HYBRID_CANDIDATE
+                        ),
+                        deterministic_candidates=deterministic_candidates,
+                        vector_candidates=vector_candidates,
+                        accepted_supplements=accepted,
+                        rejected_candidates=rejected,
+                    )
+                    trace["config_snapshot"] = _config_snapshot(config, decision)
             else:
                 trace = _trace_payload(
                     config=config,
@@ -1195,6 +1282,9 @@ def build_shadow_trace(
                     rejected_candidates=rejected,
                 )
                 trace["config_snapshot"] = _config_snapshot(config, decision)
+        trace["kill_switch_applied"] = bool(decision.kill_switch_applied)
+        trace["rollout_gate_passed"] = bool(decision.rollout_gate_passed)
+        trace["eval_gate_passed"] = bool(decision.eval_gate_passed)
         json.dumps(trace, ensure_ascii=False)
         return ShadowTraceBuildResult(
             trace=trace,
@@ -1207,10 +1297,17 @@ def build_shadow_trace(
             decision=EffectiveModeDecision(
                 configured_mode=decision.configured_mode,
                 effective_mode=HybridRetrievalMode.DETERMINISTIC_ONLY,
-                fallback_reason=HybridFallbackReason.VECTOR_BACKEND_UNAVAILABLE,
+                fallback_reason=(
+                    HybridFallbackReason.HYBRID_ENABLED_VECTOR_UNAVAILABLE
+                    if decision.configured_mode is HybridRetrievalMode.HYBRID_ENABLED
+                    else HybridFallbackReason.VECTOR_BACKEND_UNAVAILABLE
+                ),
                 fallback_applied=True,
                 sample_hit=decision.sample_hit,
                 should_attempt_shadow=False,
+                kill_switch_applied=decision.kill_switch_applied,
+                rollout_gate_passed=decision.rollout_gate_passed,
+                eval_gate_passed=decision.eval_gate_passed,
             ),
             deterministic_candidates=deterministic_candidates,
         )
@@ -1220,10 +1317,17 @@ def build_shadow_trace(
             decision=EffectiveModeDecision(
                 configured_mode=decision.configured_mode,
                 effective_mode=HybridRetrievalMode.DETERMINISTIC_ONLY,
-                fallback_reason=HybridFallbackReason.VECTOR_QUERY_FAILED,
+                fallback_reason=(
+                    HybridFallbackReason.HYBRID_ENABLED_VECTOR_UNAVAILABLE
+                    if decision.configured_mode is HybridRetrievalMode.HYBRID_ENABLED
+                    else HybridFallbackReason.VECTOR_QUERY_FAILED
+                ),
                 fallback_applied=True,
                 sample_hit=decision.sample_hit,
                 should_attempt_shadow=False,
+                kill_switch_applied=decision.kill_switch_applied,
+                rollout_gate_passed=decision.rollout_gate_passed,
+                eval_gate_passed=decision.eval_gate_passed,
             ),
             deterministic_candidates=deterministic_candidates,
         )
@@ -1239,7 +1343,11 @@ def build_shadow_trace(
             audit_summary=_build_audit_summary(
                 configured_mode=decision.configured_mode,
                 effective_mode=HybridRetrievalMode.DETERMINISTIC_ONLY,
-                fallback_reason=HybridFallbackReason.AUDIT_TRACE_UNAVAILABLE.value,
+                fallback_reason=(
+                    HybridFallbackReason.HYBRID_ENABLED_AUDIT_UNAVAILABLE.value
+                    if decision.configured_mode is HybridRetrievalMode.HYBRID_ENABLED
+                    else HybridFallbackReason.AUDIT_TRACE_UNAVAILABLE.value
+                ),
                 trace_present=False,
             ),
         )

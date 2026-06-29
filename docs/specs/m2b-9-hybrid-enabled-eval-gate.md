@@ -1,59 +1,69 @@
 # M2B-9 Hybrid Enabled Eval Gate
 
-## Pre-rollout Gates
+## Default State
 
-`hybrid_enabled` 进入任何 gated rollout 前，至少满足以下门槛：
+`hybrid_enabled` 默认仍然关闭。
 
-- no SQL safety regression
+只有当以下三个配置同时允许时，runtime 才可能进入 enabled rollout：
+
+- `HYBRID_RETRIEVAL_ENABLED=true`
+- `HYBRID_RETRIEVAL_MODE=hybrid_enabled`
+- `HYBRID_RETRIEVAL_HYBRID_ENABLED_EVAL_GATE=true`
+
+如果没有显式 eval gate，`hybrid_enabled` 不得默认开启。
+
+## Runtime Rollout Scope
+
+本阶段 rollout scope 固定为：
+
+- `country=mx`
+- `run_type=cohort_query`
+- request-scope `sql_kind=query_only`
+- normalized `ctx.project_id` 命中 rollout allowlist
+
+任何超出该范围的请求都必须回退到 `deterministic_only`。
+
+## Required Runtime Controls
+
+进入 rollout 前，至少需要以下运行控制项：
+
+- `HYBRID_RETRIEVAL_HYBRID_ENABLED_PROJECTS`
+- `HYBRID_RETRIEVAL_HYBRID_ENABLED_EVAL_GATE`
+- `HYBRID_RETRIEVAL_HYBRID_ENABLED_KILL_SWITCH`
+
+`HYBRID_RETRIEVAL_HYBRID_ENABLED_KILL_SWITCH=true` 时必须无条件回退，不允许继续观察。
+
+## Required Regression Evidence
+
+在允许 rollout 前，至少应具备：
+
 - no public API regression
-- no approve / execute regression
-- no deterministic pass -> hybrid fail regression
-- manual review artifact exists
-
-如果没有可运行的 eval report 或明确的 manual review artifact，`hybrid_enabled` 不得默认开启。
-
-`hybrid_enabled cannot be enabled by default unless this gate is satisfied by a runnable eval report or explicit manual review artifact.`
+- no SQL HITL / approve / execute regression
+- no deterministic primary regression
+- no hybrid candidate regression
+- trace completeness verification
 
 ## Runtime Monitoring Gates
 
-进入 rollout 后，运行中至少持续观测以下指标：
+进入 rollout 后，至少持续观测以下指标：
 
-- candidate discard rate
 - fallback rate
+- candidate discard rate
 - SQL review rejection rate
 - audit trace completeness
-- safety regression signals
+- any safety regression signal
 
-这些指标不是优化项，而是继续保留 rollout 的门槛。
+这些指标不是优化项，而是保留 rollout 的门槛。
 
 ## Rollback Triggers
 
 以下任一情况出现时，必须触发回滚或立即停用 `hybrid_enabled`：
 
-- candidate discard rate too high
+- kill switch applied
 - fallback rate too high
+- candidate discard rate too high
+- audit trace missing / serialization failure
 - SQL review rejection rate increases
-- audit trace missing rate above threshold
 - any safety regression
 
-回滚动作必须优先选择 `deterministic_only`，而不是继续观察。
-
-## Manual Review Requirements
-
-在允许任何 rollout 之前，必须存在人工审核结论，至少覆盖：
-
-- rollout scope 是否仍限定为 `MX + cohort_query + query_only`
-- no-regression 结论
-- rollback entrypoints 是否可操作
-- 审计字段是否完整
-- 是否存在 operator sign-off
-
-## Required Artifacts
-
-允许 `hybrid_enabled` 进入 rollout 前，至少应具备：
-
-- runnable eval report 或等效手工评审报告
-- rollout allowlist 决策记录
-- rollback / kill switch 操作说明
-- safety / reviewer / execute no-regression 证明
-- trace completeness 证明
+回滚动作必须优先选择 `deterministic_only`。

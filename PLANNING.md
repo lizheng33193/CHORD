@@ -5,6 +5,34 @@
 - 整体架构：单体 FastAPI 后端，五层（API → 编排 → Skill 执行 → 数据访问 → 外部服务）
 - 入口文件：`app/main.py`
 
+## 2026-06-29 M2B-9 Hybrid Enabled Gated Rollout
+
+- `M2B-9-0` 已完成并合并，当前 `M2B-9` runtime rollout 已落地：
+  - `docs/plans/m2b-9-hybrid-enabled-gated-rollout-plan.md`
+  - `docs/specs/m2b-9-hybrid-enabled-runtime-contract.md`
+  - `docs/specs/m2b-9-hybrid-enabled-eval-gate.md`
+  - `docs/reviews/m2b-9-hybrid-enabled-gated-rollout-results.md`
+- 本阶段新增 runtime contract：
+  - `HYBRID_RETRIEVAL_HYBRID_ENABLED_PROJECTS`
+  - `HYBRID_RETRIEVAL_HYBRID_ENABLED_EVAL_GATE`
+  - `HYBRID_RETRIEVAL_HYBRID_ENABLED_KILL_SWITCH`
+  - `FINAL_GENERATION_PASS_HYBRID_ENABLED`
+  - `source_context=hybrid_enabled_attempt`
+- 本阶段 rollout boundary 固定为：
+  - `MX + cohort_query + query_only`
+  - normalized `ctx.project_id` allowlist hit
+  - eval gate passed
+  - kill switch off
+- 本阶段明确保持不变：
+  - public API response schema
+  - SQL HITL / approve / execute 语义
+  - orchestrator 自动路由
+  - seed / embedding records / vector index artifact
+- 当前结论是：
+  - `hybrid_enabled` 已可在极小范围内成为 `effective_mode`
+  - 默认仍关闭
+  - deterministic primary / supplemental-only / strict fallback / final-attempt provenance 继续保持
+
 ## 2026-06-29 M2B-9-0 Hybrid Enabled Rollout Preflight Guardrails
 
 - `M2B-8.1` 已完成并合并，当前完成 `M2B-9-0` 前置护栏阶段：

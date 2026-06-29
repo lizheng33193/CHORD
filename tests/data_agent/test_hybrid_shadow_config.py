@@ -23,6 +23,9 @@ def _settings(**overrides):
         "hybrid_retrieval_total_vector_supplement_cap_raw": "3",
         "hybrid_retrieval_deterministic_pass_guard_raw": "1",
         "hybrid_retrieval_shadow_sample_rate_raw": "0.0",
+        "hybrid_retrieval_hybrid_enabled_projects_raw": "",
+        "hybrid_retrieval_hybrid_enabled_eval_gate_raw": "0",
+        "hybrid_retrieval_hybrid_enabled_kill_switch_raw": "0",
         "project_root": None,
     }
     defaults.update(overrides)
@@ -143,7 +146,154 @@ def test_effective_mode_keeps_hybrid_enabled_forced_to_deterministic() -> None:
 
     assert decision.configured_mode is HybridRetrievalMode.HYBRID_ENABLED
     assert decision.effective_mode is HybridRetrievalMode.DETERMINISTIC_ONLY
-    assert decision.fallback_reason is HybridFallbackReason.MODE_FORCED_DETERMINISTIC
+    assert decision.fallback_reason is HybridFallbackReason.HYBRID_ENABLED_ROLLOUT_NOT_ALLOWLISTED
+
+
+def test_load_hybrid_config_parses_hybrid_enabled_rollout_settings() -> None:
+    from app.data_agent.hybrid_runtime import load_hybrid_config
+
+    config = load_hybrid_config(
+        _settings(
+            hybrid_retrieval_enabled_raw="1",
+            hybrid_retrieval_mode_raw="hybrid_enabled",
+            hybrid_retrieval_allow_countries_raw="mx",
+            hybrid_retrieval_allow_project_ids_raw="agent-user-profile-fork",
+            hybrid_retrieval_hybrid_enabled_projects_raw="  Project-1 , project-2 ",
+            hybrid_retrieval_hybrid_enabled_eval_gate_raw="1",
+            hybrid_retrieval_hybrid_enabled_kill_switch_raw="1",
+        )
+    )
+
+    assert config.hybrid_enabled_projects == ["project-1", "project-2"]
+    assert config.hybrid_enabled_eval_gate is True
+    assert config.hybrid_enabled_kill_switch is True
+
+
+def test_effective_mode_allows_hybrid_enabled_only_when_rollout_scope_matches() -> None:
+    from app.data_agent.hybrid_runtime import (
+        HybridRetrievalMode,
+        evaluate_effective_mode,
+        load_hybrid_config,
+    )
+
+    config = load_hybrid_config(
+        _settings(
+            hybrid_retrieval_enabled_raw="1",
+            hybrid_retrieval_mode_raw="hybrid_enabled",
+            hybrid_retrieval_allow_countries_raw="mx",
+            hybrid_retrieval_allow_project_ids_raw="agent-user-profile-fork",
+            hybrid_retrieval_hybrid_enabled_projects_raw="agent-user-profile-fork",
+            hybrid_retrieval_hybrid_enabled_eval_gate_raw="1",
+        )
+    )
+    decision = evaluate_effective_mode(
+        config=config,
+        country="mx",
+        project_id="agent-user-profile-fork",
+        run_type="cohort_query",
+        request_key="stable-request",
+        is_query_only_scope=True,
+    )
+
+    assert decision.configured_mode is HybridRetrievalMode.HYBRID_ENABLED
+    assert decision.effective_mode is HybridRetrievalMode.HYBRID_ENABLED
+    assert decision.fallback_reason is None
+    assert decision.should_attempt_shadow is True
+
+
+@pytest.mark.parametrize(
+    ("override_key", "override_value", "fallback_reason"),
+    [
+        ("hybrid_retrieval_hybrid_enabled_kill_switch_raw", "1", "hybrid_enabled_kill_switch_applied"),
+        ("hybrid_retrieval_hybrid_enabled_eval_gate_raw", "0", "hybrid_enabled_eval_gate_not_passed"),
+        ("hybrid_retrieval_hybrid_enabled_projects_raw", "", "hybrid_enabled_rollout_not_allowlisted"),
+    ],
+)
+def test_effective_mode_rejects_hybrid_enabled_when_rollout_gate_fails(
+    override_key: str,
+    override_value: str,
+    fallback_reason: str,
+) -> None:
+    from app.data_agent.hybrid_runtime import evaluate_effective_mode, load_hybrid_config
+
+    settings_kwargs = {
+        "hybrid_retrieval_enabled_raw": "1",
+        "hybrid_retrieval_mode_raw": "hybrid_enabled",
+        "hybrid_retrieval_allow_countries_raw": "mx",
+        "hybrid_retrieval_allow_project_ids_raw": "agent-user-profile-fork",
+        "hybrid_retrieval_hybrid_enabled_projects_raw": "agent-user-profile-fork",
+        "hybrid_retrieval_hybrid_enabled_eval_gate_raw": "1",
+    }
+    settings_kwargs[override_key] = override_value
+    config = load_hybrid_config(
+        _settings(**settings_kwargs)
+    )
+    decision = evaluate_effective_mode(
+        config=config,
+        country="mx",
+        project_id="agent-user-profile-fork",
+        run_type="cohort_query",
+        request_key="stable-request",
+        is_query_only_scope=True,
+    )
+
+    assert decision.effective_mode.value == "deterministic_only"
+    assert decision.fallback_reason is not None
+    assert decision.fallback_reason.value == fallback_reason
+
+
+def test_effective_mode_rejects_hybrid_enabled_when_project_id_not_allowlisted() -> None:
+    from app.data_agent.hybrid_runtime import evaluate_effective_mode, load_hybrid_config
+
+    config = load_hybrid_config(
+        _settings(
+            hybrid_retrieval_enabled_raw="1",
+            hybrid_retrieval_mode_raw="hybrid_enabled",
+            hybrid_retrieval_allow_countries_raw="mx",
+            hybrid_retrieval_allow_project_ids_raw="project-code-only",
+            hybrid_retrieval_hybrid_enabled_projects_raw="agent-user-profile-fork",
+            hybrid_retrieval_hybrid_enabled_eval_gate_raw="1",
+        )
+    )
+    decision = evaluate_effective_mode(
+        config=config,
+        country="mx",
+        project_id="project-code-only",
+        run_type="cohort_query",
+        request_key="stable-request",
+        is_query_only_scope=True,
+    )
+
+    assert decision.effective_mode.value == "deterministic_only"
+    assert decision.fallback_reason is not None
+    assert decision.fallback_reason.value == "hybrid_enabled_rollout_not_allowlisted"
+
+
+def test_effective_mode_rejects_hybrid_enabled_when_scope_is_not_query_only() -> None:
+    from app.data_agent.hybrid_runtime import evaluate_effective_mode, load_hybrid_config
+
+    config = load_hybrid_config(
+        _settings(
+            hybrid_retrieval_enabled_raw="1",
+            hybrid_retrieval_mode_raw="hybrid_enabled",
+            hybrid_retrieval_allow_countries_raw="mx",
+            hybrid_retrieval_allow_project_ids_raw="agent-user-profile-fork",
+            hybrid_retrieval_hybrid_enabled_projects_raw="agent-user-profile-fork",
+            hybrid_retrieval_hybrid_enabled_eval_gate_raw="1",
+        )
+    )
+    decision = evaluate_effective_mode(
+        config=config,
+        country="mx",
+        project_id="agent-user-profile-fork",
+        run_type="cohort_query",
+        request_key="stable-request",
+        is_query_only_scope=False,
+    )
+
+    assert decision.effective_mode.value == "deterministic_only"
+    assert decision.fallback_reason is not None
+    assert decision.fallback_reason.value == "hybrid_enabled_scope_not_supported"
 
 
 def test_effective_mode_rejects_empty_allowlists_by_default() -> None:
@@ -299,6 +449,9 @@ def test_select_vector_supplements_is_stable_for_duplicate_field_candidates() ->
         },
         total_vector_supplement_cap=3,
         deterministic_pass_guard=True,
+        hybrid_enabled_projects=[],
+        hybrid_enabled_eval_gate=False,
+        hybrid_enabled_kill_switch=False,
         shadow_sample_rate=1.0,
         errors=[],
     )

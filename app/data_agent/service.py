@@ -27,6 +27,7 @@ from app.data_agent.hybrid_runtime import (
     FINAL_GENERATION_PASS_DETERMINISTIC,
     FINAL_GENERATION_PASS_DETERMINISTIC_RERUN,
     FINAL_GENERATION_PASS_HYBRID_CANDIDATE,
+    FINAL_GENERATION_PASS_HYBRID_ENABLED,
     PROMPT_INJECTION_NONE,
     PROMPT_INJECTION_SUPPLEMENTAL_CANDIDATES_V1,
     build_shadow_trace,
@@ -90,6 +91,7 @@ _AS_ALIAS_RE = re.compile(r"\bas\s+([A-Za-z_][A-Za-z0-9_]*)\b", re.IGNORECASE)
 _STRUCTURED_SQL_PLAN_PROVENANCE_KEY = "structured_sql_plan_provenance"
 _SOURCE_CONTEXT_DETERMINISTIC_ATTEMPT = "deterministic_attempt"
 _SOURCE_CONTEXT_HYBRID_CANDIDATE_ATTEMPT = "hybrid_candidate_attempt"
+_SOURCE_CONTEXT_HYBRID_ENABLED_ATTEMPT = "hybrid_enabled_attempt"
 _SOURCE_CONTEXT_DETERMINISTIC_RERUN_ATTEMPT = "deterministic_rerun_attempt"
 
 
@@ -614,7 +616,11 @@ class DataAgentService:
         updated = copy.deepcopy(trace)
         configured_mode = str(updated.get("configured_mode") or "")
         effective_mode = str(updated.get("effective_mode") or "")
-        if configured_mode == "hybrid_candidate" and effective_mode == "hybrid_candidate" and prompt_injection_mode == PROMPT_INJECTION_NONE:
+        if (
+            configured_mode in {"hybrid_candidate", "hybrid_enabled"}
+            and effective_mode in {"hybrid_candidate", "hybrid_enabled"}
+            and prompt_injection_mode == PROMPT_INJECTION_NONE
+        ):
             updated["effective_mode"] = "deterministic_only"
             updated["prompt_injection_mode"] = PROMPT_INJECTION_NONE
             updated["prompt_candidate_count"] = 0
@@ -691,15 +697,21 @@ class DataAgentService:
         return prompt_context, snapshot, hybrid_audit_summary
 
     @staticmethod
-    def _is_hybrid_candidate_prompt_context(*, prompt_context, retrieval_snapshot: dict[str, Any]) -> bool:
+    def _active_hybrid_attempt_mode(*, prompt_context, retrieval_snapshot: dict[str, Any]) -> str | None:
         trace = dict((retrieval_snapshot or {}).get("hybrid_trace") or {})
-        return (
-            str(trace.get("configured_mode") or "") == "hybrid_candidate"
-            and str(trace.get("effective_mode") or "") == "hybrid_candidate"
+        attempted_mode = str((trace.get("candidate_attempt") or {}).get("attempted_mode") or "")
+        if attempted_mode not in {"hybrid_candidate", "hybrid_enabled"}:
+            attempted_mode = str(trace.get("effective_mode") or "")
+        if attempted_mode not in {"hybrid_candidate", "hybrid_enabled"}:
+            return None
+        if not (
+            str(trace.get("effective_mode") or "") == attempted_mode
             and str(trace.get("prompt_injection_mode") or "") == PROMPT_INJECTION_SUPPLEMENTAL_CANDIDATES_V1
             and bool(getattr(prompt_context, "rendered_text", ""))
             and "Supplemental Hybrid Knowledge Candidates" in str(getattr(prompt_context, "rendered_text", ""))
-        )
+        ):
+            return None
+        return attempted_mode
 
     @staticmethod
     def _candidate_sql_hash(sql_text: str | None) -> str | None:
@@ -712,6 +724,7 @@ class DataAgentService:
     def _mark_candidate_attempt(
         trace: dict[str, Any] | None,
         *,
+        attempted_mode: str | None = None,
         sql_kind: str | None = None,
         sql_text: str | None = None,
         discarded: bool = False,
@@ -728,7 +741,9 @@ class DataAgentService:
         updated = dict(trace)
         attempt = dict(updated.get("candidate_attempt") or {})
         attempt["attempted"] = True
-        if attempt.get("attempted_mode") is None:
+        if attempted_mode is not None:
+            attempt["attempted_mode"] = attempted_mode
+        elif attempt.get("attempted_mode") is None:
             attempt["attempted_mode"] = "hybrid_candidate"
         if sql_kind is not None:
             attempt["output_sql_kind"] = str(sql_kind or "").strip().lower() or None
@@ -764,11 +779,11 @@ class DataAgentService:
         hybrid_audit_summary: dict[str, Any],
         run_id: str | None = None,
     ):
-        is_candidate_attempt = self._is_hybrid_candidate_prompt_context(
+        attempt_mode = self._active_hybrid_attempt_mode(
             prompt_context=candidate_prompt_context,
             retrieval_snapshot=retrieval_snapshot,
         )
-        if not is_candidate_attempt:
+        if attempt_mode is None:
             generated = _generate_sql_response(
                 natural_language_request=natural_language_request,
                 target_country=target_country,
@@ -788,6 +803,7 @@ class DataAgentService:
             deterministic_snapshot = copy.deepcopy(deterministic_retrieval_snapshot)
             deterministic_snapshot["hybrid_trace"] = self._mark_candidate_attempt(
                 deterministic_snapshot.get("hybrid_trace"),
+                attempted_mode=attempt_mode,
                 discarded=True,
                 discard_reason=DISCARD_REASON_CANDIDATE_GENERATION_FAILED,
                 final_effective_mode="deterministic_only",
@@ -819,6 +835,7 @@ class DataAgentService:
             deterministic_snapshot = copy.deepcopy(deterministic_retrieval_snapshot)
             deterministic_snapshot["hybrid_trace"] = self._mark_candidate_attempt(
                 deterministic_snapshot.get("hybrid_trace"),
+                attempted_mode=attempt_mode,
                 discarded=True,
                 discard_reason=DISCARD_REASON_CANDIDATE_SQL_EMPTY,
                 final_effective_mode="deterministic_only",
@@ -843,23 +860,34 @@ class DataAgentService:
             return rerun_generated, deterministic_prompt_context, deterministic_snapshot, hybrid_audit_summary
         candidate_sql_kind = str(generated.get("sql_kind") or "query_only")
         if str(candidate_sql_kind).strip().lower() == "query_only":
+            final_generation_pass = (
+                FINAL_GENERATION_PASS_HYBRID_ENABLED
+                if attempt_mode == "hybrid_enabled"
+                else FINAL_GENERATION_PASS_HYBRID_CANDIDATE
+            )
+            source_context = (
+                _SOURCE_CONTEXT_HYBRID_ENABLED_ATTEMPT
+                if attempt_mode == "hybrid_enabled"
+                else _SOURCE_CONTEXT_HYBRID_CANDIDATE_ATTEMPT
+            )
             retrieval_snapshot["hybrid_trace"] = self._mark_candidate_attempt(
                 retrieval_snapshot.get("hybrid_trace"),
+                attempted_mode=attempt_mode,
                 sql_kind=candidate_sql_kind,
                 sql_text=candidate_sql_text,
                 discarded=False,
                 discard_reason=None,
-                final_effective_mode="hybrid_candidate",
+                final_effective_mode=attempt_mode,
                 final_prompt_injection_mode=PROMPT_INJECTION_SUPPLEMENTAL_CANDIDATES_V1,
                 final_prompt_candidate_count=int((retrieval_snapshot.get("hybrid_trace") or {}).get("prompt_candidate_count") or 0),
-                final_generation_pass=FINAL_GENERATION_PASS_HYBRID_CANDIDATE,
+                final_generation_pass=final_generation_pass,
                 fallback_reason=None,
                 fallback_applied=False,
             )
             retrieval_snapshot[_STRUCTURED_SQL_PLAN_PROVENANCE_KEY] = self._build_structured_plan_provenance(
-                plan_generation_pass=FINAL_GENERATION_PASS_HYBRID_CANDIDATE,
+                plan_generation_pass=final_generation_pass,
                 prompt_injection_mode=PROMPT_INJECTION_SUPPLEMENTAL_CANDIDATES_V1,
-                source_context=_SOURCE_CONTEXT_HYBRID_CANDIDATE_ATTEMPT,
+                source_context=source_context,
             )
             hybrid_audit_summary = extract_hybrid_audit_summary(retrieval_snapshot)
             return generated, candidate_prompt_context, retrieval_snapshot, hybrid_audit_summary
@@ -867,6 +895,7 @@ class DataAgentService:
         deterministic_snapshot = copy.deepcopy(deterministic_retrieval_snapshot)
         deterministic_snapshot["hybrid_trace"] = self._mark_candidate_attempt(
             deterministic_snapshot.get("hybrid_trace"),
+            attempted_mode=attempt_mode,
             sql_kind=candidate_sql_kind,
             sql_text=candidate_sql_text,
             discarded=True,
@@ -1542,10 +1571,21 @@ class DataAgentService:
         if (
             trace is not None
             and shadow_result.supplemental_prompt_section
-            and str(trace.get("configured_mode") or "") == "hybrid_candidate"
-            and str(trace.get("effective_mode") or "") == "hybrid_candidate"
+            and str(trace.get("configured_mode") or "") in {"hybrid_candidate", "hybrid_enabled"}
+            and str(trace.get("effective_mode") or "") in {"hybrid_candidate", "hybrid_enabled"}
             and str(trace.get("prompt_injection_mode") or "") == PROMPT_INJECTION_SUPPLEMENTAL_CANDIDATES_V1
         ):
+            attempt_mode = str((trace.get("candidate_attempt") or {}).get("attempted_mode") or trace.get("effective_mode") or "")
+            plan_generation_pass = (
+                FINAL_GENERATION_PASS_HYBRID_ENABLED
+                if attempt_mode == "hybrid_enabled"
+                else FINAL_GENERATION_PASS_HYBRID_CANDIDATE
+            )
+            source_context = (
+                _SOURCE_CONTEXT_HYBRID_ENABLED_ATTEMPT
+                if attempt_mode == "hybrid_enabled"
+                else _SOURCE_CONTEXT_HYBRID_CANDIDATE_ATTEMPT
+            )
             try:
                 prompt_context, snapshot, hybrid_audit_summary = self._build_attempt_generation_artifacts(
                     natural_language_request=natural_language_request,
@@ -1558,12 +1598,12 @@ class DataAgentService:
                     base_snapshot=base_snapshot,
                     hybrid_trace=self._build_attempt_trace(
                         trace,
-                        plan_generation_pass=FINAL_GENERATION_PASS_HYBRID_CANDIDATE,
+                        plan_generation_pass=plan_generation_pass,
                         prompt_injection_mode=PROMPT_INJECTION_SUPPLEMENTAL_CANDIDATES_V1,
                     ),
                     prompt_injection_mode=PROMPT_INJECTION_SUPPLEMENTAL_CANDIDATES_V1,
-                    plan_generation_pass=FINAL_GENERATION_PASS_HYBRID_CANDIDATE,
-                    source_context=_SOURCE_CONTEXT_HYBRID_CANDIDATE_ATTEMPT,
+                    plan_generation_pass=plan_generation_pass,
+                    source_context=source_context,
                     supplemental_prompt_section=shadow_result.supplemental_prompt_section,
                 )
             except HTTPException as exc:
@@ -1571,6 +1611,7 @@ class DataAgentService:
                     raise
                 deterministic_snapshot["hybrid_trace"] = self._mark_candidate_attempt(
                     deterministic_snapshot.get("hybrid_trace"),
+                    attempted_mode=attempt_mode or None,
                     discarded=True,
                     discard_reason=DISCARD_REASON_CANDIDATE_GENERATION_FAILED,
                     final_effective_mode="deterministic_only",
