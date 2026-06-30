@@ -39,3 +39,7 @@ class DuplicateKnowledgeDocumentVersionError(KnowledgeBaseError):
 
 class DuplicateKnowledgeIngestJobError(KnowledgeBaseError):
     """Raised when an ingest job already exists."""
+
+
+class DuplicateKnowledgeDocumentVersionManifestActivationError(KnowledgeBaseError):
+    """Raised when more than one active manifest would exist for a version."""

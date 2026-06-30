@@ -48,7 +48,7 @@ def test_register_document_records_metadata_only() -> None:
     assert document.status == DocumentStatus.INACTIVE
 
 
-def test_create_document_version_starts_uploaded() -> None:
+def test_create_document_version_starts_parsed() -> None:
     repo = InMemoryKnowledgeDocumentRepository()
     service = DocumentService(repo)
     service.register_document(
@@ -75,7 +75,7 @@ def test_create_document_version_starts_uploaded() -> None:
         index_name="chord_m2d_risk_knowledge_v1",
     )
 
-    assert version.status == DocumentVersionStatus.UPLOADED
+    assert version.status == DocumentVersionStatus.PARSED
 
 
 def test_activate_version_updates_current_version_and_deprecates_sibling() -> None:
@@ -130,7 +130,7 @@ def test_activate_version_updates_current_version_and_deprecates_sibling() -> No
     assert document.current_version_id == second.version_id
     assert document.status == DocumentStatus.ACTIVE
     assert older is not None
-    assert older.status == DocumentVersionStatus.DEPRECATED
+    assert older.status == DocumentVersionStatus.INDEXED
 
 
 def test_deprecate_version_updates_version_status() -> None:
@@ -192,17 +192,17 @@ def test_transition_version_updates_status_without_touching_document_pointer() -
         index_name="chord_m2d_risk_knowledge_v1",
     )
 
-    parsing = service.transition_version(version.version_id, DocumentVersionStatus.PARSING)
-    parsed = service.transition_version(version.version_id, DocumentVersionStatus.PARSED)
+    indexing = service.transition_version(version.version_id, DocumentVersionStatus.INDEXING)
+    parsed = service.transition_version(version.version_id, DocumentVersionStatus.INDEXED)
     document = repo.get_document("risk_guide")
 
-    assert parsing.status == DocumentVersionStatus.PARSING
-    assert parsed.status == DocumentVersionStatus.PARSED
+    assert indexing.status == DocumentVersionStatus.INDEXING
+    assert parsed.status == DocumentVersionStatus.INDEXED
     assert document is not None
     assert document.current_version_id is None
 
 
-def test_create_job_starts_uploaded() -> None:
+def test_create_job_starts_pending() -> None:
     service = IngestJobService(InMemoryKnowledgeIngestJobRepository())
 
     job = service.create_job(
@@ -212,8 +212,8 @@ def test_create_job_starts_uploaded() -> None:
         job_id="job_1",
     )
 
-    assert job.status == IngestJobStatus.UPLOADED
-    assert job.current_step == IngestStep.UPLOADED
+    assert job.status == IngestJobStatus.PENDING
+    assert job.current_step == IngestStep.QUEUED
 
 
 def test_transition_job_enforces_lifecycle() -> None:
@@ -225,12 +225,12 @@ def test_transition_job_enforces_lifecycle() -> None:
         job_id="job_1",
     )
 
-    moved = service.transition_job(job.job_id, IngestJobStatus.PARSING)
-    assert moved.status == IngestJobStatus.PARSING
-    assert moved.current_step == IngestStep.PARSING
+    moved = service.transition_job(job.job_id, IngestJobStatus.RUNNING)
+    assert moved.status == IngestJobStatus.RUNNING
+    assert moved.current_step == IngestStep.LOCK_ACQUIRED
 
     with pytest.raises(InvalidKnowledgeBaseStateTransition):
-        service.transition_job(job.job_id, IngestJobStatus.ACTIVE)
+        service.transition_job(job.job_id, IngestJobStatus.PENDING)
 
 
 def test_fail_job_sets_failed_state_and_error_message() -> None:

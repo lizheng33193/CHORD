@@ -26,6 +26,7 @@ class FaissIndexManifestDraft(_StrictModel):
     embedding_provider: str = Field(..., min_length=1)
     embedding_model: str = Field(..., min_length=1)
     embedding_dimension: int = Field(..., ge=1)
+    job_id: str | None = None
     index_type: str = Field(..., min_length=1)
     distance_metric: str = Field(..., min_length=1)
     chunk_content_pairs: list[tuple[str, str]] = Field(default_factory=list)
@@ -38,6 +39,7 @@ class FaissIndexManifest(_StrictModel):
     embedding_provider: str = Field(..., min_length=1)
     embedding_model: str = Field(..., min_length=1)
     embedding_dimension: int = Field(..., ge=1)
+    job_id: str | None = None
     index_type: str = Field(..., min_length=1)
     distance_metric: str = Field(..., min_length=1)
     record_count: int = Field(..., ge=0)
@@ -46,6 +48,9 @@ class FaissIndexManifest(_StrictModel):
     checksum: str = Field(..., min_length=1)
     build_fingerprint: str = Field(..., min_length=1)
     build_status: str = Field(..., min_length=1)
+    is_active: bool = False
+    superseded_by_index_id: str | None = None
+    superseded_at: datetime | None = None
     built_at: datetime
 
 

@@ -92,6 +92,7 @@ class FaissIndexManifestRecord(Base):
     embedding_provider: Mapped[str] = mapped_column(String(64), nullable=False)
     embedding_model: Mapped[str] = mapped_column(String(128), nullable=False)
     embedding_dimension: Mapped[int] = mapped_column(Integer, nullable=False)
+    job_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     index_type: Mapped[str] = mapped_column(String(64), nullable=False)
     distance_metric: Mapped[str] = mapped_column(String(32), nullable=False)
     record_count: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -100,6 +101,9 @@ class FaissIndexManifestRecord(Base):
     checksum: Mapped[str] = mapped_column(String(128), nullable=False)
     build_fingerprint: Mapped[str] = mapped_column(String(128), nullable=False)
     build_status: Mapped[str] = mapped_column(String(32), nullable=False)
+    is_active: Mapped[bool] = mapped_column(default=False, nullable=False)
+    superseded_by_index_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    superseded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=False), nullable=True)
     built_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=False), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=False),

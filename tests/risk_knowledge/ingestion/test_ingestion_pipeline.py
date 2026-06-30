@@ -90,7 +90,7 @@ def test_pipeline_success_transitions_version_and_job_to_parsed() -> None:
     assert version is not None
     assert job is not None
     assert version.status == DocumentVersionStatus.PARSED
-    assert job.status == IngestJobStatus.PARSED
+    assert job.status == IngestJobStatus.COMPLETED
 
 
 def test_pipeline_failure_marks_failed_without_overriding_original_error() -> None:

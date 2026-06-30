@@ -29,11 +29,10 @@ class SwxyIngestionPipeline:
 
     def parse_document(self, context: IngestionContext) -> ParsedDocument:
         try:
-            self._document_service.transition_version(context.version_id, DocumentVersionStatus.PARSING)
-            self._ingest_job_service.transition_job(context.job_id, IngestJobStatus.PARSING)
+            self._ingest_job_service.transition_job(context.job_id, IngestJobStatus.RUNNING)
             parsed = self._adapter.parse(context)
             self._document_service.transition_version(context.version_id, DocumentVersionStatus.PARSED)
-            self._ingest_job_service.transition_job(context.job_id, IngestJobStatus.PARSED)
+            self._ingest_job_service.transition_job(context.job_id, IngestJobStatus.COMPLETED)
             return parsed
         except Exception as exc:
             self._best_effort_mark_failed(context, exc)

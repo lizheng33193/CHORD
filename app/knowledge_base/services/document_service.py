@@ -78,7 +78,7 @@ class DocumentService:
                 embedding_model=embedding_model,
                 embedding_dim=embedding_dim,
                 index_name=index_name,
-                status=DocumentVersionStatus.UPLOADED,
+                status=DocumentVersionStatus.PARSED,
             )
         )
 
@@ -96,7 +96,7 @@ class DocumentService:
                 continue
             if sibling.status == DocumentVersionStatus.ACTIVE:
                 self._repository.update_version(
-                    sibling.model_copy(update={"status": DocumentVersionStatus.DEPRECATED})
+                    sibling.model_copy(update={"status": DocumentVersionStatus.INDEXED})
                 )
 
         if version.status != DocumentVersionStatus.ACTIVE:

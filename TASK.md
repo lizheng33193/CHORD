@@ -42,12 +42,14 @@
     - `docs/specs/m2d-risk-domain-knowledge-rag-contract.md`
     - `docs/specs/m2d-knowledge-base-module-design.md`
     - `docs/specs/m2d-8-faiss-foundation-spec.md`
+    - `docs/specs/m2d-9-indexing-runtime-spec.md`
     - `docs/plans/m2d-risk-domain-rag-integration-plan.md`
     - `docs/reviews/m2d-4-swxy-vendor-import-review.md`
     - `docs/reviews/m2d-5-knowledge-base-module-skeleton-review.md`
     - `docs/reviews/m2d-6-swxy-ingestion-adapter-review.md`
     - `docs/reviews/m2d-7-metadata-evidence-builder-review.md`
     - `docs/reviews/m2d-8-faiss-foundation-review.md`
+    - `docs/reviews/m2d-9-indexing-runtime-review.md`
   - Progress:
     - `[x] M2D-0 Current State & Scope Review`
     - `[x] M2D-1 SWXY RAG Integration Review`
@@ -58,7 +60,7 @@
     - `[x] M2D-6 SWXY ingestion adapter landed; no embedding/retrieval/ES runtime started`
     - `[x] M2D-7 metadata and evidence builder landed; no embedding/retrieval/ES runtime started`
     - `[x] M2D-8 FAISS foundation landed; no retrieval/rerank/RiskKnowledgeService/API runtime started`
-    - `[ ] M2D-9 Indexing Job Runtime / Redis Task State`
+    - `[x] M2D-9 indexing job runtime landed; no retrieval/rerank/RiskKnowledgeService/API runtime started`
     - `[ ] M2D-10 Retrieval Foundation`
     - `[ ] M2D-11 Reranker / Evidence Gate`
     - `[ ] M2D-12 RiskKnowledgeService / Consumer Integration`
@@ -71,10 +73,12 @@
     - `M2D-6 SWXY ingestion adapter landed; no embedding/retrieval/ES runtime started`
     - `M2D-7 metadata and evidence builder landed; no embedding/retrieval/ES runtime started`
     - `M2D-8 FAISS foundation landed; no retrieval/rerank/RiskKnowledgeService/API runtime started`
+    - `M2D-9 indexing job runtime landed; no retrieval/rerank/RiskKnowledgeService/API runtime started`
   - acceptance closure：
-    - `M2D-8 accepted at stage level`
+    - `M2D-9 accepted at stage level after targeted runtime validation; full repository regression, real embedding smoke, and real Redis smoke remain optional/pending validation items.`
     - full repository regression remains pending / optional
     - real embedding smoke remains opt-in / pending
+    - real Redis smoke remains opt-in / pending
     - unrelated frontend edits and untracked PDF remained untouched
   - 本轮产出：
     - `app/third_party/swxy_rag`
@@ -84,6 +88,7 @@
     - `app/risk_knowledge/persistence`
     - `app/risk_knowledge/embedding`
     - `app/risk_knowledge/indexing`
+    - `app/risk_knowledge/runtime`
     - vendored SWXY `deepdoc/`, `rag/`, `core/api/utils/file_utils.py`, `conf/mapping.json`
     - renamed vendored entry files `file_parse_core.py` / `retrieval_core.py`
     - `M2D-4` vendor import review
@@ -91,13 +96,13 @@
     - `M2D-6` SWXY ingestion adapter review
     - `M2D-7` metadata/evidence builder review
     - `M2D-8` FAISS foundation review
+    - `M2D-9` indexing runtime review
   - Explicitly not started：
     - RiskKnowledgeService
     - retrieval adapter
     - retrieval
     - BM25 / RRF
     - rerank
-    - Redis indexing-job orchestration
     - NL Chat integration
     - Profile Explanation integration
     - API routes
@@ -108,7 +113,7 @@
     - 不新增 FastAPI route
     - 不重写现有 `M2A/M2B/M2C/M3` closure wording
   - 下一步：
-    - `M2D-9 Indexing Job Runtime / Redis Task State`
+    - `M2D-10 Retrieval Foundation`
 
 - [x] M2C：Status Reconciliation — 已完成（2026-06-30）
   - review：

@@ -111,7 +111,7 @@ def test_chunk_builder_requires_parsed_version_status() -> None:
     builder = KnowledgeChunkBuilder()
 
     with pytest.raises(MetadataInputMismatchError):
-        builder.build(_build_parsed_document(), _build_document(), _build_version(status=DocumentVersionStatus.UPLOADED))
+        builder.build(_build_parsed_document(), _build_document(), _build_version(status=DocumentVersionStatus.INDEXING))
 
 
 def test_chunk_builder_rejects_mismatched_identity() -> None:

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
@@ -38,6 +40,9 @@ class SqlAlchemyKnowledgeChunkRepository:
             stmt = stmt.where(KnowledgeChunkRecord.chunk_id.in_(chunk_ids))
         stmt = stmt.order_by(KnowledgeChunkRecord.chunk_id.asc())
         return list(self._db.scalars(stmt).all())
+
+    def list_by_version(self, version_id: str) -> list[KnowledgeChunkRecord]:
+        return self.list_by_version_and_chunk_ids(version_id, [])
 
     def create(self, record: KnowledgeChunkRecord) -> KnowledgeChunkRecord:
         self._db.add(record)
@@ -115,6 +120,15 @@ class SqlAlchemyKnowledgeChunkEmbeddingRepository:
         self._db.refresh(record)
         return record
 
+    def list_by_version(self, version_id: str) -> list[KnowledgeChunkEmbeddingRecord]:
+        return list(
+            self._db.scalars(
+                select(KnowledgeChunkEmbeddingRecord)
+                .where(KnowledgeChunkEmbeddingRecord.version_id == version_id)
+                .order_by(KnowledgeChunkEmbeddingRecord.chunk_id.asc())
+            ).all()
+        )
+
 
 class SqlAlchemyFaissIndexRepository:
     def __init__(self, db: Session) -> None:
@@ -133,6 +147,7 @@ class SqlAlchemyFaissIndexRepository:
         existing.embedding_provider = manifest.embedding_provider
         existing.embedding_model = manifest.embedding_model
         existing.embedding_dimension = manifest.embedding_dimension
+        existing.job_id = manifest.job_id
         existing.index_type = manifest.index_type
         existing.distance_metric = manifest.distance_metric
         existing.record_count = manifest.record_count
@@ -141,10 +156,54 @@ class SqlAlchemyFaissIndexRepository:
         existing.checksum = manifest.checksum
         existing.build_fingerprint = manifest.build_fingerprint
         existing.build_status = manifest.build_status
+        existing.is_active = manifest.is_active
+        existing.superseded_by_index_id = manifest.superseded_by_index_id
+        existing.superseded_at = manifest.superseded_at
         existing.built_at = manifest.built_at
         self._db.flush()
         self._db.refresh(existing)
         return existing
+
+    def get(self, index_id: str) -> FaissIndexManifestRecord | None:
+        return self._db.scalar(
+            select(FaissIndexManifestRecord).where(FaissIndexManifestRecord.index_id == index_id)
+        )
+
+    def get_active_by_version(self, version_id: str) -> FaissIndexManifestRecord | None:
+        return self._db.scalar(
+            select(FaissIndexManifestRecord).where(
+                FaissIndexManifestRecord.version_id == version_id,
+                FaissIndexManifestRecord.is_active.is_(True),
+            )
+        )
+
+    def get_by_version_and_fingerprint(self, version_id: str, fingerprint: str) -> FaissIndexManifestRecord | None:
+        return self._db.scalar(
+            select(FaissIndexManifestRecord).where(
+                FaissIndexManifestRecord.version_id == version_id,
+                FaissIndexManifestRecord.build_fingerprint == fingerprint,
+            )
+        )
+
+    def activate_manifest(self, *, version_id: str, index_id: str) -> FaissIndexManifestRecord:
+        now = datetime.now(UTC).replace(tzinfo=None)
+        current = self.get_active_by_version(version_id)
+        if current is not None and current.index_id != index_id:
+            current.is_active = False
+            current.superseded_by_index_id = index_id
+            current.superseded_at = now
+            current.build_status = "superseded"
+
+        target = self.get(index_id)
+        if target is None:
+            raise ValueError(f"manifest not found: {index_id}")
+        target.is_active = True
+        target.superseded_by_index_id = None
+        target.superseded_at = None
+        target.build_status = "active"
+        self._db.flush()
+        self._db.refresh(target)
+        return target
 
     def replace_vector_mappings(
         self,
@@ -194,4 +253,30 @@ def to_persisted_embedding_record(record: KnowledgeChunkEmbeddingRecord) -> Pers
         dimension=record.dimension,
         vector_checksum=record.vector_checksum,
         status=record.status,
+    )
+
+
+def to_manifest_schema(record: FaissIndexManifestRecord) -> FaissIndexManifest:
+    return FaissIndexManifest.model_validate(
+        {
+            "index_id": record.index_id,
+            "kb_id": record.kb_id,
+            "version_id": record.version_id,
+            "embedding_provider": record.embedding_provider,
+            "embedding_model": record.embedding_model,
+            "embedding_dimension": record.embedding_dimension,
+            "job_id": record.job_id,
+            "index_type": record.index_type,
+            "distance_metric": record.distance_metric,
+            "record_count": record.record_count,
+            "artifact_path": record.artifact_path,
+            "mapping_path": record.mapping_path,
+            "checksum": record.checksum,
+            "build_fingerprint": record.build_fingerprint,
+            "build_status": record.build_status,
+            "is_active": record.is_active,
+            "superseded_by_index_id": record.superseded_by_index_id,
+            "superseded_at": record.superseded_at,
+            "built_at": record.built_at,
+        }
     )

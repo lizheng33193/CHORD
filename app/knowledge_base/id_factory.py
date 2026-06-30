@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from uuid import uuid4
 
 
 _NON_ID_CHARS = re.compile(r"[^a-z0-9]+")
@@ -31,3 +32,11 @@ def build_chunk_id(version_id: str, chunk_order: int) -> str:
 
 def build_ingest_job_id(version_id: str) -> str:
     return f"ingest_{normalize_id_part(version_id)}"
+
+
+def build_indexing_job_id() -> str:
+    return f"idxjob_{uuid4().hex}"
+
+
+def build_faiss_index_id(version_id: str, job_id: str) -> str:
+    return f"idx_{normalize_id_part(version_id)}_{normalize_id_part(job_id)[-12:]}"

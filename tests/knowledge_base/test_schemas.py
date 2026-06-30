@@ -85,20 +85,20 @@ def test_version_and_job_require_core_fields() -> None:
         embedding_model="text-embedding-v3",
         embedding_dim=1024,
         index_name="chord_m2d_risk_knowledge_v1",
-        status=DocumentVersionStatus.UPLOADED,
+        status=DocumentVersionStatus.PARSED,
     )
     job = KnowledgeIngestJob(
         job_id="job_1",
         kb_id=DEFAULT_RISK_KB_ID,
         doc_id="risk_guide",
         version_id="risk_guide_202606",
-        status=IngestJobStatus.UPLOADED,
-        current_step=IngestStep.UPLOADED,
+        status=IngestJobStatus.PENDING,
+        current_step=IngestStep.QUEUED,
         error_message=None,
     )
 
-    assert version.status == DocumentVersionStatus.UPLOADED
-    assert job.current_step == IngestStep.UPLOADED
+    assert version.status == DocumentVersionStatus.PARSED
+    assert job.current_step == IngestStep.QUEUED
 
 
 def test_chunk_schema_can_be_created_without_repository() -> None:
