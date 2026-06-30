@@ -5,7 +5,7 @@
 - 整体架构：单体 FastAPI 后端，五层（API → 编排 → Skill 执行 → 数据访问 → 外部服务）
 - 入口文件：`app/main.py`
 
-## 2026-06-30 M2D Risk Domain Knowledge RAG & Knowledge Base Module
+## 2026-07-01 M2D Risk Domain Knowledge RAG & Knowledge Base Module
 
 - 新增 `M2D` artifacts：
   - `docs/reviews/m2d-current-state-and-scope-review.md`
@@ -16,6 +16,7 @@
   - `docs/specs/m2d-9-indexing-runtime-spec.md`
   - `docs/specs/m2d-10-hybrid-retrieval-spec.md`
   - `docs/specs/m2d-11-reranker-evidence-gate-spec.md`
+  - `docs/specs/m2d-12-risk-knowledge-service-spec.md`
   - `docs/plans/m2d-risk-domain-rag-integration-plan.md`
   - `docs/reviews/m2d-4-swxy-vendor-import-review.md`
   - `docs/reviews/m2d-5-knowledge-base-module-skeleton-review.md`
@@ -25,6 +26,7 @@
   - `docs/reviews/m2d-9-indexing-runtime-review.md`
   - `docs/reviews/m2d-10-hybrid-retrieval-review.md`
   - `docs/reviews/m2d-11-reranker-evidence-gate-review.md`
+  - `docs/reviews/m2d-12-risk-knowledge-service-review.md`
 - 当前阶段状态：
   - `M2D: implementation in progress`
 - Purpose:
@@ -51,13 +53,14 @@
   - `app/risk_knowledge/retrieval` now resolves active retrieval scope, embeds queries once, runs FAISS + BM25 retrieval, applies RRF, and hydrates retrieval candidates.
   - `app/risk_knowledge/reranking` now normalizes candidates, validates provider results, and isolates deterministic + DashScope reranker providers.
   - `app/risk_knowledge/evidence` now selects evidence, evaluates sufficiency, builds stable citations, and assembles `RiskEvidenceBundle`.
-- Runtime integration not started:
-  - no NL Chat integration has started
-  - no Profile Explanation integration has started
-  - no knowledge-base management API has been implemented
-  - no `RiskKnowledgeService` has been implemented
-  - no answer generation has been implemented
+  - `app/risk_knowledge/service` now exposes `RiskKnowledgeService`, a thin `RiskEvidencePipeline`, deterministic answer/refusal synthesis, conservative routing, rendered citations, and a profile-explanation adapter seam.
+  - `app/services/orchestrator_agent` now includes a minimal `risk_knowledge_answer` flow and intent seam for consumer integration.
+- Runtime surfaces still not started:
+  - no admin API/UI has been implemented
+  - no document upload or reindex/status runtime has been implemented
+  - no golden-set evaluation runtime has been implemented
   - no frontend changes have been introduced
+  - no Data Agent RAG mixing has been introduced
   - no ES or SWXY retrieval/runtime coupling has been introduced
 - Subphase status:
   - `M2D-4 vendor import landed; no runtime integration started`
@@ -67,14 +70,16 @@
   - `M2D-8 FAISS foundation landed; no retrieval/rerank/RiskKnowledgeService/API runtime started`
   - `M2D-9 indexing job runtime landed; no retrieval/rerank/RiskKnowledgeService/API runtime started`
   - `M2D-11 reranker and evidence gate landed; no RiskKnowledgeService/API/NL Chat/Profile Explanation runtime started`
+  - `M2D-12 RiskKnowledgeService integration landed; no admin API/UI/golden-set evaluation runtime started`
 - Acceptance posture:
   - `M2D-10 accepted at stage level after targeted retrieval foundation validation`
   - full repository regression remains pending / optional
   - real query embedding smoke remains pending / optional
   - M2D-10 acceptance does not include real Redis smoke
   - `M2D-11 accepted at stage level after targeted reranker/evidence gate validation; full repository regression and real reranker smoke remain optional/pending validation items.`
+  - `M2D-12 accepted at stage level after targeted RiskKnowledgeService, NL Chat seam, and Profile Explanation adapter validation; admin API/UI, golden-set evaluation, and production hardening remain future stages.`
 - Next phase:
-  - `M2D-12 RiskKnowledgeService / Consumer Integration`
+  - `M2D-13 Upload / Reindex / Status API`
 
 ## 2026-06-30 M3-1 Profile DAG Runtime Skeleton
 

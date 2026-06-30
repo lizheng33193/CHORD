@@ -13,6 +13,7 @@ from app.services.orchestrator_agent.flows.data_agent_run import DataAgentRunFlo
 from app.services.orchestrator_agent.flows.general_chat import GeneralChatFlow
 from app.services.orchestrator_agent.flows.profile import ProfileFlow
 from app.services.orchestrator_agent.flows.query_data_then_profile import QueryDataThenProfileFlow
+from app.services.orchestrator_agent.flows.risk_knowledge_answer import RiskKnowledgeAnswerFlow
 from app.services.orchestrator_agent.flows.run_trace import RunTraceFlow
 from app.services.orchestrator_agent.schemas import NormalizedRequest
 
@@ -20,6 +21,8 @@ from app.services.orchestrator_agent.schemas import NormalizedRequest
 def select_known_flow(request: NormalizedRequest) -> KnownFlow | None:
     if request.intent == "answer_from_workspace":
         return AnswerWorkspaceFlow()
+    if request.intent == "risk_knowledge_answer":
+        return RiskKnowledgeAnswerFlow()
     if request.intent == "need_clarification":
         return ClarifyScopeFlow()
     if request.intent == "clarify_data_request":

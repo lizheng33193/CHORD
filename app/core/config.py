@@ -193,6 +193,20 @@ class Settings(BaseModel):
         "RISK_KNOWLEDGE_EVIDENCE_DEDUP_BY_CONTENT_HASH",
         "1",
     ).strip().lower() in {"1", "true", "yes", "on"}
+    risk_knowledge_answer_provider: str = os.getenv(
+        "RISK_KNOWLEDGE_ANSWER_PROVIDER",
+        "deterministic",
+    ).strip() or "deterministic"
+    risk_knowledge_answer_model: str = os.getenv(
+        "RISK_KNOWLEDGE_ANSWER_MODEL",
+        "",
+    ).strip()
+    risk_knowledge_answer_timeout_seconds: int = int(
+        os.getenv("RISK_KNOWLEDGE_ANSWER_TIMEOUT_SECONDS", "60")
+    )
+    risk_knowledge_answer_max_context_chars: int = int(
+        os.getenv("RISK_KNOWLEDGE_ANSWER_MAX_CONTEXT_CHARS", "6000")
+    )
     risk_knowledge_bm25_cache_size: int = int(
         os.getenv("RISK_KNOWLEDGE_BM25_CACHE_SIZE", "16")
     )

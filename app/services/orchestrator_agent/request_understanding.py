@@ -7,6 +7,7 @@ from app.services.orchestrator_agent.schemas import KnownIntent, RequestUndersta
 
 _ROUTE_LABELS: dict[KnownIntent, str] = {
     "answer_from_workspace": "已有画像追问",
+    "risk_knowledge_answer": "风控知识问答",
     "profile_uid": "单 UID 画像分析",
     "profile_batch": "批量画像分析",
     "need_clarification": "需要补充条件",
@@ -19,6 +20,7 @@ _ROUTE_LABELS: dict[KnownIntent, str] = {
 
 _ROUTE_REASONS: dict[KnownIntent, str] = {
     "answer_from_workspace": "当前问题聚焦于已有画像结果的解释、比较或改写，优先复用证据回答。",
+    "risk_knowledge_answer": "当前问题是明确的风控知识解释请求，进入风险知识服务回答。",
     "profile_uid": "用户请求需要执行画像流程，并检查本地数据是否完整。",
     "profile_batch": "当前请求涉及多个 UID，需要批量检查数据并执行画像。",
     "need_clarification": "当前请求明显是 cohort 取数意图，但缺少国家或时间范围，需先补充条件。",
@@ -76,6 +78,8 @@ def _normalize_focus(focus: list[str], prompt: str) -> list[str]:
 def _answer_mode_for(intent: KnownIntent) -> str:
     if intent == "answer_from_workspace":
         return "workspace_evidence_answer"
+    if intent == "risk_knowledge_answer":
+        return "risk_knowledge_answer"
     if intent == "general_chat":
         return "general_chat"
     return "tool_execution"
@@ -99,6 +103,8 @@ def _build_rewritten_goal(
         if "customer_script" in focus:
             return "基于当前已有画像结果，改写为可直接使用的客服话术"
         return "基于当前已有画像结果，总结当前用户画像"
+    if intent == "risk_knowledge_answer":
+        return "基于风控知识库回答当前风险概念、指标或策略解释问题"
     if intent == "profile_uid":
         uid = uids[0] if uids else "目标 UID"
         if "rerun" in focus:
