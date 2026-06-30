@@ -53,6 +53,10 @@
   - `M2D-6 SWXY ingestion adapter landed; no embedding/retrieval/ES runtime started`
   - `M2D-7 metadata and evidence builder landed; no embedding/retrieval/ES runtime started`
   - `M2D-8 FAISS foundation landed; no retrieval/rerank/RiskKnowledgeService/API runtime started`
+- Acceptance posture:
+  - `M2D-8 accepted at stage level`
+  - full repository regression remains pending / optional
+  - real embedding smoke remains opt-in / pending
 - Next phase:
   - `M2D-9 Indexing Job Runtime / Redis Task State`
 
