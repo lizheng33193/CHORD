@@ -12,10 +12,13 @@
   - `docs/reviews/m2d-existing-rag-integration-review.md`
   - `docs/specs/m2d-risk-domain-knowledge-rag-contract.md`
   - `docs/specs/m2d-knowledge-base-module-design.md`
+  - `docs/specs/m2d-8-faiss-foundation-spec.md`
   - `docs/plans/m2d-risk-domain-rag-integration-plan.md`
   - `docs/reviews/m2d-4-swxy-vendor-import-review.md`
   - `docs/reviews/m2d-5-knowledge-base-module-skeleton-review.md`
   - `docs/reviews/m2d-6-swxy-ingestion-adapter-review.md`
+  - `docs/reviews/m2d-7-metadata-evidence-builder-review.md`
+  - `docs/reviews/m2d-8-faiss-foundation-review.md`
 - 当前阶段状态：
   - `M2D: implementation in progress`
 - Purpose:
@@ -26,26 +29,36 @@
   - `M2D-4` vendor import has landed under `app/third_party/swxy_rag`.
   - `M2D-5` knowledge-base module skeleton has landed under `app/knowledge_base`.
   - `M2D-6` SWXY ingestion adapter has landed under `app/risk_knowledge/ingestion`.
+  - `M2D-7` metadata and evidence builder has landed under `app/risk_knowledge/metadata`.
+  - `M2D-8` FAISS foundation has landed under `app/risk_knowledge/persistence`, `app/risk_knowledge/embedding`, and `app/risk_knowledge/indexing`.
   - SWXY source/resources are isolated under a CHORD-owned third-party package namespace.
   - `app/knowledge_base` now defines CHORD-native schemas, lifecycle helpers, repository protocols, in-memory repositories, and metadata-only services.
   - `app/risk_knowledge/ingestion` now defines the adapter boundary from SWXY-compatible parser/chunker output into CHORD `ParsedDocument / RawParsedChunk` contracts.
-  - No embedding, retrieval, or ES runtime integration has started.
+  - `app/risk_knowledge/metadata` now materializes in-memory `KnowledgeChunk` and draft `RiskEvidence` contracts from explicit parsed/document/version inputs.
+  - `app/risk_knowledge/persistence` now persists canonical chunk, embedding, and FAISS manifest/mapping metadata from CHORD-owned contracts.
+  - `app/risk_knowledge/embedding` now defines CHORD-owned embedding runtime boundaries and an OpenAI-compatible provider adapter.
+  - `app/risk_knowledge/indexing` now defines CHORD-owned FAISS build/save/load boundaries with manifest fingerprinting.
+  - No retrieval, rerank, or consumer-service runtime integration has started.
 - Runtime integration not started:
   - no NL Chat integration has started
   - no Profile Explanation integration has started
   - no knowledge-base management API has been implemented
-  - no ES runtime implementation has started
-  - no chunk repository or chunk service has been implemented
-  - no `KnowledgeChunk` persistence has been implemented
-  - no embedding has been implemented
   - no retrieval adapter has been implemented
+  - no reranker has been implemented
   - no `RiskKnowledgeService` has been implemented
+  - no Redis indexing-job orchestration has been implemented
 - Subphase status:
   - `M2D-4 vendor import landed; no runtime integration started`
   - `M2D-5 knowledge base module skeleton landed; no ingestion/retrieval runtime started`
   - `M2D-6 SWXY ingestion adapter landed; no embedding/retrieval/ES runtime started`
+  - `M2D-7 metadata and evidence builder landed; no embedding/retrieval/ES runtime started`
+  - `M2D-8 FAISS foundation landed; no retrieval/rerank/RiskKnowledgeService/API runtime started`
+- Acceptance posture:
+  - `M2D-8 accepted at stage level`
+  - full repository regression remains pending / optional
+  - real embedding smoke remains opt-in / pending
 - Next phase:
-  - `M2D-7 Metadata & Evidence Builder`
+  - `M2D-9 Indexing Job Runtime / Redis Task State`
 
 ## 2026-06-30 M3-1 Profile DAG Runtime Skeleton
 

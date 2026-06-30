@@ -24,6 +24,7 @@ from app.knowledge_base.schemas import (
     PermissionScope,
     SourceType,
 )
+from app.risk_knowledge.schemas import EvidenceUsage, RiskEvidence, RiskEvidenceScore
 
 
 def test_default_kb_contract_can_be_created() -> None:
@@ -116,10 +117,14 @@ def test_chunk_schema_can_be_created_without_repository() -> None:
         content_hash="sha256:chunk",
         status=ChunkStatus.INDEXED,
         permission_scope=PermissionScope.INTERNAL,
+        source_type=SourceType.PDF,
+        source_uri="knowledge/risk/risk_guide.pdf",
+        source_metadata={"doc_name": "risk_guide.pdf"},
     )
 
     assert chunk.status == ChunkStatus.INDEXED
     assert chunk.permission_scope == PermissionScope.INTERNAL
+    assert chunk.source_type == SourceType.PDF
 
 
 def test_invalid_enum_values_fail() -> None:
@@ -172,3 +177,52 @@ def test_chunk_page_range_must_be_valid() -> None:
             content_hash="sha256:chunk",
             status=ChunkStatus.INDEXED,
         )
+
+
+def test_risk_evidence_schema_forbids_extra_fields() -> None:
+    with pytest.raises(ValidationError):
+        RiskEvidence(
+            evidence_id="ev_risk_guide_202606_chunk_000001",
+            kb_id=DEFAULT_RISK_KB_ID,
+            doc_id="risk_guide",
+            doc_title="智能风控指南",
+            version_id="risk_guide_202606",
+            chunk_id="risk_guide_202606_chunk_000001",
+            section_title="贷后风险识别",
+            page_start=12,
+            page_end=12,
+            score=None,
+            text="贷后风险识别是指...",
+            usage=EvidenceUsage.SUPPORTING_EVIDENCE,
+            extra_field="boom",
+        )
+
+
+def test_risk_evidence_score_allows_all_optional_fields() -> None:
+    score = RiskEvidenceScore(
+        fulltext_score=None,
+        vector_score=None,
+        rerank_score=None,
+        final_score=None,
+    )
+
+    assert score.final_score is None
+
+
+def test_evidence_usage_accepts_supporting_evidence_only() -> None:
+    evidence = RiskEvidence(
+        evidence_id="ev_risk_guide_202606_chunk_000001",
+        kb_id=DEFAULT_RISK_KB_ID,
+        doc_id="risk_guide",
+        doc_title="智能风控指南",
+        version_id="risk_guide_202606",
+        chunk_id="risk_guide_202606_chunk_000001",
+        section_title="贷后风险识别",
+        page_start=12,
+        page_end=12,
+        score=None,
+        text="贷后风险识别是指...",
+        usage=EvidenceUsage.SUPPORTING_EVIDENCE,
+    )
+
+    assert evidence.usage == EvidenceUsage.SUPPORTING_EVIDENCE

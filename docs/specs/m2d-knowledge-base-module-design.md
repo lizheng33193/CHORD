@@ -4,9 +4,13 @@
 
 Current `M2D` status:
 
-> `planned; contract/review/design in progress`
+> `M2D implementation in progress`
 
-This is a design-only document. No runtime module is implemented in this pass.
+Current subphase reading:
+
+> `M2D-8 FAISS foundation landed; no retrieval/rerank/RiskKnowledgeService/API runtime started`
+
+This document remains the long-term management-side design source and is updated to align the current runtime foundation with the FAISS-based indexing mainline.
 
 ## 1. Purpose
 
@@ -37,7 +41,7 @@ Without a management-side module boundary, the system would collapse back into t
 - `Knowledge Base Module`
   - owns management concerns such as KB, document, version, status, and ingest lifecycle
 - `Risk Domain RAG Engine`
-  - owns parsing, chunking, embedding, ES indexing, retrieval, and rerank
+  - owns parsing, chunking, persistence adaptation, embedding, FAISS indexing, retrieval, and rerank
 - `RiskKnowledgeService`
   - owns the agent-facing evidence consumption boundary
 
@@ -117,14 +121,16 @@ The management API draft is:
 
 These are draft contracts only. No route, schema, or service is implemented in this pass.
 
-## 9. ES Index and Alias Design
+## 9. Indexing Foundation Design
 
-The `M2D v1` ES naming draft is:
+The `M2D v1` indexing mainline is:
 
-- physical index: `chord_m2d_risk_knowledge_v1`
-- alias: `chord_m2d_risk_knowledge_active`
+- metadata persistence in MySQL
+- real embedding runtime selected by CHORD config
+- FAISS artifact build/save/load
+- manifest + vector mapping persistence
 
-This keeps versioned physical storage separate from active retrieval routing.
+Elasticsearch is not the default `M2D-8` target anymore. If it is added later, it must be treated as an optional adapter rather than the mainline indexing boundary.
 
 ## 10. Upload / Reindex / Status Flow
 
@@ -135,8 +141,8 @@ The intended high-level flow is:
 3. parse document into structured content
 4. chunk and enrich metadata
 5. generate embeddings
-6. write index records into ES
-7. activate version and update alias / active metadata
+6. persist chunk and embedding/index metadata
+7. build and save FAISS index artifacts
 8. expose ingest-job status and document status for management APIs
 
 Reindex follows the same chain but starts from an existing logical document and new version record.
@@ -154,6 +160,7 @@ Reindex follows the same chain but starts from an existing logical document and 
 The boundary rules are:
 
 - agents do not call ES directly
+- agents do not call FAISS or embedding artifacts directly
 - agents do not call KB management APIs directly for retrieval
 - agents do not assemble evidence from bare chunks
 - retrieval, rerank, refusal, and evidence shaping must be mediated through the service boundary

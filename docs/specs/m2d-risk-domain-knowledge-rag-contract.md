@@ -4,9 +4,13 @@
 
 Current `M2D` status:
 
-> `planned; contract/review/design in progress`
+> `M2D implementation in progress`
 
-This document defines contract only. Implementation has not started.
+Current subphase reading:
+
+> `M2D-8 FAISS foundation landed; no retrieval/rerank/RiskKnowledgeService/API runtime started`
+
+This document remains the long-term contract source. `M2D-7` materializes draft chunk/evidence objects in memory, and `M2D-8` adds persistence/embedding/FAISS foundation without starting retrieval runtime behavior.
 
 ## 1. Purpose
 
@@ -119,7 +123,7 @@ Each consumer-facing evidence record must at minimum support the following contr
 
 ```json
 {
-  "evidence_id": "ev_000001",
+  "evidence_id": "ev_risk_guide_v1_202606_chunk_000123",
   "kb_id": "risk_domain_knowledge",
   "doc_id": "risk_guide_v1",
   "doc_title": "智能风控指南",
@@ -128,16 +132,17 @@ Each consumer-facing evidence record must at minimum support the following contr
   "section_title": "贷后风险识别",
   "page_start": 12,
   "page_end": 13,
-  "score": {
-    "fulltext_score": 0.61,
-    "vector_score": 0.84,
-    "rerank_score": 0.79,
-    "final_score": 0.81
-  },
+  "score": null,
   "text": "...",
   "usage": "supporting_evidence"
 }
 ```
+
+In `M2D-7`, `RiskEvidence` is draft evidence only:
+
+- `evidence_id = "ev_" + chunk_id`
+- `score = None`
+- retrieval-time `fulltext_score / vector_score / rerank_score / final_score` remain deferred to later retrieval phases
 
 ## 10. Retrieval Routing Contract
 
