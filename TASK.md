@@ -35,10 +35,11 @@
 - [x] E1 单用户埋点深度解析 → docs/plans/trace-analyzer-plan.md（2026-05-01）
 
 ## 当前进行中的功能
-- [x] M3-1：Profile DAG Runtime Skeleton — 已完成（2026-06-30）
+- [ ] M3-1：Profile DAG Runtime Skeleton — implemented / pending final acceptance（2026-06-30）
   - spec / plan：
     - `docs/specs/m3-profile-dag-runtime-contract.md`
     - `docs/plans/m3-1-profile-dag-runtime-skeleton-plan.md`
+    - `docs/reviews/m3-1-profile-dag-runtime-acceptance-review.md`
   - 本阶段产出：
     - `app/services/profile_dag/`
     - `ProfileRun / ProfileNodeRun / ProfileRunResultSnapshot`
@@ -54,9 +55,17 @@
   - 验证：
     - `pytest tests/test_profile_dag_runtime.py tests/test_orchestrator_progress.py tests/orchestrator_agent/test_profile_runner.py -q`
     - `AUTH_ENABLED=0 pytest tests/test_analyze_stream_endpoint.py tests/test_analyze_module_endpoint.py -q`
+    - `python -m compileall -q app data_acquisition_agent tests scripts`
+    - `git diff --check`
+    - `AUTH_ENABLED=0 pytest -q` -> `1 failed, 1334 passed, 6 skipped`
+  - 当前 acceptance blocker：
+    - `tests/frontend/test_chat_phase3_capabilities.py::test_chat_panel_uses_memory_drawer_instead_of_inline_block`
+    - 该失败点不在 `M3-1` touched files 内，但在 full regression 绿灯前仍阻塞阶段升级到 `completed`
   - 下一步：
-    - `M3-2` 做前端 profile progress 与 `profile_node_*` 对齐
-    - `M3-3` 再做 persistence / audit / cache provenance
+    - 先关闭 full regression blocker，重跑 acceptance
+    - 若 acceptance review 无 must-fix issue，再把 `M3-1` 提升为 `completed`
+    - `M3-2` 保持 not started
+
 
 - [x] M2B-9.1：Hybrid Enabled Rollout Observability & Acceptance — 已完成（2026-06-29）
   - runbook / matrix / examples / checklist / review：
