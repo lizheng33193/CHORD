@@ -7,31 +7,36 @@
 
 ## 2026-06-30 M2D Risk Domain Knowledge RAG & Knowledge Base Module
 
-- 新增 `M2D` design-closure artifacts：
+- 新增 `M2D` artifacts：
   - `docs/reviews/m2d-current-state-and-scope-review.md`
   - `docs/reviews/m2d-existing-rag-integration-review.md`
   - `docs/specs/m2d-risk-domain-knowledge-rag-contract.md`
   - `docs/specs/m2d-knowledge-base-module-design.md`
   - `docs/plans/m2d-risk-domain-rag-integration-plan.md`
+  - `docs/reviews/m2d-4-swxy-vendor-import-review.md`
 - 当前阶段状态：
-  - `M2D: planned; contract/review/design in progress`
+  - `M2D: implementation in progress`
 - Purpose:
   - `M2D` introduces a separate Risk Domain Knowledge RAG for evidence-grounded natural conversation and profile explanation.
   - It is not part of Data Agent Knowledge RAG and does not serve SQL generation, schema grounding, SQL example retrieval, Data Agent table selection, or SQL validator logic.
 - Current state:
-  - SWXY RAG has been identified as a reusable engine-asset source rather than an application subsystem to import whole.
-  - SWXY provides reusable parsing, OCR/layout analysis, chunking, embedding, Elasticsearch hybrid retrieval, rerank, and model-resource building blocks.
-  - CHORD-specific knowledge scope, metadata schema, evidence schema, routing contract, refusal policy, evaluation contract, and service boundary are now defined at the design level.
-  - `M2D` is defined as `Knowledge Base Module + Risk Domain RAG Engine + RiskKnowledgeService`.
-- Implementation not started:
-  - no SWXY code has been migrated
-  - no `app/third_party/swxy_rag` has been added
+  - `M2D-0` to `M2D-3` design closure has landed.
+  - `M2D-4` vendor import has landed under `app/third_party/swxy_rag`.
+  - SWXY source/resources are now isolated under a CHORD-owned third-party package namespace.
+  - Minimal import-path normalization has removed old `service.core` coupling inside the vendored subtree.
+  - No runtime integration has started.
+- Runtime integration not started:
   - no `app/risk_knowledge` runtime has been added
   - no `app/knowledge_base` runtime has been added
   - no NL Chat integration has started
   - no Profile Explanation integration has started
   - no knowledge-base management API has been implemented
   - no ES runtime implementation has started
+  - no ingestion adapter or retrieval adapter has been implemented
+- Subphase status:
+  - `M2D-4 vendor import landed; no runtime integration started`
+- Next phase:
+  - `M2D-5 Knowledge Base Module Skeleton`
 
 ## 2026-06-30 M3-1 Profile DAG Runtime Skeleton
 
