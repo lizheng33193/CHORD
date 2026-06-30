@@ -44,6 +44,7 @@
     - `docs/specs/m2d-8-faiss-foundation-spec.md`
     - `docs/specs/m2d-9-indexing-runtime-spec.md`
     - `docs/specs/m2d-10-hybrid-retrieval-spec.md`
+    - `docs/specs/m2d-11-reranker-evidence-gate-spec.md`
     - `docs/plans/m2d-risk-domain-rag-integration-plan.md`
     - `docs/reviews/m2d-4-swxy-vendor-import-review.md`
     - `docs/reviews/m2d-5-knowledge-base-module-skeleton-review.md`
@@ -52,6 +53,7 @@
     - `docs/reviews/m2d-8-faiss-foundation-review.md`
     - `docs/reviews/m2d-9-indexing-runtime-review.md`
     - `docs/reviews/m2d-10-hybrid-retrieval-review.md`
+    - `docs/reviews/m2d-11-reranker-evidence-gate-review.md`
   - Progress:
     - `[x] M2D-0 Current State & Scope Review`
     - `[x] M2D-1 SWXY RAG Integration Review`
@@ -64,7 +66,7 @@
     - `[x] M2D-8 FAISS foundation landed; no retrieval/rerank/RiskKnowledgeService/API runtime started`
     - `[x] M2D-9 indexing job runtime landed; no retrieval/rerank/RiskKnowledgeService/API runtime started`
     - `[x] M2D-10 hybrid retrieval foundation landed; no rerank/evidence gate/RiskKnowledgeService/API runtime started`
-    - `[ ] M2D-11 Reranker / Evidence Gate`
+    - `[x] M2D-11 Reranker / Evidence Gate`
     - `[ ] M2D-12 RiskKnowledgeService / Consumer Integration`
     - `[ ] M2D-13 Upload / Reindex / Status API`
     - `[ ] M2D-14 Refusal / Eval / Acceptance Review`
@@ -76,13 +78,11 @@
     - `M2D-7 metadata and evidence builder landed; no embedding/retrieval/ES runtime started`
     - `M2D-8 FAISS foundation landed; no retrieval/rerank/RiskKnowledgeService/API runtime started`
     - `M2D-9 indexing job runtime landed; no retrieval/rerank/RiskKnowledgeService/API runtime started`
-    - `M2D-10 hybrid retrieval foundation landed; no rerank/evidence gate/RiskKnowledgeService/API runtime started`
+    - `M2D-11 reranker and evidence gate landed; no RiskKnowledgeService/API/NL Chat/Profile Explanation runtime started`
   - acceptance closure：
-    - `M2D-10 accepted at stage level after targeted retrieval foundation validation; full repository regression and real query embedding smoke remain optional/pending validation items.`
+    - `M2D-11 accepted at stage level after targeted reranker/evidence gate validation; real reranker smoke remains opt-in and full repository regression remains optional/pending validation items.`
     - full repository regression remains pending / optional
-    - real query embedding smoke remains opt-in / pending
-    - no rerank
-    - no evidence gate
+    - real reranker smoke remains opt-in / pending
     - no RiskKnowledgeService
     - no API runtime
     - no NL Chat / Profile Explanation integration
@@ -98,6 +98,8 @@
     - `app/risk_knowledge/indexing`
     - `app/risk_knowledge/runtime`
     - `app/risk_knowledge/retrieval`
+    - `app/risk_knowledge/reranking`
+    - `app/risk_knowledge/evidence`
     - vendored SWXY `deepdoc/`, `rag/`, `core/api/utils/file_utils.py`, `conf/mapping.json`
     - renamed vendored entry files `file_parse_core.py` / `retrieval_core.py`
     - `M2D-4` vendor import review
@@ -107,9 +109,8 @@
     - `M2D-8` FAISS foundation review
     - `M2D-9` indexing runtime review
     - `M2D-10` hybrid retrieval review
+    - `M2D-11` reranker/evidence gate review
   - Explicitly not started：
-    - rerank
-    - evidence gate
     - RiskKnowledgeService
     - NL Chat integration
     - Profile Explanation integration
@@ -121,7 +122,7 @@
     - 不新增 FastAPI route
     - 不重写现有 `M2A/M2B/M2C/M3` closure wording
   - 下一步：
-    - `M2D-11 Reranker / Evidence Gate`
+    - `M2D-12 RiskKnowledgeService / Consumer Integration`
 
 - [x] M2C：Status Reconciliation — 已完成（2026-06-30）
   - review：

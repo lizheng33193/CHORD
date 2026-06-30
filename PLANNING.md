@@ -15,6 +15,7 @@
   - `docs/specs/m2d-8-faiss-foundation-spec.md`
   - `docs/specs/m2d-9-indexing-runtime-spec.md`
   - `docs/specs/m2d-10-hybrid-retrieval-spec.md`
+  - `docs/specs/m2d-11-reranker-evidence-gate-spec.md`
   - `docs/plans/m2d-risk-domain-rag-integration-plan.md`
   - `docs/reviews/m2d-4-swxy-vendor-import-review.md`
   - `docs/reviews/m2d-5-knowledge-base-module-skeleton-review.md`
@@ -23,6 +24,7 @@
   - `docs/reviews/m2d-8-faiss-foundation-review.md`
   - `docs/reviews/m2d-9-indexing-runtime-review.md`
   - `docs/reviews/m2d-10-hybrid-retrieval-review.md`
+  - `docs/reviews/m2d-11-reranker-evidence-gate-review.md`
 - 当前阶段状态：
   - `M2D: implementation in progress`
 - Purpose:
@@ -47,13 +49,12 @@
   - `app/knowledge_base` now also provides SQLAlchemy durable-state models/repositories for document, version, and indexing-job state.
   - `app/risk_knowledge/runtime` now orchestrates Redis runtime state/lock plus indexing runner/orchestrator flow from parsed inputs through manifest activation.
   - `app/risk_knowledge/retrieval` now resolves active retrieval scope, embeds queries once, runs FAISS + BM25 retrieval, applies RRF, and hydrates retrieval candidates.
-  - No rerank, evidence gate, or consumer-service runtime integration has started.
+  - `app/risk_knowledge/reranking` now normalizes candidates, validates provider results, and isolates deterministic + DashScope reranker providers.
+  - `app/risk_knowledge/evidence` now selects evidence, evaluates sufficiency, builds stable citations, and assembles `RiskEvidenceBundle`.
 - Runtime integration not started:
   - no NL Chat integration has started
   - no Profile Explanation integration has started
   - no knowledge-base management API has been implemented
-  - no reranker has been implemented
-  - no evidence gate has been implemented
   - no `RiskKnowledgeService` has been implemented
   - no ES or SWXY retrieval/runtime coupling has been introduced
 - Subphase status:
@@ -63,14 +64,16 @@
   - `M2D-7 metadata and evidence builder landed; no embedding/retrieval/ES runtime started`
   - `M2D-8 FAISS foundation landed; no retrieval/rerank/RiskKnowledgeService/API runtime started`
   - `M2D-9 indexing job runtime landed; no retrieval/rerank/RiskKnowledgeService/API runtime started`
-  - `M2D-10 hybrid retrieval foundation landed; no rerank/evidence gate/RiskKnowledgeService/API runtime started`
+  - `M2D-11 reranker and evidence gate landed; no RiskKnowledgeService/API/NL Chat/Profile Explanation runtime started`
 - Acceptance posture:
   - `M2D-10 accepted at stage level after targeted retrieval foundation validation`
   - full repository regression remains pending / optional
   - real query embedding smoke remains pending / optional
   - M2D-10 acceptance does not include real Redis smoke
+  - `M2D-11 accepted at stage level after targeted reranker/evidence gate validation`
+  - real reranker smoke remains pending / optional
 - Next phase:
-  - `M2D-11 Reranker / Evidence Gate`
+  - `M2D-12 RiskKnowledgeService / Consumer Integration`
 
 ## 2026-06-30 M3-1 Profile DAG Runtime Skeleton
 

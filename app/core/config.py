@@ -157,6 +157,42 @@ class Settings(BaseModel):
         "RISK_KNOWLEDGE_QUERY_EMBEDDING_TEXT_TYPE",
         "query",
     ).strip() or "query"
+    risk_knowledge_reranker_provider: str = os.getenv(
+        "RISK_KNOWLEDGE_RERANKER_PROVIDER",
+        "dashscope",
+    ).strip() or "dashscope"
+    risk_knowledge_reranker_model: str = os.getenv(
+        "RISK_KNOWLEDGE_RERANKER_MODEL",
+        "qwen3-rerank",
+    ).strip() or "qwen3-rerank"
+    risk_knowledge_reranker_top_n: int = int(
+        os.getenv("RISK_KNOWLEDGE_RERANKER_TOP_N", "10")
+    )
+    risk_knowledge_reranker_timeout_seconds: int = int(
+        os.getenv("RISK_KNOWLEDGE_RERANKER_TIMEOUT_SECONDS", "30")
+    )
+    risk_knowledge_reranker_max_candidates: int = int(
+        os.getenv("RISK_KNOWLEDGE_RERANKER_MAX_CANDIDATES", "50")
+    )
+    risk_knowledge_reranker_http_base_url: str | None = os.getenv(
+        "RISK_KNOWLEDGE_RERANKER_HTTP_BASE_URL"
+    )
+    risk_knowledge_evidence_max_count: int = int(
+        os.getenv("RISK_KNOWLEDGE_EVIDENCE_MAX_COUNT", "6")
+    )
+    risk_knowledge_evidence_min_count: int = int(
+        os.getenv("RISK_KNOWLEDGE_EVIDENCE_MIN_COUNT", "1")
+    )
+    risk_knowledge_evidence_min_rerank_score: float = float(
+        os.getenv("RISK_KNOWLEDGE_EVIDENCE_MIN_RERANK_SCORE", "0.2")
+    )
+    risk_knowledge_evidence_max_total_chars: int = int(
+        os.getenv("RISK_KNOWLEDGE_EVIDENCE_MAX_TOTAL_CHARS", "6000")
+    )
+    risk_knowledge_evidence_dedup_by_content_hash: bool = os.getenv(
+        "RISK_KNOWLEDGE_EVIDENCE_DEDUP_BY_CONTENT_HASH",
+        "1",
+    ).strip().lower() in {"1", "true", "yes", "on"}
     risk_knowledge_bm25_cache_size: int = int(
         os.getenv("RISK_KNOWLEDGE_BM25_CACHE_SIZE", "16")
     )
