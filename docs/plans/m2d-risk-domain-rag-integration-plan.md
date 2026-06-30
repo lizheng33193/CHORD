@@ -244,6 +244,9 @@ Current project reading for `M2D`:
   - no NL Chat or Profile Explanation integration yet
 - 验收标准
   - citation/evidence boundaries are explicit
+  - empty retrieval candidates return `no_candidates` without provider execution
+  - provider result mismatch is rejected before evidence shaping
+  - `RiskEvidenceBundle` excludes answer-generation fields
 
 ### M2D-12 RiskKnowledgeService / Consumer Integration
 
