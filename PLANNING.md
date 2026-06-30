@@ -56,6 +56,8 @@
   - no Profile Explanation integration has started
   - no knowledge-base management API has been implemented
   - no `RiskKnowledgeService` has been implemented
+  - no answer generation has been implemented
+  - no frontend changes have been introduced
   - no ES or SWXY retrieval/runtime coupling has been introduced
 - Subphase status:
   - `M2D-4 vendor import landed; no runtime integration started`
@@ -70,8 +72,7 @@
   - full repository regression remains pending / optional
   - real query embedding smoke remains pending / optional
   - M2D-10 acceptance does not include real Redis smoke
-  - `M2D-11 accepted at stage level after targeted reranker/evidence gate validation`
-  - real reranker smoke remains pending / optional
+  - `M2D-11 accepted at stage level after targeted reranker/evidence gate validation; full repository regression and real reranker smoke remain optional/pending validation items.`
 - Next phase:
   - `M2D-12 RiskKnowledgeService / Consumer Integration`
 

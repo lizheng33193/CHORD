@@ -80,12 +80,14 @@
     - `M2D-9 indexing job runtime landed; no retrieval/rerank/RiskKnowledgeService/API runtime started`
     - `M2D-11 reranker and evidence gate landed; no RiskKnowledgeService/API/NL Chat/Profile Explanation runtime started`
   - acceptance closure：
-    - `M2D-11 accepted at stage level after targeted reranker/evidence gate validation; real reranker smoke remains opt-in and full repository regression remains optional/pending validation items.`
+    - `M2D-11 accepted at stage level after targeted reranker/evidence gate validation; full repository regression and real reranker smoke remain optional/pending validation items.`
     - full repository regression remains pending / optional
     - real reranker smoke remains opt-in / pending
     - no RiskKnowledgeService
     - no API runtime
     - no NL Chat / Profile Explanation integration
+    - no answer generation
+    - no frontend changes
     - no ES / SWXY coupling
     - unrelated frontend edits and untracked PDF remained untouched
   - 本轮产出：
