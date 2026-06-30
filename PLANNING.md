@@ -15,6 +15,7 @@
   - `docs/plans/m2d-risk-domain-rag-integration-plan.md`
   - `docs/reviews/m2d-4-swxy-vendor-import-review.md`
   - `docs/reviews/m2d-5-knowledge-base-module-skeleton-review.md`
+  - `docs/reviews/m2d-6-swxy-ingestion-adapter-review.md`
 - 当前阶段状态：
   - `M2D: implementation in progress`
 - Purpose:
@@ -24,23 +25,27 @@
   - `M2D-0` to `M2D-3` design closure has landed.
   - `M2D-4` vendor import has landed under `app/third_party/swxy_rag`.
   - `M2D-5` knowledge-base module skeleton has landed under `app/knowledge_base`.
+  - `M2D-6` SWXY ingestion adapter has landed under `app/risk_knowledge/ingestion`.
   - SWXY source/resources are isolated under a CHORD-owned third-party package namespace.
   - `app/knowledge_base` now defines CHORD-native schemas, lifecycle helpers, repository protocols, in-memory repositories, and metadata-only services.
-  - No ingestion or retrieval runtime integration has started.
+  - `app/risk_knowledge/ingestion` now defines the adapter boundary from SWXY-compatible parser/chunker output into CHORD `ParsedDocument / RawParsedChunk` contracts.
+  - No embedding, retrieval, or ES runtime integration has started.
 - Runtime integration not started:
-  - no `app/risk_knowledge` runtime has been added
   - no NL Chat integration has started
   - no Profile Explanation integration has started
   - no knowledge-base management API has been implemented
   - no ES runtime implementation has started
-  - no ingestion adapter or retrieval adapter has been implemented
   - no chunk repository or chunk service has been implemented
+  - no `KnowledgeChunk` persistence has been implemented
+  - no embedding has been implemented
+  - no retrieval adapter has been implemented
   - no `RiskKnowledgeService` has been implemented
 - Subphase status:
   - `M2D-4 vendor import landed; no runtime integration started`
   - `M2D-5 knowledge base module skeleton landed; no ingestion/retrieval runtime started`
+  - `M2D-6 SWXY ingestion adapter landed; no embedding/retrieval/ES runtime started`
 - Next phase:
-  - `M2D-6 SWXY Ingestion Adapter`
+  - `M2D-7 Metadata & Evidence Builder`
 
 ## 2026-06-30 M3-1 Profile DAG Runtime Skeleton
 
