@@ -8,7 +8,7 @@ Current `M2D` status:
 
 Current subphase reading:
 
-> `M2D-8 FAISS foundation landed; no retrieval/rerank/RiskKnowledgeService/API runtime started`
+> `M2D-9 indexing job runtime landed; no retrieval/rerank/RiskKnowledgeService/API runtime started`
 
 This document remains the long-term management-side design source and is updated to align the current runtime foundation with the FAISS-based indexing mainline.
 
@@ -67,16 +67,16 @@ The default `M2D` knowledge base is:
 
 ## 6. Document Lifecycle
 
-The default lifecycle is:
+The indexing-facing document-version lifecycle is:
 
-`uploaded -> parsing -> parsed -> chunking -> embedding -> indexing -> indexed -> active`
+`parsed -> indexing -> indexed -> active`
 
-Supporting states:
+Supporting runtime states:
 
-- `failed`
-- `deprecated`
-- `deleted`
 - `reindexing`
+- `failed`
+
+Governance-only archival states may still exist for management-side version retirement, but they are not mixed into indexing-job runtime state.
 
 This lifecycle must be represented explicitly in future implementation rather than inferred from raw file presence.
 
@@ -137,23 +137,36 @@ Elasticsearch is not the default `M2D-8` target anymore. If it is added later, i
 The intended high-level flow is:
 
 1. create or resolve target knowledge base
-2. upload document and create ingest job
+2. upload document and create durable ingest job
 3. parse document into structured content
-4. chunk and enrich metadata
-5. generate embeddings
-6. persist chunk and embedding/index metadata
-7. build and save FAISS index artifacts
-8. expose ingest-job status and document status for management APIs
+4. materialize canonical `KnowledgeChunk`
+5. persist chunk and embedding/index metadata
+6. build and save FAISS index artifacts
+7. activate the manifest for the version in a short transaction
+8. expose durable job state and Redis runtime state for management APIs
 
-Reindex follows the same chain but starts from an existing logical document and new version record.
+Reindex follows the same chain but starts from an existing logical document and either a new parsed version or persisted chunks, depending on the rebuild trigger.
 
-## 11. quick_parse Boundary
+## 11. M2D-9 Runtime State Split
+
+`M2D-9` formalizes three separate state layers:
+
+- `KnowledgeDocumentVersion.status`
+  - durable document-version lifecycle state
+- `KnowledgeIngestJob.status`
+  - durable job lifecycle state
+- Redis runtime state
+  - ephemeral progress, heartbeat, latest-job pointer, and lock ownership
+
+MySQL durable state is the source of truth. Redis must never be treated as the final durable status record.
+
+## 12. quick_parse Boundary
 
 `quick_parse` belongs to temporary session-style document Q&A and does not belong to the long-term knowledge-base mainline.
 
 `M2D` must not adopt `quick_parse` as its ingestion or serving model.
 
-## 12. RiskKnowledgeService Boundary
+## 13. RiskKnowledgeService Boundary
 
 `RiskKnowledgeService` is the future consumer boundary.
 
@@ -165,7 +178,7 @@ The boundary rules are:
 - agents do not assemble evidence from bare chunks
 - retrieval, rerank, refusal, and evidence shaping must be mediated through the service boundary
 
-## 13. Acceptance Criteria
+## 14. Acceptance Criteria
 
 Future implementation acceptance should require:
 

@@ -10,11 +10,17 @@ from app.knowledge_base.repositories.memory import (
     InMemoryKnowledgeDocumentRepository,
     InMemoryKnowledgeIngestJobRepository,
 )
+from app.knowledge_base.repositories.sqlalchemy import (
+    SqlAlchemyKnowledgeDocumentRepository,
+    SqlAlchemyKnowledgeIngestJobRepository,
+)
 
 __all__ = [
     "InMemoryKnowledgeBaseRepository",
     "InMemoryKnowledgeDocumentRepository",
     "InMemoryKnowledgeIngestJobRepository",
+    "SqlAlchemyKnowledgeDocumentRepository",
+    "SqlAlchemyKnowledgeIngestJobRepository",
     "KnowledgeBaseRepository",
     "KnowledgeDocumentRepository",
     "KnowledgeIngestJobRepository",

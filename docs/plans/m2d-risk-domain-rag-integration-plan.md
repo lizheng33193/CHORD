@@ -2,7 +2,7 @@
 
 ## Summary
 
-This plan defines the full staged path for `M2D`, with the current implementation having progressed through `M2D-8`.
+This plan defines the full staged path for `M2D`, with the current implementation having progressed through `M2D-9`.
 
 Current `M2D` status:
 
@@ -10,7 +10,7 @@ Current `M2D` status:
 
 Current subphase reading:
 
-> `M2D-8 FAISS foundation landed; no retrieval/rerank/RiskKnowledgeService/API runtime started`
+> `M2D-9 indexing job runtime landed; no retrieval/rerank/RiskKnowledgeService/API runtime started`
 
 ## Current Status
 
@@ -19,7 +19,7 @@ Current project reading for `M2D`:
 - scope clarified
 - SWXY identified as reusable engine asset source
 - contract/review/design closure landed
-- M2D-4 to M2D-8 code has landed
+- M2D-4 to M2D-9 code has landed
 - no NL Chat integration started
 - no Profile Explanation integration started
 
@@ -185,15 +185,20 @@ Current project reading for `M2D`:
 - 目标
   - add runtime orchestration for indexing, rebuild, and retry flows
 - 输入
-  - FAISS foundation
-  - ingest-job lifecycle
+  - `ParsedDocument / RawParsedChunk`
+  - M2D-7 materializers
+  - M2D-8 persistence / embedding / FAISS foundation
 - 输出
-  - indexing job runtime
-  - Redis-backed task state / locking seams
+  - indexing job runner / orchestrator
+  - durable job lineage and document-version activation flow
+  - Redis-backed runtime state / heartbeat / locking seams
 - 禁止事项
-  - no consumer-facing retrieval or answer service yet
+  - no retrieval, rerank, `RiskKnowledgeService`, NL Chat, Profile Explanation, API routes, ES, or SWXY runtime imports
 - 验收标准
-  - rebuild/retry state and locking behavior are explicit
+  - MySQL durable state remains the source of truth
+  - Redis lock blocks same-version concurrent indexing
+  - lock loss blocks manifest activation
+  - retry lineage, rebuild flow, and active-manifest supersede behavior are explicit
 
 ### M2D-10 Retrieval Foundation
 

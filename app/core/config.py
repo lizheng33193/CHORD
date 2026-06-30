@@ -101,6 +101,26 @@ class Settings(BaseModel):
         "RISK_KNOWLEDGE_FAISS_ARTIFACT_DIR",
         "outputs/risk_knowledge/faiss",
     )
+    risk_knowledge_redis_url: str = os.getenv(
+        "RISK_KNOWLEDGE_REDIS_URL",
+        "redis://127.0.0.1:6379/15",
+    ).strip() or "redis://127.0.0.1:6379/15"
+    risk_knowledge_redis_key_prefix: str = os.getenv(
+        "RISK_KNOWLEDGE_REDIS_KEY_PREFIX",
+        "chord:risk_knowledge",
+    ).strip() or "chord:risk_knowledge"
+    risk_knowledge_indexing_lock_ttl_seconds: int = int(
+        os.getenv("RISK_KNOWLEDGE_INDEXING_LOCK_TTL_SECONDS", "120")
+    )
+    risk_knowledge_indexing_state_ttl_seconds: int = int(
+        os.getenv("RISK_KNOWLEDGE_INDEXING_STATE_TTL_SECONDS", "3600")
+    )
+    risk_knowledge_indexing_heartbeat_seconds: int = int(
+        os.getenv("RISK_KNOWLEDGE_INDEXING_HEARTBEAT_SECONDS", "30")
+    )
+    risk_knowledge_indexing_max_retries: int = int(
+        os.getenv("RISK_KNOWLEDGE_INDEXING_MAX_RETRIES", "3")
+    )
     hybrid_retrieval_enabled_raw: str = os.getenv("HYBRID_RETRIEVAL_ENABLED", "0")
     hybrid_retrieval_mode_raw: str = os.getenv("HYBRID_RETRIEVAL_MODE", "deterministic_only")
     hybrid_retrieval_source_namespace_raw: str = os.getenv("HYBRID_RETRIEVAL_SOURCE_NAMESPACE", "m2b_legacy_v3")

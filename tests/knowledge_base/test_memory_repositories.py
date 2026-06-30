@@ -58,7 +58,7 @@ def _build_document(*, current_version_id: str | None = None, status: DocumentSt
     )
 
 
-def _build_version(version_id: str, *, status: DocumentVersionStatus = DocumentVersionStatus.UPLOADED) -> KnowledgeDocumentVersion:
+def _build_version(version_id: str, *, status: DocumentVersionStatus = DocumentVersionStatus.PARSED) -> KnowledgeDocumentVersion:
     return KnowledgeDocumentVersion(
         version_id=version_id,
         doc_id="risk_guide",
@@ -75,7 +75,7 @@ def _build_version(version_id: str, *, status: DocumentVersionStatus = DocumentV
     )
 
 
-def _build_job(job_id: str, *, status: IngestJobStatus = IngestJobStatus.UPLOADED, step: IngestStep = IngestStep.UPLOADED) -> KnowledgeIngestJob:
+def _build_job(job_id: str, *, status: IngestJobStatus = IngestJobStatus.PENDING, step: IngestStep = IngestStep.QUEUED) -> KnowledgeIngestJob:
     return KnowledgeIngestJob(
         job_id=job_id,
         kb_id="risk_domain_knowledge",
@@ -154,7 +154,7 @@ def test_job_memory_repository_supports_create_get_list_update() -> None:
     job = _build_job("job_1")
     repo.create(job)
 
-    updated = job.model_copy(update={"status": IngestJobStatus.PARSING, "current_step": IngestStep.PARSING})
+    updated = job.model_copy(update={"status": IngestJobStatus.RUNNING, "current_step": IngestStep.LOCK_ACQUIRED})
     repo.update(updated)
 
     assert repo.get(job.job_id) == updated

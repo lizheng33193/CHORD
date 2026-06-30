@@ -6,53 +6,32 @@ from app.knowledge_base.errors import InvalidKnowledgeBaseStateTransition
 from app.knowledge_base.schemas import DocumentVersionStatus, IngestJobStatus
 
 PROCESSING_VERSION_STATUSES = {
-    DocumentVersionStatus.UPLOADED,
-    DocumentVersionStatus.PARSING,
-    DocumentVersionStatus.PARSED,
-    DocumentVersionStatus.CHUNKING,
-    DocumentVersionStatus.EMBEDDING,
     DocumentVersionStatus.INDEXING,
     DocumentVersionStatus.REINDEXING,
 }
 
 PROCESSING_JOB_STATUSES = {
-    IngestJobStatus.UPLOADED,
-    IngestJobStatus.PARSING,
-    IngestJobStatus.PARSED,
-    IngestJobStatus.CHUNKING,
-    IngestJobStatus.EMBEDDING,
-    IngestJobStatus.INDEXING,
-    IngestJobStatus.REINDEXING,
+    IngestJobStatus.PENDING,
+    IngestJobStatus.RUNNING,
 }
 
 _VERSION_TRANSITIONS: dict[DocumentVersionStatus, set[DocumentVersionStatus]] = {
-    DocumentVersionStatus.UPLOADED: {DocumentVersionStatus.PARSING, DocumentVersionStatus.FAILED},
-    DocumentVersionStatus.PARSING: {DocumentVersionStatus.PARSED, DocumentVersionStatus.FAILED},
-    DocumentVersionStatus.PARSED: {DocumentVersionStatus.CHUNKING, DocumentVersionStatus.FAILED},
-    DocumentVersionStatus.CHUNKING: {DocumentVersionStatus.EMBEDDING, DocumentVersionStatus.FAILED},
-    DocumentVersionStatus.EMBEDDING: {DocumentVersionStatus.INDEXING, DocumentVersionStatus.FAILED},
+    DocumentVersionStatus.PARSED: {DocumentVersionStatus.INDEXING, DocumentVersionStatus.REINDEXING, DocumentVersionStatus.FAILED},
     DocumentVersionStatus.INDEXING: {DocumentVersionStatus.INDEXED, DocumentVersionStatus.FAILED},
-    DocumentVersionStatus.INDEXED: {DocumentVersionStatus.ACTIVE},
+    DocumentVersionStatus.INDEXED: {DocumentVersionStatus.ACTIVE, DocumentVersionStatus.REINDEXING, DocumentVersionStatus.FAILED},
     DocumentVersionStatus.ACTIVE: {DocumentVersionStatus.REINDEXING, DocumentVersionStatus.DEPRECATED},
     DocumentVersionStatus.REINDEXING: {DocumentVersionStatus.INDEXED, DocumentVersionStatus.FAILED},
-    DocumentVersionStatus.FAILED: set(),
+    DocumentVersionStatus.FAILED: {DocumentVersionStatus.REINDEXING},
     DocumentVersionStatus.DEPRECATED: {DocumentVersionStatus.DELETED},
     DocumentVersionStatus.DELETED: set(),
 }
 
 _JOB_TRANSITIONS: dict[IngestJobStatus, set[IngestJobStatus]] = {
-    IngestJobStatus.UPLOADED: {IngestJobStatus.PARSING, IngestJobStatus.FAILED},
-    IngestJobStatus.PARSING: {IngestJobStatus.PARSED, IngestJobStatus.FAILED},
-    IngestJobStatus.PARSED: {IngestJobStatus.CHUNKING, IngestJobStatus.FAILED},
-    IngestJobStatus.CHUNKING: {IngestJobStatus.EMBEDDING, IngestJobStatus.FAILED},
-    IngestJobStatus.EMBEDDING: {IngestJobStatus.INDEXING, IngestJobStatus.FAILED},
-    IngestJobStatus.INDEXING: {IngestJobStatus.INDEXED, IngestJobStatus.FAILED},
-    IngestJobStatus.INDEXED: {IngestJobStatus.ACTIVE},
-    IngestJobStatus.ACTIVE: {IngestJobStatus.REINDEXING, IngestJobStatus.DEPRECATED},
-    IngestJobStatus.REINDEXING: {IngestJobStatus.INDEXED, IngestJobStatus.FAILED},
+    IngestJobStatus.PENDING: {IngestJobStatus.RUNNING, IngestJobStatus.CANCELED, IngestJobStatus.FAILED},
+    IngestJobStatus.RUNNING: {IngestJobStatus.COMPLETED, IngestJobStatus.FAILED, IngestJobStatus.CANCELED},
+    IngestJobStatus.COMPLETED: set(),
     IngestJobStatus.FAILED: set(),
-    IngestJobStatus.DEPRECATED: {IngestJobStatus.DELETED},
-    IngestJobStatus.DELETED: set(),
+    IngestJobStatus.CANCELED: set(),
 }
 
 

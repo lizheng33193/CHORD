@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from enum import Enum
+from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -46,11 +47,7 @@ class DocumentStatus(str, Enum):
 
 
 class DocumentVersionStatus(str, Enum):
-    UPLOADED = "uploaded"
-    PARSING = "parsing"
     PARSED = "parsed"
-    CHUNKING = "chunking"
-    EMBEDDING = "embedding"
     INDEXING = "indexing"
     INDEXED = "indexed"
     ACTIVE = "active"
@@ -69,33 +66,35 @@ class ChunkStatus(str, Enum):
 
 
 class IngestJobStatus(str, Enum):
-    UPLOADED = "uploaded"
-    PARSING = "parsing"
-    PARSED = "parsed"
-    CHUNKING = "chunking"
-    EMBEDDING = "embedding"
-    INDEXING = "indexing"
-    INDEXED = "indexed"
-    ACTIVE = "active"
-    REINDEXING = "reindexing"
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETED = "completed"
     FAILED = "failed"
-    DEPRECATED = "deprecated"
-    DELETED = "deleted"
+    CANCELED = "canceled"
 
 
 class IngestStep(str, Enum):
-    UPLOADED = "uploaded"
-    PARSING = "parsing"
-    PARSED = "parsed"
+    QUEUED = "queued"
+    LOCK_ACQUIRED = "lock_acquired"
     CHUNKING = "chunking"
+    PERSISTING_CHUNKS = "persisting_chunks"
     EMBEDDING = "embedding"
-    INDEXING = "indexing"
-    INDEXED = "indexed"
-    ACTIVE = "active"
-    REINDEXING = "reindexing"
+    FAISS_BUILDING = "faiss_building"
+    MANIFEST_PERSISTING = "manifest_persisting"
+    ACTIVATING_MANIFEST = "activating_manifest"
+    COMPLETED = "completed"
     FAILED = "failed"
-    DEPRECATED = "deprecated"
-    DELETED = "deleted"
+
+
+IndexingJobStatus = IngestJobStatus
+IndexingJobStep = IngestStep
+
+
+class IndexingJobTrigger(str, Enum):
+    INITIAL_INDEX = "initial_index"
+    RETRY = "retry"
+    REBUILD_FROM_PARSED = "rebuild_from_parsed"
+    REBUILD_FROM_PERSISTED_CHUNKS = "rebuild_from_persisted_chunks"
 
 
 class PermissionScope(str, Enum):
@@ -137,6 +136,9 @@ class KnowledgeDocumentVersion(_StrictModel):
     embedding_dim: int | None = Field(default=None, ge=1)
     index_name: str | None = None
     status: DocumentVersionStatus
+    latest_manifest_index_id: str | None = None
+    active_manifest_index_id: str | None = None
+    last_job_id: str | None = None
 
 
 class KnowledgeChunk(_StrictModel):
@@ -179,3 +181,13 @@ class KnowledgeIngestJob(_StrictModel):
     status: IngestJobStatus
     current_step: IngestStep
     error_message: str | None = None
+    trigger: IndexingJobTrigger = IndexingJobTrigger.INITIAL_INDEX
+    attempt: int = Field(default=1, ge=1)
+    max_attempts: int = Field(default=3, ge=1)
+    root_job_id: str | None = None
+    retry_of_job_id: str | None = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    last_heartbeat_at: datetime | None = None
+    latest_manifest_index_id: str | None = None
+    active_manifest_index_id: str | None = None

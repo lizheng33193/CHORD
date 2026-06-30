@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from datetime import datetime, UTC
 from pathlib import Path
 
@@ -99,6 +100,7 @@ class FaissIndexStore:
             embedding_provider=manifest_draft.embedding_provider,
             embedding_model=manifest_draft.embedding_model,
             embedding_dimension=manifest_draft.embedding_dimension,
+            job_id=manifest_draft.job_id,
             index_type=manifest_draft.index_type,
             distance_metric=manifest_draft.distance_metric,
             record_count=len(sorted_embeddings),
@@ -114,6 +116,9 @@ class FaissIndexStore:
                 chunk_content_pairs=actual_pairs,
             ),
             build_status="built",
+            is_active=False,
+            superseded_by_index_id=None,
+            superseded_at=None,
             built_at=datetime.now(UTC),
         )
         return FaissBuildResult(index=index, manifest=manifest, vector_mappings=mapping)
@@ -125,14 +130,19 @@ class FaissIndexStore:
         artifact_path.parent.mkdir(parents=True, exist_ok=True)
         mapping_path.parent.mkdir(parents=True, exist_ok=True)
 
-        faiss.write_index(build_result.index, str(artifact_path))
+        artifact_tmp_path = artifact_path.with_name(f"{artifact_path.name}.tmp")
+        mapping_tmp_path = mapping_path.with_name(f"{mapping_path.name}.tmp")
+
+        faiss.write_index(build_result.index, str(artifact_tmp_path))
         mapping_payload = {
             str(vector_id): entry.model_dump()
             for vector_id, entry in build_result.vector_mappings.items()
         }
-        mapping_path.write_text(json.dumps(mapping_payload, ensure_ascii=False, indent=2), encoding="utf-8")
-        checksum = self._compute_artifact_checksum(artifact_path, mapping_path)
-        manifest = build_result.manifest.model_copy(update={"checksum": checksum})
+        mapping_tmp_path.write_text(json.dumps(mapping_payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        checksum = self._compute_artifact_checksum(artifact_tmp_path, mapping_tmp_path)
+        os.replace(artifact_tmp_path, artifact_path)
+        os.replace(mapping_tmp_path, mapping_path)
+        manifest = build_result.manifest.model_copy(update={"checksum": checksum, "build_status": "saved"})
 
         if self._db is not None:
             repo = SqlAlchemyFaissIndexRepository(self._db)
