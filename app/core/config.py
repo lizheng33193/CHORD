@@ -81,11 +81,14 @@ class Settings(BaseModel):
     mysql_user: str = os.getenv("MYSQL_USER", "maps_lz").strip() or "maps_lz"
     mysql_password: str = os.getenv("MYSQL_PASSWORD", "maps_lz").strip()
     mysql_database: str = os.getenv("MYSQL_DATABASE", "maps_lz").strip() or "maps_lz"
+    dashscope_api_key: str | None = os.getenv("DASHSCOPE_API_KEY")
     risk_knowledge_embedding_provider: str = os.getenv(
         "RISK_KNOWLEDGE_EMBEDDING_PROVIDER",
         "openai_compatible",
     ).strip() or "openai_compatible"
-    risk_knowledge_embedding_api_key: str | None = os.getenv("RISK_KNOWLEDGE_EMBEDDING_API_KEY")
+    risk_knowledge_embedding_api_key: str | None = (
+        os.getenv("RISK_KNOWLEDGE_EMBEDDING_API_KEY") or os.getenv("DASHSCOPE_API_KEY")
+    )
     risk_knowledge_embedding_base_url: str | None = os.getenv("RISK_KNOWLEDGE_EMBEDDING_BASE_URL")
     risk_knowledge_embedding_model: str = os.getenv(
         "RISK_KNOWLEDGE_EMBEDDING_MODEL",
@@ -94,6 +97,14 @@ class Settings(BaseModel):
     risk_knowledge_embedding_dimension: int = int(
         os.getenv("RISK_KNOWLEDGE_EMBEDDING_DIMENSION", "1024")
     )
+    risk_knowledge_embedding_output_type: str = os.getenv(
+        "RISK_KNOWLEDGE_EMBEDDING_OUTPUT_TYPE",
+        "dense",
+    ).strip() or "dense"
+    risk_knowledge_embedding_text_type: str = os.getenv(
+        "RISK_KNOWLEDGE_EMBEDDING_TEXT_TYPE",
+        "document",
+    ).strip() or "document"
     risk_knowledge_embedding_max_batch_size: int = int(
         os.getenv("RISK_KNOWLEDGE_EMBEDDING_MAX_BATCH_SIZE", "10")
     )

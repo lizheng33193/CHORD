@@ -70,6 +70,8 @@ Validated with:
 - Redis task-state and lock tests with `fakeredis`
 - indexing runner/orchestrator runtime tests
 - legacy `knowledge_base` and `risk_knowledge` contract suites
+- default embedding tests remain offline and do not access external APIs
+- real embedding smoke remains opt-in and requires local `DASHSCOPE_API_KEY` plus `CHORD_RUN_REAL_EMBEDDING_TESTS=1`
 - `compileall`
 - `git diff --check`
 - coupling guard over new M2D-9 directories

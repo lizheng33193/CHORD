@@ -189,8 +189,115 @@ def test_openai_compatible_provider_requires_runtime_dependency(monkeypatch) -> 
         )
 
 
-@pytest.mark.skipif(os.getenv("CHORD_RUN_REAL_EMBEDDING_TESTS") != "1", reason="set CHORD_RUN_REAL_EMBEDDING_TESTS=1")
+def test_dashscope_settings_fields_support_local_configuration(monkeypatch) -> None:
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "dashscope_api_key", "dashscope-test-key", raising=False)
+    monkeypatch.setattr(settings, "risk_knowledge_embedding_provider", "dashscope", raising=False)
+    monkeypatch.setattr(settings, "risk_knowledge_embedding_model", "text-embedding-v4", raising=False)
+    monkeypatch.setattr(settings, "risk_knowledge_embedding_dimension", 1024, raising=False)
+    monkeypatch.setattr(settings, "risk_knowledge_embedding_output_type", "dense", raising=False)
+    monkeypatch.setattr(settings, "risk_knowledge_embedding_text_type", "document", raising=False)
+
+    assert settings.dashscope_api_key == "dashscope-test-key"
+    assert settings.risk_knowledge_embedding_provider == "dashscope"
+    assert settings.risk_knowledge_embedding_model == "text-embedding-v4"
+    assert settings.risk_knowledge_embedding_dimension == 1024
+    assert settings.risk_knowledge_embedding_output_type == "dense"
+    assert settings.risk_knowledge_embedding_text_type == "document"
+
+
+def test_embedding_factory_selects_dashscope_provider(monkeypatch) -> None:
+    from app.core.config import settings
+    from app.risk_knowledge.embedding.factory import build_embedding_provider_from_settings
+
+    monkeypatch.setattr(settings, "dashscope_api_key", "dashscope-test-key", raising=False)
+    monkeypatch.setattr(settings, "risk_knowledge_embedding_provider", "dashscope", raising=False)
+    monkeypatch.setattr(settings, "risk_knowledge_embedding_model", "text-embedding-v4", raising=False)
+    monkeypatch.setattr(settings, "risk_knowledge_embedding_dimension", 1024, raising=False)
+    monkeypatch.setattr(settings, "risk_knowledge_embedding_output_type", "dense", raising=False)
+    monkeypatch.setattr(settings, "risk_knowledge_embedding_text_type", "document", raising=False)
+
+    provider = build_embedding_provider_from_settings()
+
+    assert provider.provider_name == "dashscope"
+
+
+def test_dashscope_provider_requires_dashscope_api_key(monkeypatch) -> None:
+    from app.core.config import settings
+    from app.risk_knowledge.embedding.dashscope_provider import DashScopeEmbeddingProvider
+
+    monkeypatch.delenv("DASHSCOPE_API_KEY", raising=False)
+    monkeypatch.setattr(settings, "dashscope_api_key", None, raising=False)
+    monkeypatch.setattr(settings, "risk_knowledge_embedding_api_key", None, raising=False)
+    provider = DashScopeEmbeddingProvider(
+        api_key=None,
+        model="text-embedding-v4",
+        dimension=1024,
+        output_type="dense",
+        text_type="document",
+    )
+
+    with pytest.raises(EmbeddingProviderUnavailableError):
+        provider.embed(
+            [
+                EmbeddingInput(
+                    chunk_id="risk_guide_202607_chunk_000001",
+                    content_hash="sha256:content",
+                    text="贷后风险识别是指...",
+                )
+            ]
+        )
+
+
+def test_dashscope_provider_error_does_not_leak_api_key(monkeypatch) -> None:
+    from app.risk_knowledge.embedding.dashscope_provider import DashScopeEmbeddingProvider
+    from app.risk_knowledge.embedding.errors import EmbeddingProviderError
+
+    provider = DashScopeEmbeddingProvider(
+        api_key="secret-dashscope-key",
+        model="text-embedding-v4",
+        dimension=1024,
+        output_type="dense",
+        text_type="document",
+    )
+
+    def _raise_failure(_payload):
+        raise RuntimeError("provider failed with secret-dashscope-key")
+
+    monkeypatch.setattr(provider, "_post_embeddings_request", _raise_failure)
+
+    with pytest.raises(EmbeddingProviderError) as exc_info:
+        provider.embed(
+            [
+                EmbeddingInput(
+                    chunk_id="risk_guide_202607_chunk_000001",
+                    content_hash="sha256:content",
+                    text="贷后风险识别是指...",
+                )
+            ]
+        )
+
+    assert "secret-dashscope-key" not in str(exc_info.value)
+
+
+def test_real_dashscope_smoke_skips_without_required_env(monkeypatch) -> None:
+    monkeypatch.delenv("CHORD_RUN_REAL_EMBEDDING_TESTS", raising=False)
+    monkeypatch.delenv("DASHSCOPE_API_KEY", raising=False)
+    monkeypatch.setenv("RISK_KNOWLEDGE_EMBEDDING_PROVIDER", "openai_compatible")
+
+    with pytest.raises(pytest.skip.Exception):
+        _require_real_dashscope_smoke()
+
+
 def test_openai_compatible_provider_real_smoke() -> None:
+    if os.getenv("CHORD_RUN_REAL_EMBEDDING_TESTS") != "1":
+        pytest.skip("set CHORD_RUN_REAL_EMBEDDING_TESTS=1 to run real embedding smoke")
+    if os.getenv("RISK_KNOWLEDGE_EMBEDDING_PROVIDER") != "openai_compatible":
+        pytest.skip("set RISK_KNOWLEDGE_EMBEDDING_PROVIDER=openai_compatible to run this smoke test")
+    if not os.getenv("RISK_KNOWLEDGE_EMBEDDING_API_KEY"):
+        pytest.skip("set RISK_KNOWLEDGE_EMBEDDING_API_KEY to run OpenAI-compatible embedding smoke")
+
     from app.core.config import settings
     from app.risk_knowledge.embedding.openai_compatible_provider import OpenAICompatibleEmbeddingProvider
 
@@ -213,3 +320,43 @@ def test_openai_compatible_provider_real_smoke() -> None:
 
     assert len(result) == 1
     assert result[0].dimension == settings.risk_knowledge_embedding_dimension
+
+
+def _require_real_dashscope_smoke() -> None:
+    if os.getenv("CHORD_RUN_REAL_EMBEDDING_TESTS") != "1":
+        pytest.skip("set CHORD_RUN_REAL_EMBEDDING_TESTS=1 to run real embedding smoke")
+    if not os.getenv("DASHSCOPE_API_KEY"):
+        pytest.skip("set DASHSCOPE_API_KEY to run DashScope embedding smoke")
+    if os.getenv("RISK_KNOWLEDGE_EMBEDDING_PROVIDER") != "dashscope":
+        pytest.skip("set RISK_KNOWLEDGE_EMBEDDING_PROVIDER=dashscope to run DashScope embedding smoke")
+
+
+def test_dashscope_provider_real_smoke() -> None:
+    _require_real_dashscope_smoke()
+
+    from app.core.config import settings
+    from app.risk_knowledge.embedding.dashscope_provider import DashScopeEmbeddingProvider
+
+    provider = DashScopeEmbeddingProvider(
+        api_key=settings.dashscope_api_key,
+        model=settings.risk_knowledge_embedding_model,
+        dimension=settings.risk_knowledge_embedding_dimension,
+        output_type=settings.risk_knowledge_embedding_output_type,
+        text_type=settings.risk_knowledge_embedding_text_type,
+    )
+    result = provider.embed(
+        [
+            EmbeddingInput(
+                chunk_id="risk_guide_202607_chunk_000001",
+                content_hash="sha256:content",
+                text="贷后风险识别是指...",
+            )
+        ]
+    )
+
+    assert provider.provider_name == "dashscope"
+    assert provider.model == "text-embedding-v4"
+    assert len(result) == 1
+    assert result[0].provider == "dashscope"
+    assert result[0].model == "text-embedding-v4"
+    assert result[0].dimension == 1024
