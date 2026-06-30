@@ -29,6 +29,31 @@
   - Profile runtime 已从 “registry + module loop + trace” 多视角，收敛到单一 DAG runtime skeleton
   - 下一阶段应优先做 UI 对齐与 persistence / audit hardening，而不是继续扩 DAG 复杂度
 
+## 2026-06-29 M2B-9.1 Hybrid Enabled Rollout Observability & Acceptance
+
+- `M2B-9` 已完成并合并，当前补齐 `M2B-9.1` 的 operational readiness：
+  - `docs/runbooks/m2b-9-hybrid-enabled-rollout-runbook.md`
+  - `docs/specs/m2b-9-hybrid-enabled-rollout-matrix.md`
+  - `docs/examples/m2b-9-hybrid-enabled-trace-examples.md`
+  - `docs/checklists/m2b-9-hybrid-enabled-acceptance-checklist.md`
+  - `docs/reviews/m2b-9-1-hybrid-enabled-rollout-observability-acceptance-results.md`
+- 本阶段目标：
+  - 补齐 hybrid enabled rollout runbook
+  - 固化 rollout / fallback matrix
+  - 提供 bounded trace examples
+  - 提供 manual acceptance checklist
+  - 增加 observability regression tests
+- 本阶段明确保持不变：
+  - 不改 `hybrid_enabled` runtime behavior
+  - 不扩大 rollout scope
+  - 不改 public API response schema
+  - 不改 SQL HITL / approve / execute 语义
+  - 不改 orchestrator 自动路由
+  - 不改 seed / embedding records / vector index artifact
+- 当前结论是：
+  - `M2B-9.1` 让 `hybrid_enabled` 从“已实现 gated rollout”进入“可操作、可验收、可回滚、可审计”
+  - `M3 Data Agent Multi-turn Context Memory` 尚未开始
+
 ## 2026-06-29 M2B-9 Hybrid Enabled Gated Rollout
 
 - `M2B-9-0` 已完成并合并，当前 `M2B-9` runtime rollout 已落地：

@@ -58,6 +58,28 @@
     - `M3-2` 做前端 profile progress 与 `profile_node_*` 对齐
     - `M3-3` 再做 persistence / audit / cache provenance
 
+- [x] M2B-9.1：Hybrid Enabled Rollout Observability & Acceptance — 已完成（2026-06-29）
+  - runbook / matrix / examples / checklist / review：
+    - `docs/runbooks/m2b-9-hybrid-enabled-rollout-runbook.md`
+    - `docs/specs/m2b-9-hybrid-enabled-rollout-matrix.md`
+    - `docs/examples/m2b-9-hybrid-enabled-trace-examples.md`
+    - `docs/checklists/m2b-9-hybrid-enabled-acceptance-checklist.md`
+    - `docs/reviews/m2b-9-1-hybrid-enabled-rollout-observability-acceptance-results.md`
+  - 本阶段产出：
+    - rollout activation / fallback / rollback runbook
+    - bounded internal trace examples
+    - manual acceptance checklist
+    - `tests/data_agent/test_hybrid_enabled_observability.py`
+  - 本阶段结果：
+    - `hybrid_enabled` 进入可操作、可观测、可验收、可回滚状态
+    - 未改变 `hybrid_enabled` runtime behavior
+    - 未扩大 rollout scope
+    - public API / SQL HITL / approve / execute / orchestrator 语义保持不变
+  - 验证：
+    - `pytest tests/data_agent/test_hybrid_enabled_observability.py -q`
+  - 下一步：
+    - `M3: Data Agent Multi-turn Context Memory` 尚未开始
+
 - [x] M2B-9：Hybrid Enabled Gated Rollout — 已完成（2026-06-29）
   - plan / specs / review：
     - `docs/plans/m2b-9-hybrid-enabled-gated-rollout-plan.md`
