@@ -5,6 +5,34 @@
 - 整体架构：单体 FastAPI 后端，五层（API → 编排 → Skill 执行 → 数据访问 → 外部服务）
 - 入口文件：`app/main.py`
 
+## 2026-06-30 M2D Risk Domain Knowledge RAG & Knowledge Base Module
+
+- 新增 `M2D` design-closure artifacts：
+  - `docs/reviews/m2d-current-state-and-scope-review.md`
+  - `docs/reviews/m2d-existing-rag-integration-review.md`
+  - `docs/specs/m2d-risk-domain-knowledge-rag-contract.md`
+  - `docs/specs/m2d-knowledge-base-module-design.md`
+  - `docs/plans/m2d-risk-domain-rag-integration-plan.md`
+- 当前阶段状态：
+  - `M2D: planned; contract/review/design in progress`
+- Purpose:
+  - `M2D` introduces a separate Risk Domain Knowledge RAG for evidence-grounded natural conversation and profile explanation.
+  - It is not part of Data Agent Knowledge RAG and does not serve SQL generation, schema grounding, SQL example retrieval, Data Agent table selection, or SQL validator logic.
+- Current state:
+  - SWXY RAG has been identified as a reusable engine-asset source rather than an application subsystem to import whole.
+  - SWXY provides reusable parsing, OCR/layout analysis, chunking, embedding, Elasticsearch hybrid retrieval, rerank, and model-resource building blocks.
+  - CHORD-specific knowledge scope, metadata schema, evidence schema, routing contract, refusal policy, evaluation contract, and service boundary are now defined at the design level.
+  - `M2D` is defined as `Knowledge Base Module + Risk Domain RAG Engine + RiskKnowledgeService`.
+- Implementation not started:
+  - no SWXY code has been migrated
+  - no `app/third_party/swxy_rag` has been added
+  - no `app/risk_knowledge` runtime has been added
+  - no `app/knowledge_base` runtime has been added
+  - no NL Chat integration has started
+  - no Profile Explanation integration has started
+  - no knowledge-base management API has been implemented
+  - no ES runtime implementation has started
+
 ## 2026-06-30 M3-1 Profile DAG Runtime Skeleton
 
 - `M3-0` audit 结论已经落地到 `M3-1` runtime skeleton：

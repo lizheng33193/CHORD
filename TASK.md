@@ -35,6 +35,41 @@
 - [x] E1 单用户埋点深度解析 → docs/plans/trace-analyzer-plan.md（2026-05-01）
 
 ## 当前进行中的功能
+- [ ] M2D｜Risk Domain Knowledge RAG & Knowledge Base Module — planned; contract/review/design in progress（2026-06-30）
+  - review / spec / plan：
+    - `docs/reviews/m2d-current-state-and-scope-review.md`
+    - `docs/reviews/m2d-existing-rag-integration-review.md`
+    - `docs/specs/m2d-risk-domain-knowledge-rag-contract.md`
+    - `docs/specs/m2d-knowledge-base-module-design.md`
+    - `docs/plans/m2d-risk-domain-rag-integration-plan.md`
+  - 本轮目标：
+    - 完成 `M2D-0` 至 `M2D-3` 的 contract / review / design closure
+    - 固定 `M2D` 与 `M2A/M2B` 的边界
+    - 固定 SWXY 复用方式、Knowledge Base Module 边界与后续 integration 顺序
+  - 本轮产出：
+    - `M2D` current-state and scope review
+    - SWXY RAG integration review
+    - risk-domain RAG contract
+    - knowledge-base module design
+    - full integration plan
+  - 当前阶段状态：
+    - `M2D: planned; contract/review/design in progress`
+  - Explicitly not started：
+    - SWXY code migration
+    - `app/third_party/swxy_rag`
+    - `app/risk_knowledge`
+    - `app/knowledge_base`
+    - NL Chat integration
+    - Profile Explanation integration
+    - ES runtime implementation
+  - 不变项：
+    - 不改 runtime
+    - 不新增 validator
+    - 不新增 dependency / migration / FastAPI route / runtime test
+    - 不重写现有 `M2A/M2B/M2C/M3` closure wording
+  - 下一步：
+    - `M2D-4 Third-party SWXY RAG Vendor Import`
+
 - [x] M2C：Status Reconciliation — 已完成（2026-06-30）
   - review：
     - `docs/reviews/m2c-status-reconciliation-review.md`

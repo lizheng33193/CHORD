@@ -1,0 +1,170 @@
+# M2D Knowledge Base Module Design
+
+## Status
+
+Current `M2D` status:
+
+> `planned; contract/review/design in progress`
+
+This is a design-only document. No runtime module is implemented in this pass.
+
+## 1. Purpose
+
+This document defines the management-side module boundary required for `M2D`.
+
+`M2D` is not a one-off document ingestion script. It must be designed as a reusable knowledge-base capability that can serve stable evidence retrieval for future agents.
+
+## 2. Why M2D Needs a Knowledge Base Module
+
+`M2D` must support more than a single import of one risk guide. It needs a knowledge-base module because future usage requires:
+
+- multiple documents
+- upload and re-upload
+- document updates
+- version management
+- reindexing
+- deprecating old versions
+- retrieval testing
+- ingest status tracking
+- failure inspection
+
+Without a management-side module boundary, the system would collapse back into temporary one-off RAG ingestion.
+
+## 3. Module Boundary
+
+`M2D` is divided into three future runtime roles:
+
+- `Knowledge Base Module`
+  - owns management concerns such as KB, document, version, status, and ingest lifecycle
+- `Risk Domain RAG Engine`
+  - owns parsing, chunking, embedding, ES indexing, retrieval, and rerank
+- `RiskKnowledgeService`
+  - owns the agent-facing evidence consumption boundary
+
+This split keeps ingestion, retrieval, and consumer usage from collapsing into one mixed module.
+
+## 4. Core Entities
+
+The core entity model is:
+
+- `knowledge_base`
+- `document`
+- `document_version`
+- `chunk`
+- `ingest_job`
+
+## 5. Default Knowledge Base
+
+The default `M2D` knowledge base is:
+
+- `kb_id: risk_domain_knowledge`
+- `kb_name: 风控领域知识库`
+- `kb_type: risk_domain`
+
+## 6. Document Lifecycle
+
+The default lifecycle is:
+
+`uploaded -> parsing -> parsed -> chunking -> embedding -> indexing -> indexed -> active`
+
+Supporting states:
+
+- `failed`
+- `deprecated`
+- `deleted`
+- `reindexing`
+
+This lifecycle must be represented explicitly in future implementation rather than inferred from raw file presence.
+
+## 7. Data Model Draft
+
+The initial management-side table draft is:
+
+- `knowledge_bases`
+- `knowledge_documents`
+- `knowledge_document_versions`
+- `knowledge_chunks`
+- `knowledge_ingest_jobs`
+
+Suggested ownership by table:
+
+- `knowledge_bases`
+  - KB identity, name, type, status, ownership scope
+- `knowledge_documents`
+  - logical document identity, source metadata, current active version
+- `knowledge_document_versions`
+  - version state, parser/chunker metadata, ingest result summary
+- `knowledge_chunks`
+  - retrievable text unit plus retrieval metadata
+- `knowledge_ingest_jobs`
+  - upload, reindex, deprecate, failure, and status tracking
+
+## 8. API Draft
+
+The management API draft is:
+
+- `POST /api/knowledge-bases`
+- `GET /api/knowledge-bases`
+- `GET /api/knowledge-bases/{kb_id}`
+- `POST /api/knowledge-bases/{kb_id}/documents/upload`
+- `GET /api/knowledge-bases/{kb_id}/documents`
+- `GET /api/knowledge-bases/{kb_id}/documents/{doc_id}`
+- `POST /api/knowledge-bases/{kb_id}/documents/{doc_id}/reindex`
+- `POST /api/knowledge-bases/{kb_id}/documents/{doc_id}/deprecate`
+- `DELETE /api/knowledge-bases/{kb_id}/documents/{doc_id}`
+- `GET /api/knowledge-bases/{kb_id}/ingest-jobs/{job_id}`
+- `POST /api/knowledge-bases/{kb_id}/retrieval-test`
+
+These are draft contracts only. No route, schema, or service is implemented in this pass.
+
+## 9. ES Index and Alias Design
+
+The `M2D v1` ES naming draft is:
+
+- physical index: `chord_m2d_risk_knowledge_v1`
+- alias: `chord_m2d_risk_knowledge_active`
+
+This keeps versioned physical storage separate from active retrieval routing.
+
+## 10. Upload / Reindex / Status Flow
+
+The intended high-level flow is:
+
+1. create or resolve target knowledge base
+2. upload document and create ingest job
+3. parse document into structured content
+4. chunk and enrich metadata
+5. generate embeddings
+6. write index records into ES
+7. activate version and update alias / active metadata
+8. expose ingest-job status and document status for management APIs
+
+Reindex follows the same chain but starts from an existing logical document and new version record.
+
+## 11. quick_parse Boundary
+
+`quick_parse` belongs to temporary session-style document Q&A and does not belong to the long-term knowledge-base mainline.
+
+`M2D` must not adopt `quick_parse` as its ingestion or serving model.
+
+## 12. RiskKnowledgeService Boundary
+
+`RiskKnowledgeService` is the future consumer boundary.
+
+The boundary rules are:
+
+- agents do not call ES directly
+- agents do not call KB management APIs directly for retrieval
+- agents do not assemble evidence from bare chunks
+- retrieval, rerank, refusal, and evidence shaping must be mediated through the service boundary
+
+## 13. Acceptance Criteria
+
+Future implementation acceptance should require:
+
+- KB, document, version, and ingest-job states are explicit
+- active version and deprecated version behavior are distinguishable
+- upload/reindex/status flows are observable
+- `quick_parse` remains out of the long-term KB mainline
+- consumers use `RiskKnowledgeService` rather than direct ES access
+- SQL and Data Agent grounding remain outside this module boundary
