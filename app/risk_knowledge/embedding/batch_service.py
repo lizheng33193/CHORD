@@ -75,6 +75,7 @@ class EmbeddingBatchService:
                     chunk_id=record.chunk_id,
                     content_hash=record.content_hash,
                     text=record.content_text,
+                    input_type="document",
                 )
                 for record in chunk_records
             ]

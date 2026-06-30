@@ -9,6 +9,8 @@ __all__ = [
     "EmbeddingProvider",
     "EmbeddingBatchService",
     "OpenAICompatibleEmbeddingProvider",
+    "DashScopeEmbeddingProvider",
+    "build_embedding_provider_from_settings",
     "EmbeddingInputError",
     "EmbeddingProviderUnavailableError",
     "EmbeddingProviderError",
@@ -33,5 +35,11 @@ def __getattr__(name: str) -> Any:
         return getattr(module, name)
     if name == "OpenAICompatibleEmbeddingProvider":
         module = import_module("app.risk_knowledge.embedding.openai_compatible_provider")
+        return getattr(module, name)
+    if name == "DashScopeEmbeddingProvider":
+        module = import_module("app.risk_knowledge.embedding.dashscope_provider")
+        return getattr(module, name)
+    if name == "build_embedding_provider_from_settings":
+        module = import_module("app.risk_knowledge.embedding.factory")
         return getattr(module, name)
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

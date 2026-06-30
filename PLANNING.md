@@ -14,6 +14,7 @@
   - `docs/specs/m2d-knowledge-base-module-design.md`
   - `docs/specs/m2d-8-faiss-foundation-spec.md`
   - `docs/specs/m2d-9-indexing-runtime-spec.md`
+  - `docs/specs/m2d-10-hybrid-retrieval-spec.md`
   - `docs/plans/m2d-risk-domain-rag-integration-plan.md`
   - `docs/reviews/m2d-4-swxy-vendor-import-review.md`
   - `docs/reviews/m2d-5-knowledge-base-module-skeleton-review.md`
@@ -21,6 +22,7 @@
   - `docs/reviews/m2d-7-metadata-evidence-builder-review.md`
   - `docs/reviews/m2d-8-faiss-foundation-review.md`
   - `docs/reviews/m2d-9-indexing-runtime-review.md`
+  - `docs/reviews/m2d-10-hybrid-retrieval-review.md`
 - 当前阶段状态：
   - `M2D: implementation in progress`
 - Purpose:
@@ -34,6 +36,7 @@
   - `M2D-7` metadata and evidence builder has landed under `app/risk_knowledge/metadata`.
   - `M2D-8` FAISS foundation has landed under `app/risk_knowledge/persistence`, `app/risk_knowledge/embedding`, and `app/risk_knowledge/indexing`.
   - `M2D-9` indexing job runtime has landed under `app/risk_knowledge/runtime` and SQLAlchemy-backed `app/knowledge_base` persistence.
+  - `M2D-10` hybrid retrieval foundation has landed under `app/risk_knowledge/retrieval`.
   - SWXY source/resources are isolated under a CHORD-owned third-party package namespace.
   - `app/knowledge_base` now defines CHORD-native schemas, lifecycle helpers, repository protocols, in-memory repositories, and metadata-only services.
   - `app/risk_knowledge/ingestion` now defines the adapter boundary from SWXY-compatible parser/chunker output into CHORD `ParsedDocument / RawParsedChunk` contracts.
@@ -43,12 +46,12 @@
   - `app/risk_knowledge/indexing` now defines CHORD-owned FAISS build/save/load boundaries with manifest fingerprinting.
   - `app/knowledge_base` now also provides SQLAlchemy durable-state models/repositories for document, version, and indexing-job state.
   - `app/risk_knowledge/runtime` now orchestrates Redis runtime state/lock plus indexing runner/orchestrator flow from parsed inputs through manifest activation.
-  - No retrieval, rerank, or consumer-service runtime integration has started.
+  - `app/risk_knowledge/retrieval` now resolves active retrieval scope, embeds queries once, runs FAISS + BM25 retrieval, applies RRF, and hydrates retrieval candidates.
+  - No rerank, evidence gate, or consumer-service runtime integration has started.
 - Runtime integration not started:
   - no NL Chat integration has started
   - no Profile Explanation integration has started
   - no knowledge-base management API has been implemented
-  - no retrieval adapter has been implemented
   - no reranker has been implemented
   - no `RiskKnowledgeService` has been implemented
 - Subphase status:
@@ -58,13 +61,14 @@
   - `M2D-7 metadata and evidence builder landed; no embedding/retrieval/ES runtime started`
   - `M2D-8 FAISS foundation landed; no retrieval/rerank/RiskKnowledgeService/API runtime started`
   - `M2D-9 indexing job runtime landed; no retrieval/rerank/RiskKnowledgeService/API runtime started`
+  - `M2D-10 hybrid retrieval foundation landed; no rerank/evidence gate/RiskKnowledgeService/API runtime started`
 - Acceptance posture:
-  - `M2D-9 accepted at stage level after targeted runtime validation`
+  - `M2D-10 accepted at stage level after targeted retrieval foundation validation`
   - full repository regression remains pending / optional
   - real embedding smoke remains opt-in / pending
   - real Redis smoke remains opt-in / pending
 - Next phase:
-  - `M2D-10 Retrieval Foundation`
+  - `M2D-11 Reranker / Evidence Gate`
 
 ## 2026-06-30 M3-1 Profile DAG Runtime Skeleton
 

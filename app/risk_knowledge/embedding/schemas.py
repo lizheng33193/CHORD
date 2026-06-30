@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -13,6 +15,7 @@ class EmbeddingInput(_StrictModel):
     chunk_id: str = Field(..., min_length=1)
     content_hash: str = Field(..., min_length=1)
     text: str = Field(..., min_length=1)
+    input_type: Literal["document", "query"] = "document"
 
 
 class EmbeddingVectorResult(_StrictModel):
