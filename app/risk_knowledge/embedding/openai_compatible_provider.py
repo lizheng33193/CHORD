@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Iterable
+from importlib import import_module
 
 from app.core.config import settings
 from app.risk_knowledge.embedding.errors import (
@@ -81,13 +82,18 @@ class OpenAICompatibleEmbeddingProvider:
     def _build_client(self):
         if not self.api_key:
             raise EmbeddingProviderUnavailableError("RISK_KNOWLEDGE_EMBEDDING_API_KEY is missing")
+        openai_client_class = _load_openai_client_class()
+        kwargs = {"api_key": self.api_key}
+        if self.base_url:
+            kwargs["base_url"] = self.base_url
+        return openai_client_class(**kwargs)
+
+
+def _load_openai_client_class():
         try:
-            from openai import OpenAI
+            module = import_module("openai")
         except Exception as exc:  # pylint: disable=broad-except
             raise EmbeddingProviderUnavailableError(
                 "openai package is not installed; add it to requirements before using M2D-8 embedding runtime"
             ) from exc
-        kwargs = {"api_key": self.api_key}
-        if self.base_url:
-            kwargs["base_url"] = self.base_url
-        return OpenAI(**kwargs)
+        return module.OpenAI

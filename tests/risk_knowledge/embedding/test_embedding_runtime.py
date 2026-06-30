@@ -159,9 +159,16 @@ def test_embedding_batch_service_rejects_dimension_mismatch() -> None:
 
 
 def test_openai_compatible_provider_requires_runtime_dependency(monkeypatch) -> None:
+    from app.risk_knowledge.embedding import openai_compatible_provider as provider_module
     from app.risk_knowledge.embedding.openai_compatible_provider import OpenAICompatibleEmbeddingProvider
 
+    def _raise_missing_openai(name: str):
+        if name == "openai":
+            raise ModuleNotFoundError("No module named 'openai'")
+        raise AssertionError(f"unexpected import request: {name}")
+
     monkeypatch.delenv("RISK_KNOWLEDGE_EMBEDDING_API_KEY", raising=False)
+    monkeypatch.setattr(provider_module, "import_module", _raise_missing_openai)
     provider = OpenAICompatibleEmbeddingProvider(
         api_key="test-key",
         base_url="https://example.invalid/v1",
