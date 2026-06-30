@@ -47,6 +47,7 @@
     - `docs/reviews/m2d-5-knowledge-base-module-skeleton-review.md`
     - `docs/reviews/m2d-6-swxy-ingestion-adapter-review.md`
     - `docs/reviews/m2d-7-metadata-evidence-builder-review.md`
+    - `docs/reviews/m2d-8-faiss-foundation-review.md`
   - Progress:
     - `[x] M2D-0 Current State & Scope Review`
     - `[x] M2D-1 SWXY RAG Integration Review`
@@ -56,7 +57,7 @@
     - `[x] M2D-5 knowledge base module skeleton landed; no ingestion/retrieval runtime started`
     - `[x] M2D-6 SWXY ingestion adapter landed; no embedding/retrieval/ES runtime started`
     - `[x] M2D-7 metadata and evidence builder landed; no embedding/retrieval/ES runtime started`
-    - `[ ] M2D-8 FAISS Foundation`
+    - `[x] M2D-8 FAISS foundation landed; no retrieval/rerank/RiskKnowledgeService/API runtime started`
     - `[ ] M2D-9 Indexing Job Runtime / Redis Task State`
     - `[ ] M2D-10 Retrieval Foundation`
     - `[ ] M2D-11 Reranker / Evidence Gate`
@@ -69,36 +70,40 @@
     - `M2D-5 knowledge base module skeleton landed; no ingestion/retrieval runtime started`
     - `M2D-6 SWXY ingestion adapter landed; no embedding/retrieval/ES runtime started`
     - `M2D-7 metadata and evidence builder landed; no embedding/retrieval/ES runtime started`
+    - `M2D-8 FAISS foundation landed; no retrieval/rerank/RiskKnowledgeService/API runtime started`
   - 本轮产出：
     - `app/third_party/swxy_rag`
     - `app/knowledge_base`
     - `app/risk_knowledge/ingestion`
     - `app/risk_knowledge/metadata`
+    - `app/risk_knowledge/persistence`
+    - `app/risk_knowledge/embedding`
+    - `app/risk_knowledge/indexing`
     - vendored SWXY `deepdoc/`, `rag/`, `core/api/utils/file_utils.py`, `conf/mapping.json`
     - renamed vendored entry files `file_parse_core.py` / `retrieval_core.py`
     - `M2D-4` vendor import review
     - `M2D-5` knowledge-base skeleton review
     - `M2D-6` SWXY ingestion adapter review
     - `M2D-7` metadata/evidence builder review
+    - `M2D-8` FAISS foundation review
   - Explicitly not started：
     - RiskKnowledgeService
     - retrieval adapter
-    - chunk repository / chunk service
-    - `KnowledgeChunk` persistence
-    - embedding
-    - ES indexing
     - retrieval
+    - BM25 / RRF
     - rerank
+    - Redis indexing-job orchestration
     - NL Chat integration
     - Profile Explanation integration
-    - ES runtime implementation
+    - API routes
   - 不变项：
     - 不改现有业务 runtime
     - 不新增 validator
-    - 不新增 dependency installation / migration / FastAPI route / runtime test
+    - 不新增 migration
+    - 不新增 FastAPI route
     - 不重写现有 `M2A/M2B/M2C/M3` closure wording
   - 下一步：
-    - `M2D-8 FAISS Foundation`
+    - `M2D-9 Indexing Job Runtime / Redis Task State`
 
 - [x] M2C：Status Reconciliation — 已完成（2026-06-30）
   - review：

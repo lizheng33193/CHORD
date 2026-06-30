@@ -2,7 +2,7 @@
 
 ## Summary
 
-This plan defines the full staged path for `M2D`, with the current implementation having progressed through `M2D-7`.
+This plan defines the full staged path for `M2D`, with the current implementation having progressed through `M2D-8`.
 
 Current `M2D` status:
 
@@ -10,7 +10,7 @@ Current `M2D` status:
 
 Current subphase reading:
 
-> `M2D-7 metadata and evidence builder landed; no embedding/retrieval/ES runtime started`
+> `M2D-8 FAISS foundation landed; no retrieval/rerank/RiskKnowledgeService/API runtime started`
 
 ## Current Status
 
@@ -19,7 +19,7 @@ Current project reading for `M2D`:
 - scope clarified
 - SWXY identified as reusable engine asset source
 - contract/review/design closure landed
-- M2D-4 to M2D-7 code has landed
+- M2D-4 to M2D-8 code has landed
 - no NL Chat integration started
 - no Profile Explanation integration started
 

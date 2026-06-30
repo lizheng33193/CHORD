@@ -6,9 +6,9 @@ Current `M2D` status:
 
 > `M2D implementation in progress`
 
-Current subphase reading before this phase starts:
+Current subphase reading:
 
-> `M2D-7 metadata and evidence builder landed; no embedding/retrieval/ES runtime started`
+> `M2D-8 FAISS foundation landed; no retrieval/rerank/RiskKnowledgeService/API runtime started`
 
 ## 1. Goal
 

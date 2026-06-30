@@ -8,9 +8,9 @@ Current `M2D` status:
 
 Current subphase reading:
 
-> `M2D-7 metadata and evidence builder landed; no embedding/retrieval/ES runtime started`
+> `M2D-8 FAISS foundation landed; no retrieval/rerank/RiskKnowledgeService/API runtime started`
 
-This document remains the long-term contract source. `M2D-7` only materializes draft chunk/evidence objects in memory and does not start retrieval runtime behavior.
+This document remains the long-term contract source. `M2D-7` materializes draft chunk/evidence objects in memory, and `M2D-8` adds persistence/embedding/FAISS foundation without starting retrieval runtime behavior.
 
 ## 1. Purpose
 

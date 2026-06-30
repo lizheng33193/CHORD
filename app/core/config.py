@@ -81,6 +81,26 @@ class Settings(BaseModel):
     mysql_user: str = os.getenv("MYSQL_USER", "maps_lz").strip() or "maps_lz"
     mysql_password: str = os.getenv("MYSQL_PASSWORD", "maps_lz").strip()
     mysql_database: str = os.getenv("MYSQL_DATABASE", "maps_lz").strip() or "maps_lz"
+    risk_knowledge_embedding_provider: str = os.getenv(
+        "RISK_KNOWLEDGE_EMBEDDING_PROVIDER",
+        "openai_compatible",
+    ).strip() or "openai_compatible"
+    risk_knowledge_embedding_api_key: str | None = os.getenv("RISK_KNOWLEDGE_EMBEDDING_API_KEY")
+    risk_knowledge_embedding_base_url: str | None = os.getenv("RISK_KNOWLEDGE_EMBEDDING_BASE_URL")
+    risk_knowledge_embedding_model: str = os.getenv(
+        "RISK_KNOWLEDGE_EMBEDDING_MODEL",
+        "text-embedding-v3",
+    ).strip() or "text-embedding-v3"
+    risk_knowledge_embedding_dimension: int = int(
+        os.getenv("RISK_KNOWLEDGE_EMBEDDING_DIMENSION", "1024")
+    )
+    risk_knowledge_embedding_max_batch_size: int = int(
+        os.getenv("RISK_KNOWLEDGE_EMBEDDING_MAX_BATCH_SIZE", "10")
+    )
+    risk_knowledge_faiss_artifact_dir: str = os.getenv(
+        "RISK_KNOWLEDGE_FAISS_ARTIFACT_DIR",
+        "outputs/risk_knowledge/faiss",
+    )
     hybrid_retrieval_enabled_raw: str = os.getenv("HYBRID_RETRIEVAL_ENABLED", "0")
     hybrid_retrieval_mode_raw: str = os.getenv("HYBRID_RETRIEVAL_MODE", "deterministic_only")
     hybrid_retrieval_source_namespace_raw: str = os.getenv("HYBRID_RETRIEVAL_SOURCE_NAMESPACE", "m2b_legacy_v3")

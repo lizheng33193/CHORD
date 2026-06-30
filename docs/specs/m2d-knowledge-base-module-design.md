@@ -8,9 +8,9 @@ Current `M2D` status:
 
 Current subphase reading:
 
-> `M2D-7 metadata and evidence builder landed; no embedding/retrieval/ES runtime started`
+> `M2D-8 FAISS foundation landed; no retrieval/rerank/RiskKnowledgeService/API runtime started`
 
-This document remains the long-term management-side design source and is updated to align the next runtime phase with the FAISS-based indexing foundation.
+This document remains the long-term management-side design source and is updated to align the current runtime foundation with the FAISS-based indexing mainline.
 
 ## 1. Purpose
 

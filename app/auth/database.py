@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Generator
+from importlib import import_module
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine, make_url
@@ -80,6 +81,7 @@ def create_auth_schema() -> None:
     from app.auth import models  # noqa: F401
     from app.data_agent import models as data_agent_models  # noqa: F401
     from app.data_knowledge import models as data_knowledge_models  # noqa: F401
+    import_module("app.risk_knowledge.persistence.models")
 
     Base.metadata.create_all(bind=get_auth_engine())
 
