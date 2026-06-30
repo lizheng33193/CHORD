@@ -1,15 +1,11 @@
-"""run_profile — 薄封装 AnalysisOrchestrator.analyze_module()。
-
-V1 决策：per-call 实例化 AnalysisOrchestrator（成本可接受），不引入模块级单例。
-modules 默认 ["app"]；遍历 (uid × module) 调 analyze_module。
-"""
+"""run_profile — thin compatibility wrapper over the Profile DAG runtime."""
 
 from __future__ import annotations
 
-import time
 from collections.abc import Callable
 from typing import Any
 
+from app.services.profile_dag.adapters import profile_event_to_legacy_module_event
 from app.services.orchestrator import AnalysisOrchestrator
 from app.services.orchestrator_agent.schemas import (
     RunProfileInput, RunProfileOutput,
@@ -21,54 +17,25 @@ def run_profile(
     progress_callback: Callable[[dict[str, Any]], None] | None = None,
 ) -> RunProfileOutput:
     orch = AnalysisOrchestrator(strict_data_mode=input_data.strict_data_mode)
-    modules = input_data.modules or ["app"]
-    results: list[dict[str, Any]] = []
-    total = len(input_data.uids) * len(modules)
-    completed = 0
-    for uid in input_data.uids:
-        for mod in modules:
-            started = time.perf_counter()
-            if progress_callback is not None:
-                progress_callback({
-                    "progress_type": "profile_module_started",
-                    "uid": uid,
-                    "module": mod,
-                    "status": "running",
-                    "completed": completed,
-                    "total": total,
-                })
-            try:
-                r = orch.analyze_module(
-                    uid=uid, module=mod, application_time=input_data.app_time,
-                )
-            except Exception as exc:
-                if progress_callback is not None:
-                    progress_callback({
-                        "progress_type": "profile_module_error",
-                        "uid": uid,
-                        "module": mod,
-                        "status": "error",
-                        "completed": completed,
-                        "total": total,
-                        "elapsed_ms": int((time.perf_counter() - started) * 1000),
-                        "error": str(exc),
-                    })
-                raise
-            completed += 1
-            results.append({"uid": uid, "module": mod, "result": r})
-            if progress_callback is not None:
-                progress_callback({
-                    "progress_type": "profile_module_completed",
-                    "uid": uid,
-                    "module": mod,
-                    "result": r,
-                    "status": "ok" if r.get("status") == "ok" else "error",
-                    "completed": completed,
-                    "total": total,
-                    "elapsed_ms": int((time.perf_counter() - started) * 1000),
-                })
-    return RunProfileOutput(
-        results=results,
-        cache_hits=0,
-        cache_misses=len(input_data.uids) * len(modules),
+    requested_modules = list(input_data.modules or ["app"])
+    total = len(input_data.uids) * len(requested_modules)
+    progress_state = {"completed": 0}
+
+    def _progress_bridge(event: dict[str, Any]) -> None:
+        if progress_callback is None:
+            return
+        progress_callback(event)
+        legacy_payload, next_completed = profile_event_to_legacy_module_event(
+            event,
+            requested_modules=requested_modules,
+            completed=progress_state["completed"],
+            total=total,
+        )
+        if legacy_payload is not None:
+            progress_state["completed"] = next_completed
+            progress_callback(legacy_payload)
+
+    return orch.run_profile_request(
+        input_data,
+        progress_callback=_progress_bridge if progress_callback is not None else None,
     )

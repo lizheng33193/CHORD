@@ -5,6 +5,30 @@
 - 整体架构：单体 FastAPI 后端，五层（API → 编排 → Skill 执行 → 数据访问 → 外部服务）
 - 入口文件：`app/main.py`
 
+## 2026-06-30 M3-1 Profile DAG Runtime Skeleton
+
+- `M3-0` audit 结论已经落地到 `M3-1` runtime skeleton：
+  - `docs/specs/m3-profile-dag-runtime-contract.md`
+  - `docs/plans/m3-1-profile-dag-runtime-skeleton-plan.md`
+- 当前 Profile runtime 的唯一执行事实源调整为：
+  - `app/services/profile_dag/executor.py::ProfileDagExecutor`
+- 本阶段完成内容：
+  - 固定 6 个 module-level DAG node：`app / behavior / credit / comprehensive / product / ops`
+  - 新增 `ProfileRun / ProfileNodeRun / ProfileRunResultSnapshot`
+  - 新增 `profile_run_* / profile_node_*` 事件契约
+  - `AnalysisOrchestrator.analyze()`、`analyze_module()`、chat `run_profile` 统一接入同一 executor
+  - 通过 adapter 保持 `AnalyzeResponse / UserAnalysisResult / RunProfileOutput.results` shape 不变
+  - 保持旧事件兼容：`skill_*` 与 `profile_module_*`
+- 本阶段明确保持不变：
+  - 不引入 LangGraph
+  - 不做 DB persistence / artifact store
+  - 不做 retry / resume / checkpoint
+  - 不拆 skill 内部六步
+  - 不改 `TraceAnalyzer` / `query_data` / `data_agent`
+- 当前结论：
+  - Profile runtime 已从 “registry + module loop + trace” 多视角，收敛到单一 DAG runtime skeleton
+  - 下一阶段应优先做 UI 对齐与 persistence / audit hardening，而不是继续扩 DAG 复杂度
+
 ## 2026-06-29 M2B-9 Hybrid Enabled Gated Rollout
 
 - `M2B-9-0` 已完成并合并，当前 `M2B-9` runtime rollout 已落地：

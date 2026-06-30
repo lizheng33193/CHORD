@@ -35,6 +35,29 @@
 - [x] E1 单用户埋点深度解析 → docs/plans/trace-analyzer-plan.md（2026-05-01）
 
 ## 当前进行中的功能
+- [x] M3-1：Profile DAG Runtime Skeleton — 已完成（2026-06-30）
+  - spec / plan：
+    - `docs/specs/m3-profile-dag-runtime-contract.md`
+    - `docs/plans/m3-1-profile-dag-runtime-skeleton-plan.md`
+  - 本阶段产出：
+    - `app/services/profile_dag/`
+    - `ProfileRun / ProfileNodeRun / ProfileRunResultSnapshot`
+    - fixed 6-node registry
+    - `profile_run_* / profile_node_*` event contract
+    - `AnalysisOrchestrator.analyze()` / `analyze_module()` / chat `run_profile` 同源执行
+    - legacy `skill_*` / `profile_module_*` compatibility bridge
+  - 本阶段结果：
+    - public API shape 保持不变
+    - `comprehensive` partial-upstream 路径显式变为 `degraded`
+    - `comprehensive failed -> product/ops skipped` 规则已固化
+    - `SkillRegistry` 退回 skill metadata / adapter 来源，不再承担长期 runtime truth
+  - 验证：
+    - `pytest tests/test_profile_dag_runtime.py tests/test_orchestrator_progress.py tests/orchestrator_agent/test_profile_runner.py -q`
+    - `AUTH_ENABLED=0 pytest tests/test_analyze_stream_endpoint.py tests/test_analyze_module_endpoint.py -q`
+  - 下一步：
+    - `M3-2` 做前端 profile progress 与 `profile_node_*` 对齐
+    - `M3-3` 再做 persistence / audit / cache provenance
+
 - [x] M2B-9：Hybrid Enabled Gated Rollout — 已完成（2026-06-29）
   - plan / specs / review：
     - `docs/plans/m2b-9-hybrid-enabled-gated-rollout-plan.md`
