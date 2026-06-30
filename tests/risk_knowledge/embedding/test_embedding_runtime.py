@@ -360,3 +360,87 @@ def test_dashscope_provider_real_smoke() -> None:
     assert result[0].provider == "dashscope"
     assert result[0].model == "text-embedding-v4"
     assert result[0].dimension == 1024
+
+
+def test_embedding_batch_service_real_smoke_dashscope_single_persisted_chunk(auth_db) -> None:
+    _require_real_dashscope_smoke()
+
+    from app.auth.database import AuthSessionLocal
+    from app.core.config import settings
+    from app.knowledge_base.schemas import (
+        ChunkStatus,
+        DocumentVersionStatus,
+        KnowledgeChunk,
+        KnowledgeDocumentVersion,
+        PermissionScope,
+        SourceType,
+    )
+    from app.risk_knowledge.embedding.batch_service import EmbeddingBatchService
+    from app.risk_knowledge.embedding.dashscope_provider import DashScopeEmbeddingProvider
+    from app.risk_knowledge.persistence.repositories import SqlAlchemyKnowledgeChunkEmbeddingRepository
+    from app.risk_knowledge.persistence.service import KnowledgeChunkPersistenceService
+
+    version = KnowledgeDocumentVersion(
+        version_id="risk_guide_202607_real_smoke",
+        doc_id="risk_guide",
+        kb_id="risk_domain_knowledge",
+        version="2026-07-real-smoke",
+        file_hash="sha256:file-real-smoke",
+        file_uri="knowledge/risk/risk_guide.pdf",
+        parser_version="swxy-parser-v1",
+        chunker_version="chunker-v1",
+        embedding_model="text-embedding-v4",
+        embedding_dim=1024,
+        index_name=None,
+        status=DocumentVersionStatus.PARSED,
+    )
+    chunk = KnowledgeChunk(
+        chunk_id="risk_guide_202607_real_smoke_chunk_000001",
+        kb_id="risk_domain_knowledge",
+        doc_id="risk_guide",
+        version_id=version.version_id,
+        chunk_order=1,
+        chunk_type="paragraph",
+        section_title="贷后风险识别",
+        section_path=["智能风控指南", "贷后风险识别"],
+        page_start=12,
+        page_end=12,
+        content="贷后风险识别是指借款发放后的风险信号跟踪。",
+        content_hash="sha256:real-smoke-content",
+        status=ChunkStatus.PENDING,
+        permission_scope=PermissionScope.INTERNAL,
+        source_type=SourceType.PDF,
+        source_uri="knowledge/risk/risk_guide.pdf",
+        source_metadata={"doc_name": "risk_guide.pdf"},
+    )
+
+    with AuthSessionLocal() as db:
+        KnowledgeChunkPersistenceService(db).persist_chunks(version, [chunk])
+        service = EmbeddingBatchService(
+            provider=DashScopeEmbeddingProvider(
+                api_key=settings.dashscope_api_key,
+                model=settings.risk_knowledge_embedding_model,
+                dimension=settings.risk_knowledge_embedding_dimension,
+                output_type=settings.risk_knowledge_embedding_output_type,
+                text_type=settings.risk_knowledge_embedding_text_type,
+            ),
+            expected_dimension=1024,
+            db=db,
+        )
+
+        result = service.embed_persisted_chunks(version_id=version.version_id, chunk_ids=[chunk.chunk_id])
+        persisted = SqlAlchemyKnowledgeChunkEmbeddingRepository(db).list_by_version(version.version_id)
+
+    assert len(result.records) == 1
+    assert result.records[0].provider == "dashscope"
+    assert result.records[0].model == "text-embedding-v4"
+    assert result.records[0].dimension == 1024
+    assert result.records[0].chunk_id == chunk.chunk_id
+    assert result.records[0].content_hash == chunk.content_hash
+    assert len(persisted) == 1
+    assert persisted[0].provider == "dashscope"
+    assert persisted[0].model == "text-embedding-v4"
+    assert persisted[0].dimension == 1024
+    assert persisted[0].chunk_id == chunk.chunk_id
+    assert persisted[0].content_hash == chunk.content_hash
+    assert len(persisted[0].vector_json) == 1024
