@@ -45,6 +45,7 @@
     - `docs/reviews/m2d-4-swxy-vendor-import-review.md`
     - `docs/reviews/m2d-5-knowledge-base-module-skeleton-review.md`
     - `docs/reviews/m2d-6-swxy-ingestion-adapter-review.md`
+    - `docs/reviews/m2d-7-metadata-evidence-builder-review.md`
   - Progress:
     - `[x] M2D-0 Current State & Scope Review`
     - `[x] M2D-1 SWXY RAG Integration Review`
@@ -53,7 +54,7 @@
     - `[x] M2D-4 vendor import landed; no runtime integration started`
     - `[x] M2D-5 knowledge base module skeleton landed; no ingestion/retrieval runtime started`
     - `[x] M2D-6 SWXY ingestion adapter landed; no embedding/retrieval/ES runtime started`
-    - `[ ] M2D-7 Metadata & Evidence Builder`
+    - `[x] M2D-7 metadata and evidence builder landed; no embedding/retrieval/ES runtime started`
     - `[ ] M2D-8 ES Hybrid Index Adapter`
     - `[ ] M2D-9 RiskKnowledgeService`
     - `[ ] M2D-10 Upload / Reindex / Status API`
@@ -64,15 +65,18 @@
     - `M2D-4 vendor import landed; no runtime integration started`
     - `M2D-5 knowledge base module skeleton landed; no ingestion/retrieval runtime started`
     - `M2D-6 SWXY ingestion adapter landed; no embedding/retrieval/ES runtime started`
+    - `M2D-7 metadata and evidence builder landed; no embedding/retrieval/ES runtime started`
   - 本轮产出：
     - `app/third_party/swxy_rag`
     - `app/knowledge_base`
     - `app/risk_knowledge/ingestion`
+    - `app/risk_knowledge/metadata`
     - vendored SWXY `deepdoc/`, `rag/`, `core/api/utils/file_utils.py`, `conf/mapping.json`
     - renamed vendored entry files `file_parse_core.py` / `retrieval_core.py`
     - `M2D-4` vendor import review
     - `M2D-5` knowledge-base skeleton review
     - `M2D-6` SWXY ingestion adapter review
+    - `M2D-7` metadata/evidence builder review
   - Explicitly not started：
     - RiskKnowledgeService
     - retrieval adapter
@@ -82,7 +86,6 @@
     - ES indexing
     - retrieval
     - rerank
-    - Evidence Builder
     - NL Chat integration
     - Profile Explanation integration
     - ES runtime implementation
@@ -92,7 +95,7 @@
     - 不新增 dependency installation / migration / FastAPI route / runtime test
     - 不重写现有 `M2A/M2B/M2C/M3` closure wording
   - 下一步：
-    - `M2D-7 Metadata & Evidence Builder`
+    - `M2D-8 ES Hybrid Index Adapter`
 
 - [x] M2C：Status Reconciliation — 已完成（2026-06-30）
   - review：

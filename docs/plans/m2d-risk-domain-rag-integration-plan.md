@@ -2,13 +2,15 @@
 
 ## Summary
 
-This plan defines the full staged path for `M2D` while keeping the current pass limited to contract/review/design closure.
+This plan defines the full staged path for `M2D`, with the current implementation having progressed through `M2D-7`.
 
 Current `M2D` status:
 
-> `planned; contract/review/design in progress`
+> `M2D implementation in progress`
 
-Implementation remains not started in this pass.
+Current subphase reading:
+
+> `M2D-7 metadata and evidence builder landed; no embedding/retrieval/ES runtime started`
 
 ## Current Status
 
@@ -16,9 +18,8 @@ Current project reading for `M2D`:
 
 - scope clarified
 - SWXY identified as reusable engine asset source
-- contract/review/design closure in progress
-- no code migration started
-- no runtime module started
+- contract/review/design closure landed
+- M2D-4 to M2D-7 code has landed
 - no NL Chat integration started
 - no Profile Explanation integration started
 
@@ -48,7 +49,7 @@ Current project reading for `M2D`:
   - no new module creation
 - 验收标准
   - `M2D` is clearly separated from Data Agent Knowledge RAG
-  - current status is recorded as `planned; contract/review/design in progress`
+  - current status is recorded as `M2D implementation in progress`
 
 ### M2D-1 SWXY RAG Integration Review
 
@@ -151,8 +152,13 @@ Current project reading for `M2D`:
   - evidence builder
 - 禁止事项
   - no bare chunk exposure to consumers
+  - no repository lookup or service calls inside builders
+  - no embedding, ES indexing, retrieval, rerank, persistence, or Agent-facing service work
 - 验收标准
   - evidence payloads conform to contract
+  - builders accept only `ParsedDocument + KnowledgeDocument + KnowledgeDocumentVersion`
+  - `KnowledgeDocumentVersion.status == parsed` is enforced
+  - `RiskEvidence` remains draft evidence with `score = None`
 
 ### M2D-8 ES Hybrid Index Adapter
 
@@ -250,8 +256,8 @@ Primary integration risks are:
 
 The current pass is accepted only if:
 
-- five `M2D` docs are added
-- `PLANNING.md` and `TASK.md` use the exact status string `planned; contract/review/design in progress`
-- `M2D` keeps planning-state wording only and does not use any completion-state label
-- no runtime directories, dependencies, services, routes, migrations, or tests are added
+- `PLANNING.md` and `TASK.md` use the exact status string `M2D implementation in progress`
+- subphase wording stays at `M2D-7 metadata and evidence builder landed; no embedding/retrieval/ES runtime started`
+- `M2D` does not use any completion-state label
+- no runtime dependencies, routes, migrations, persistence, ES runtime, or retrieval services are added
 - existing `M2C/M3` closure wording remains untouched

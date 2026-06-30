@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from enum import Enum
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -158,6 +160,9 @@ class KnowledgeChunk(_StrictModel):
     parser_version: str | None = None
     chunker_version: str | None = None
     permission_scope: PermissionScope = PermissionScope.INTERNAL
+    source_type: SourceType | None = None
+    source_uri: str | None = None
+    source_metadata: dict[str, Any] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def _validate_page_range(self) -> "KnowledgeChunk":
