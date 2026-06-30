@@ -45,13 +45,14 @@ class DashScopeEmbeddingProvider:
             raise EmbeddingInputError("embedding inputs must not be empty")
         if not self.api_key:
             raise EmbeddingProviderUnavailableError("DASHSCOPE_API_KEY is missing")
+        text_type = self._resolve_text_type(inputs)
         payload = {
             "model": self.model,
             "input": {"texts": [item.text for item in inputs]},
             "parameters": {
                 "dimension": self.dimension,
                 "output_type": self.output_type,
-                "text_type": self.text_type,
+                "text_type": text_type,
             },
         }
         try:
@@ -107,3 +108,12 @@ class DashScopeEmbeddingProvider:
         if self.api_key:
             return message.replace(self.api_key, "[redacted]")
         return message
+
+    def _resolve_text_type(self, inputs: list[EmbeddingInput]) -> str:
+        input_types = {item.input_type for item in inputs}
+        if len(input_types) != 1:
+            raise EmbeddingInputError("dashscope embedding batches must use a single input_type")
+        input_type = input_types.pop()
+        if input_type == "query":
+            return "query"
+        return self.text_type

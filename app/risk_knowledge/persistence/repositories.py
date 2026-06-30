@@ -44,6 +44,17 @@ class SqlAlchemyKnowledgeChunkRepository:
     def list_by_version(self, version_id: str) -> list[KnowledgeChunkRecord]:
         return self.list_by_version_and_chunk_ids(version_id, [])
 
+    def list_by_versions(self, version_ids: list[str]) -> list[KnowledgeChunkRecord]:
+        if not version_ids:
+            return []
+        return list(
+            self._db.scalars(
+                select(KnowledgeChunkRecord)
+                .where(KnowledgeChunkRecord.version_id.in_(version_ids))
+                .order_by(KnowledgeChunkRecord.version_id.asc(), KnowledgeChunkRecord.chunk_id.asc())
+            ).all()
+        )
+
     def create(self, record: KnowledgeChunkRecord) -> KnowledgeChunkRecord:
         self._db.add(record)
         self._db.flush()
@@ -167,6 +178,17 @@ class SqlAlchemyFaissIndexRepository:
     def get(self, index_id: str) -> FaissIndexManifestRecord | None:
         return self._db.scalar(
             select(FaissIndexManifestRecord).where(FaissIndexManifestRecord.index_id == index_id)
+        )
+
+    def list_by_index_ids(self, index_ids: list[str]) -> list[FaissIndexManifestRecord]:
+        if not index_ids:
+            return []
+        return list(
+            self._db.scalars(
+                select(FaissIndexManifestRecord)
+                .where(FaissIndexManifestRecord.index_id.in_(index_ids))
+                .order_by(FaissIndexManifestRecord.index_id.asc())
+            ).all()
         )
 
     def get_active_by_version(self, version_id: str) -> FaissIndexManifestRecord | None:

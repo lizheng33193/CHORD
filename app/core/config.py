@@ -132,6 +132,37 @@ class Settings(BaseModel):
     risk_knowledge_indexing_max_retries: int = int(
         os.getenv("RISK_KNOWLEDGE_INDEXING_MAX_RETRIES", "3")
     )
+    risk_knowledge_retrieval_vector_top_k: int = int(
+        os.getenv("RISK_KNOWLEDGE_RETRIEVAL_VECTOR_TOP_K", "50")
+    )
+    risk_knowledge_retrieval_keyword_top_k: int = int(
+        os.getenv("RISK_KNOWLEDGE_RETRIEVAL_KEYWORD_TOP_K", "50")
+    )
+    risk_knowledge_retrieval_fused_top_k: int = int(
+        os.getenv("RISK_KNOWLEDGE_RETRIEVAL_FUSED_TOP_K", "10")
+    )
+    risk_knowledge_retrieval_rrf_k: int = int(
+        os.getenv("RISK_KNOWLEDGE_RETRIEVAL_RRF_K", "60")
+    )
+    risk_knowledge_retrieval_max_query_chars: int = int(
+        os.getenv("RISK_KNOWLEDGE_RETRIEVAL_MAX_QUERY_CHARS", "512")
+    )
+    risk_knowledge_bm25_k1: float = float(os.getenv("RISK_KNOWLEDGE_BM25_K1", "1.5"))
+    risk_knowledge_bm25_b: float = float(os.getenv("RISK_KNOWLEDGE_BM25_B", "0.75"))
+    risk_knowledge_bm25_tokenizer: str = os.getenv(
+        "RISK_KNOWLEDGE_BM25_TOKENIZER",
+        "char_bigram",
+    ).strip() or "char_bigram"
+    risk_knowledge_query_embedding_text_type: str = os.getenv(
+        "RISK_KNOWLEDGE_QUERY_EMBEDDING_TEXT_TYPE",
+        "query",
+    ).strip() or "query"
+    risk_knowledge_bm25_cache_size: int = int(
+        os.getenv("RISK_KNOWLEDGE_BM25_CACHE_SIZE", "16")
+    )
+    risk_knowledge_bm25_max_scope_chunks: int = int(
+        os.getenv("RISK_KNOWLEDGE_BM25_MAX_SCOPE_CHUNKS", "5000")
+    )
     hybrid_retrieval_enabled_raw: str = os.getenv("HYBRID_RETRIEVAL_ENABLED", "0")
     hybrid_retrieval_mode_raw: str = os.getenv("HYBRID_RETRIEVAL_MODE", "deterministic_only")
     hybrid_retrieval_source_namespace_raw: str = os.getenv("HYBRID_RETRIEVAL_SOURCE_NAMESPACE", "m2b_legacy_v3")

@@ -2,7 +2,7 @@
 
 ## Summary
 
-This plan defines the full staged path for `M2D`, with the current implementation having progressed through `M2D-9`.
+This plan defines the full staged path for `M2D`, with the current implementation having progressed through `M2D-10`.
 
 Current `M2D` status:
 
@@ -10,7 +10,7 @@ Current `M2D` status:
 
 Current subphase reading:
 
-> `M2D-9 indexing job runtime landed; no retrieval/rerank/RiskKnowledgeService/API runtime started`
+> `M2D-10 hybrid retrieval foundation landed; no rerank/evidence gate/RiskKnowledgeService/API runtime started`
 
 ## Current Status
 
@@ -19,7 +19,7 @@ Current project reading for `M2D`:
 - scope clarified
 - SWXY identified as reusable engine asset source
 - contract/review/design closure landed
-- M2D-4 to M2D-9 code has landed
+- M2D-4 to M2D-10 code has landed
 - no NL Chat integration started
 - no Profile Explanation integration started
 
@@ -203,16 +203,33 @@ Current project reading for `M2D`:
 ### M2D-10 Retrieval Foundation
 
 - 目标
-  - add CHORD-owned retrieval primitives on top of persisted index artifacts
+  - add CHORD-owned hybrid retrieval primitives on top of active manifests and persisted chunk artifacts
 - 输入
-  - FAISS foundation
-  - future lexical retrieval inputs
+  - M2D-9 active manifest governance
+  - FAISS artifact foundation
+  - persisted chunk metadata
 - 输出
-  - retrieval foundation
+  - query normalizer
+  - query embedding service
+  - active manifest resolver
+  - FAISS vector retriever
+  - BM25 keyword retriever
+  - RRF fusion
+  - hydrated retrieval candidates
 - 禁止事项
-  - no reranker or Agent-facing service yet
+  - no reranker
+  - no evidence gate
+  - no `RiskKnowledgeService`
+  - no NL Chat or Profile Explanation integration
+  - no API routes
+  - no ES or SWXY runtime coupling
 - 验收标准
-  - retrieval inputs/outputs are explicit and testable
+  - retrieval scope resolves only active versions and active manifests
+  - `kb_id`-only retrieval spans all active manifests in the KB
+  - query embedding is executed once per request and reused across the scope
+  - vector ranking is metric-aware and currently explicit for `l2`
+  - RRF fusion is rank-based
+  - hydrated candidates preserve manifest/version/document/chunk identity and `content_hash`
 
 ### M2D-11 Reranker / Evidence Gate
 
