@@ -78,11 +78,15 @@
     - `M2D-9 indexing job runtime landed; no retrieval/rerank/RiskKnowledgeService/API runtime started`
     - `M2D-10 hybrid retrieval foundation landed; no rerank/evidence gate/RiskKnowledgeService/API runtime started`
   - acceptance closure：
-    - `M2D-10 accepted at stage level after targeted retrieval foundation validation; real query embedding smoke remains opt-in; no rerank/evidence gate/RiskKnowledgeService/API runtime started.`
+    - `M2D-10 accepted at stage level after targeted retrieval foundation validation; full repository regression and real query embedding smoke remain optional/pending validation items.`
     - full repository regression remains pending / optional
-    - real embedding smoke remains opt-in / pending
-    - real Redis smoke remains opt-in / pending
     - real query embedding smoke remains opt-in / pending
+    - no rerank
+    - no evidence gate
+    - no RiskKnowledgeService
+    - no API runtime
+    - no NL Chat / Profile Explanation integration
+    - no ES / SWXY coupling
     - unrelated frontend edits and untracked PDF remained untouched
   - 本轮产出：
     - `app/third_party/swxy_rag`

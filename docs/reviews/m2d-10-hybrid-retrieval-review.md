@@ -82,8 +82,16 @@ Current subphase reading:
 Acceptance posture:
 
 > `M2D-10 accepted at stage level after targeted retrieval foundation validation;`
-> `real query embedding smoke remains opt-in;`
-> `no rerank/evidence gate/RiskKnowledgeService/API runtime started.`
+> `full repository regression and real query embedding smoke remain optional/pending validation items.`
+
+Explicitly not started:
+
+- no rerank
+- no evidence gate
+- no `RiskKnowledgeService`
+- no API runtime
+- no NL Chat / Profile Explanation integration
+- no ES / SWXY coupling
 
 ## Next Step
 
