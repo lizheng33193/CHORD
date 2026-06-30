@@ -140,6 +140,21 @@ class DocumentService:
     def list_versions(self, doc_id: str) -> list[KnowledgeDocumentVersion]:
         return self._repository.list_versions(doc_id)
 
+    def transition_version(
+        self,
+        version_id: str,
+        next_status: DocumentVersionStatus,
+    ) -> KnowledgeDocumentVersion:
+        version = self._get_version(version_id)
+        if version.status == next_status:
+            return version
+        if next_status == DocumentVersionStatus.ACTIVE:
+            return self.activate_version(version_id)
+        assert_version_transition(version.status, next_status)
+        return self._repository.update_version(
+            version.model_copy(update={"status": next_status})
+        )
+
     def _get_document(self, doc_id: str) -> KnowledgeDocument:
         document = self._repository.get_document(doc_id)
         if document is None:

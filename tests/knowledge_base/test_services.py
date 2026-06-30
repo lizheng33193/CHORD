@@ -166,6 +166,42 @@ def test_deprecate_version_updates_version_status() -> None:
     assert deprecated.status == DocumentVersionStatus.DEPRECATED
 
 
+def test_transition_version_updates_status_without_touching_document_pointer() -> None:
+    repo = InMemoryKnowledgeDocumentRepository()
+    service = DocumentService(repo)
+    service.register_document(
+        kb_id="risk_domain_knowledge",
+        doc_id="risk_guide",
+        doc_title="智能风控指南",
+        doc_name="risk_guide.pdf",
+        source_type=SourceType.PDF,
+        source_uri="knowledge/risk/risk_guide.pdf",
+        permission_scope=PermissionScope.INTERNAL,
+    )
+    version = service.create_document_version(
+        version_id="risk_guide_202606",
+        doc_id="risk_guide",
+        kb_id="risk_domain_knowledge",
+        version="2026-06",
+        file_hash="sha256:test",
+        file_uri="knowledge/risk/risk_guide.pdf",
+        parser_version="swxy_deepdoc_v1",
+        chunker_version="m2d_chunker_v1",
+        embedding_model="text-embedding-v3",
+        embedding_dim=1024,
+        index_name="chord_m2d_risk_knowledge_v1",
+    )
+
+    parsing = service.transition_version(version.version_id, DocumentVersionStatus.PARSING)
+    parsed = service.transition_version(version.version_id, DocumentVersionStatus.PARSED)
+    document = repo.get_document("risk_guide")
+
+    assert parsing.status == DocumentVersionStatus.PARSING
+    assert parsed.status == DocumentVersionStatus.PARSED
+    assert document is not None
+    assert document.current_version_id is None
+
+
 def test_create_job_starts_uploaded() -> None:
     service = IngestJobService(InMemoryKnowledgeIngestJobRepository())
 
