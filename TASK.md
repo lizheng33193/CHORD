@@ -43,13 +43,14 @@
     - `docs/specs/m2d-knowledge-base-module-design.md`
     - `docs/plans/m2d-risk-domain-rag-integration-plan.md`
     - `docs/reviews/m2d-4-swxy-vendor-import-review.md`
+    - `docs/reviews/m2d-5-knowledge-base-module-skeleton-review.md`
   - Progress:
     - `[x] M2D-0 Current State & Scope Review`
     - `[x] M2D-1 SWXY RAG Integration Review`
     - `[x] M2D-2 Risk Domain RAG Contract`
     - `[x] M2D-3 Knowledge Base Module Design`
     - `[x] M2D-4 vendor import landed; no runtime integration started`
-    - `[ ] M2D-5 Knowledge Base Module Skeleton`
+    - `[x] M2D-5 knowledge base module skeleton landed; no ingestion/retrieval runtime started`
     - `[ ] M2D-6 SWXY Ingestion Adapter`
     - `[ ] M2D-7 Metadata & Evidence Builder`
     - `[ ] M2D-8 ES Hybrid Index Adapter`
@@ -60,17 +61,20 @@
   - 当前阶段状态：
     - `M2D: implementation in progress`
     - `M2D-4 vendor import landed; no runtime integration started`
+    - `M2D-5 knowledge base module skeleton landed; no ingestion/retrieval runtime started`
   - 本轮产出：
     - `app/third_party/swxy_rag`
+    - `app/knowledge_base`
     - vendored SWXY `deepdoc/`, `rag/`, `core/api/utils/file_utils.py`, `conf/mapping.json`
     - renamed vendored entry files `file_parse_core.py` / `retrieval_core.py`
     - `M2D-4` vendor import review
+    - `M2D-5` knowledge-base skeleton review
   - Explicitly not started：
     - `app/risk_knowledge`
-    - `app/knowledge_base`
     - RiskKnowledgeService
     - ingestion adapter
     - retrieval adapter
+    - chunk repository / chunk service
     - NL Chat integration
     - Profile Explanation integration
     - ES runtime implementation
@@ -80,7 +84,7 @@
     - 不新增 dependency installation / migration / FastAPI route / runtime test
     - 不重写现有 `M2A/M2B/M2C/M3` closure wording
   - 下一步：
-    - `M2D-5 Knowledge Base Module Skeleton`
+    - `M2D-6 SWXY Ingestion Adapter`
 
 - [x] M2C：Status Reconciliation — 已完成（2026-06-30）
   - review：

@@ -14,6 +14,7 @@
   - `docs/specs/m2d-knowledge-base-module-design.md`
   - `docs/plans/m2d-risk-domain-rag-integration-plan.md`
   - `docs/reviews/m2d-4-swxy-vendor-import-review.md`
+  - `docs/reviews/m2d-5-knowledge-base-module-skeleton-review.md`
 - 当前阶段状态：
   - `M2D: implementation in progress`
 - Purpose:
@@ -22,21 +23,24 @@
 - Current state:
   - `M2D-0` to `M2D-3` design closure has landed.
   - `M2D-4` vendor import has landed under `app/third_party/swxy_rag`.
-  - SWXY source/resources are now isolated under a CHORD-owned third-party package namespace.
-  - Minimal import-path normalization has removed old `service.core` coupling inside the vendored subtree.
-  - No runtime integration has started.
+  - `M2D-5` knowledge-base module skeleton has landed under `app/knowledge_base`.
+  - SWXY source/resources are isolated under a CHORD-owned third-party package namespace.
+  - `app/knowledge_base` now defines CHORD-native schemas, lifecycle helpers, repository protocols, in-memory repositories, and metadata-only services.
+  - No ingestion or retrieval runtime integration has started.
 - Runtime integration not started:
   - no `app/risk_knowledge` runtime has been added
-  - no `app/knowledge_base` runtime has been added
   - no NL Chat integration has started
   - no Profile Explanation integration has started
   - no knowledge-base management API has been implemented
   - no ES runtime implementation has started
   - no ingestion adapter or retrieval adapter has been implemented
+  - no chunk repository or chunk service has been implemented
+  - no `RiskKnowledgeService` has been implemented
 - Subphase status:
   - `M2D-4 vendor import landed; no runtime integration started`
+  - `M2D-5 knowledge base module skeleton landed; no ingestion/retrieval runtime started`
 - Next phase:
-  - `M2D-5 Knowledge Base Module Skeleton`
+  - `M2D-6 SWXY Ingestion Adapter`
 
 ## 2026-06-30 M3-1 Profile DAG Runtime Skeleton
 
