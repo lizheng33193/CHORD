@@ -925,7 +925,7 @@ function ChatPanel({
                   <button
                     type="button"
                     onClick={() => setDataAgentMode(false)}
-                    className={`rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors ${!dataAgentMode ? 'bg-slate-900 text-white' : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-100'}`}
+                    className={`rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors ${!dataAgentMode ? 'bg-slate-900 text-white' : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-100'}`}
                   >
                     普通对话
                   </button>
@@ -933,7 +933,7 @@ function ChatPanel({
                     <button
                       type="button"
                       onClick={() => setDataAgentMode(true)}
-                      className={`rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors ${dataAgentMode ? 'bg-blue-600 text-white' : 'border border-blue-200 bg-white text-blue-700 hover:bg-blue-50'}`}
+                      className={`rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors ${dataAgentMode ? 'bg-blue-600 text-white' : 'border border-blue-200 bg-white text-blue-700 hover:bg-blue-50'}`}
                     >
                       Data Agent
                     </button>
@@ -1297,7 +1297,7 @@ function ChatPanel({
 
       <div id="chat-panel-footer" className="shrink-0 border-t border-slate-100 bg-white p-4">
         {dataAgentMode ? (
-          <div className="text-center text-[11px] text-slate-500">Data Agent 模式使用上方显式 SQL review 卡片；普通聊天与 orchestrator 路由保持不变。</div>
+          <div className="text-center text-[10px] text-slate-500">Data Agent 模式使用上方显式 SQL review 卡片；普通聊天与 orchestrator 路由保持不变。</div>
         ) : (
           <>
             <ChatInputBox

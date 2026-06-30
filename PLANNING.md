@@ -12,7 +12,7 @@
   - `docs/plans/m3-1-profile-dag-runtime-skeleton-plan.md`
   - `docs/reviews/m3-1-profile-dag-runtime-acceptance-review.md`
 - 当前阶段状态：
-  - `M3-1 Profile DAG Runtime Skeleton: implemented / pending final acceptance`
+  - `M3-1 Profile DAG Runtime Skeleton: completed`
 - 当前 Profile runtime 的唯一执行事实源调整为：
   - `app/services/profile_dag/executor.py::ProfileDagExecutor`
 - 本阶段完成内容：
@@ -30,10 +30,10 @@
   - 不改 `TraceAnalyzer` / `query_data` / `data_agent`
 - 当前结论：
   - Profile runtime 已从 “registry + module loop + trace” 多视角，收敛到单一 DAG runtime skeleton
-  - `compileall`、targeted acceptance suite、`git diff --check` 已通过
-  - full regression `AUTH_ENABLED=0 pytest -q` 尚未全绿，当前阻塞项是独立前端测试 `tests/frontend/test_chat_phase3_capabilities.py::test_chat_panel_uses_memory_drawer_instead_of_inline_block`
-  - 在 full regression 绿灯前，`M3-1` 保持 `implemented / pending final acceptance`
-  - `M3-2` 尚未启动；下一步应先关闭 acceptance blocker，再决定是否将 `M3-1` 提升为 `completed`
+  - frontend contract blocker 已通过最小 `ChatPanel.jsx` 修复关闭
+  - `compileall`、targeted acceptance suite、`git diff --check`、full regression `AUTH_ENABLED=0 pytest -q` 已通过
+  - `M3-1` 已完成，且 closure 未修改 `ProfileDagExecutor`、`analyze_module` 依赖闭包、legacy compatibility bridge 或 public API shape
+  - `M3-2` 仍未启动；后续可在独立阶段进入 UI/SSE runtime alignment
 
 ## 2026-06-29 M2B-9.1 Hybrid Enabled Rollout Observability & Acceptance
 

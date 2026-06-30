@@ -2,7 +2,7 @@
 
 ## Status
 - Updated: 2026-06-30
-- Outcome: implemented / pending final acceptance
+- Outcome: completed
 
 ## Objective
 - Replace mixed profile runtime views with one module-level DAG executor.
@@ -63,6 +63,8 @@
 ## Verification
 - `pytest tests/test_profile_dag_runtime.py tests/test_orchestrator_progress.py tests/orchestrator_agent/test_profile_runner.py -q`
 - `AUTH_ENABLED=0 pytest tests/test_analyze_stream_endpoint.py tests/test_analyze_module_endpoint.py -q`
+- `AUTH_ENABLED=0 pytest tests/frontend/test_chat_phase3_capabilities.py::test_chat_panel_uses_memory_drawer_instead_of_inline_block -q`
+- `AUTH_ENABLED=0 pytest tests/frontend/test_chat_phase3_capabilities.py -q`
 - `python -m compileall -q app data_acquisition_agent tests scripts`
 - `git diff --check`
 - `AUTH_ENABLED=0 pytest -q`
@@ -70,9 +72,12 @@
 ## Acceptance Status
 - Runtime truth, API compatibility, and legacy event compatibility are implemented.
 - `compileall`, targeted profile acceptance tests, and `git diff --check` passed.
-- Full regression is not yet green:
-  - `AUTH_ENABLED=0 pytest -q` failed on `tests/frontend/test_chat_phase3_capabilities.py::test_chat_panel_uses_memory_drawer_instead_of_inline_block`
-- Until that repo-wide regression blocker is cleared and acceptance is re-run, `M3-1` remains `implemented / pending final acceptance`.
+- Frontend closure passed:
+  - `tests/frontend/test_chat_phase3_capabilities.py::test_chat_panel_uses_memory_drawer_instead_of_inline_block`
+  - full `tests/frontend/test_chat_phase3_capabilities.py`
+- Full regression is green:
+  - `AUTH_ENABLED=0 pytest -q` -> `1335 passed, 6 skipped`
+- `M3-1` is now `completed`.
 
 ## Risks Kept Deliberately Out
 - no DB persistence

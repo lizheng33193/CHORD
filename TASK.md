@@ -35,7 +35,7 @@
 - [x] E1 单用户埋点深度解析 → docs/plans/trace-analyzer-plan.md（2026-05-01）
 
 ## 当前进行中的功能
-- [ ] M3-1：Profile DAG Runtime Skeleton — implemented / pending final acceptance（2026-06-30）
+- [x] M3-1：Profile DAG Runtime Skeleton — completed（2026-06-30）
   - spec / plan：
     - `docs/specs/m3-profile-dag-runtime-contract.md`
     - `docs/plans/m3-1-profile-dag-runtime-skeleton-plan.md`
@@ -53,17 +53,20 @@
     - `comprehensive failed -> product/ops skipped` 规则已固化
     - `SkillRegistry` 退回 skill metadata / adapter 来源，不再承担长期 runtime truth
   - 验证：
+    - `AUTH_ENABLED=0 pytest tests/frontend/test_chat_phase3_capabilities.py::test_chat_panel_uses_memory_drawer_instead_of_inline_block -q`
+    - `AUTH_ENABLED=0 pytest tests/frontend/test_chat_phase3_capabilities.py -q`
     - `pytest tests/test_profile_dag_runtime.py tests/test_orchestrator_progress.py tests/orchestrator_agent/test_profile_runner.py -q`
     - `AUTH_ENABLED=0 pytest tests/test_analyze_stream_endpoint.py tests/test_analyze_module_endpoint.py -q`
     - `python -m compileall -q app data_acquisition_agent tests scripts`
     - `git diff --check`
-    - `AUTH_ENABLED=0 pytest -q` -> `1 failed, 1334 passed, 6 skipped`
-  - 当前 acceptance blocker：
-    - `tests/frontend/test_chat_phase3_capabilities.py::test_chat_panel_uses_memory_drawer_instead_of_inline_block`
-    - 该失败点不在 `M3-1` touched files 内，但在 full regression 绿灯前仍阻塞阶段升级到 `completed`
+    - `AUTH_ENABLED=0 pytest -q` -> `1335 passed, 6 skipped`
+  - closure 说明：
+    - 本轮仅修复前端 `ChatPanel` memory drawer contract blocker
+    - 未修改 `ProfileDagExecutor`
+    - 未修改 `analyze_module` 最小依赖闭包语义
+    - 未修改 legacy event compatibility bridge
+    - 未修改 public API response shape
   - 下一步：
-    - 先关闭 full regression blocker，重跑 acceptance
-    - 若 acceptance review 无 must-fix issue，再把 `M3-1` 提升为 `completed`
     - `M3-2` 保持 not started
 
 

@@ -29,6 +29,9 @@
   - `UserAnalysisResult`
   - `/api/analyze-module` response payload
   - `RunProfileOutput.results`
+- Acceptance closure added one frontend-only fix:
+  - removed stale `text-[11px]` style remnants from `ChatPanel.jsx` to satisfy the memory-drawer contract test
+  - no `ProfileDagExecutor`, dependency-closure, legacy-event, or public-API behavior changed
 
 ## 3. Runtime Truth Verification
 - Verified runtime truth source:
@@ -129,14 +132,14 @@
   - `git diff --check`
   - `AUTH_ENABLED=0 pytest tests/test_profile_dag_runtime.py tests/test_orchestrator_progress.py tests/orchestrator_agent/test_profile_runner.py tests/test_analyze_stream_endpoint.py tests/test_analyze_module_endpoint.py -q`
     - result: `35 passed`
+- frontend blocker closure:
+  - `AUTH_ENABLED=0 pytest tests/frontend/test_chat_phase3_capabilities.py::test_chat_panel_uses_memory_drawer_instead_of_inline_block -q`
+    - result: `1 passed`
+  - `AUTH_ENABLED=0 pytest tests/frontend/test_chat_phase3_capabilities.py -q`
+    - result: `21 passed`
 - Full regression:
   - `AUTH_ENABLED=0 pytest -q`
-  - result: `1 failed, 1334 passed, 6 skipped`
-  - blocker:
-    - `tests/frontend/test_chat_phase3_capabilities.py::test_chat_panel_uses_memory_drawer_instead_of_inline_block`
-  - failure summary:
-    - assertion expects `text-[11px]` not to appear in `ChatPanel.jsx`
-    - failing path is outside `M3-1` touched runtime files
+  - result: `1335 passed, 6 skipped`
 - Warning scope:
   - observed warnings were existing deprecation warnings from FastAPI / passlib / pkg_resources / Pydantic and one existing golden-test warning
 
@@ -179,12 +182,7 @@
   - final head includes post-implementation upstream merges, but no unreported M3-1 behavior delta
 
 ## 13. Must-fix Issues
-- Full regression is not yet green.
-  - blocking test:
-    - `tests/frontend/test_chat_phase3_capabilities.py::test_chat_panel_uses_memory_drawer_instead_of_inline_block`
-  - scope classification:
-    - acceptance blocker for promotion to `completed`
-    - not evidence of a direct `M3-1` runtime regression
+- None.
 
 ## 14. Should-fix Issues
 - Decide whether to run a separate `AUTH_ENABLED=1` smoke in a later acceptance pass or continue treating auth-enabled behavior as out of scope for profile runtime acceptance.
@@ -192,7 +190,7 @@
 
 ## 15. Final Decision
 - Decision:
-  - keep `M3-1 Profile DAG Runtime Skeleton` at `implemented / pending final acceptance`
+  - promote `M3-1 Profile DAG Runtime Skeleton` to `completed`
 - Reason:
   - runtime truth verification passed
   - public API compatibility evidence passed
@@ -200,7 +198,8 @@
   - node/run status semantics are now explicit
   - dirty-file boundary and commit boundary are clear
   - `M3-2` has not started
-  - full repository regression is not yet fully green
-- Promotion rule:
-  - after the repo-wide regression blocker is resolved, rerun `AUTH_ENABLED=0 pytest -q`
-  - if full regression passes and no new `must-fix` issue appears, `M3-1` can be promoted to `completed`
+  - frontend blocker closure passed
+  - full repository regression is green
+- Closure scope:
+  - this closure only fixed the frontend `ChatPanel` memory-drawer contract blocker
+  - it did not modify `ProfileDagExecutor`, `analyze_module` dependency closure, legacy compatibility bridges, or public API shapes
