@@ -28,7 +28,8 @@ Current project reading for `M2D`:
 - `M2D` is `Risk Domain Knowledge RAG`, not `Data Agent Knowledge RAG`
 - SWXY is a reusable RAG engine asset, not an application subsystem to import whole
 - `M2D` requires a `Knowledge Base Module`
-- `M2D v1` keeps Elasticsearch hybrid retrieval as the default direction
+- `M2D v1` keeps `MySQL + real embedding + FAISS` as the mainline indexing foundation
+- Elasticsearch may exist only as a future optional adapter, not as `M2D-8` mainline
 - `user_id/session_id -> index_name` coupling must be removed
 
 ## Phase Breakdown
@@ -160,21 +161,69 @@ Current project reading for `M2D`:
   - `KnowledgeDocumentVersion.status == parsed` is enforced
   - `RiskEvidence` remains draft evidence with `score = None`
 
-### M2D-8 ES Hybrid Index Adapter
+### M2D-8 FAISS Foundation
 
 - 目标
-  - implement CHORD-owned ES index and alias integration
+  - implement CHORD-owned MySQL metadata persistence, real embedding runtime, and FAISS index foundation
 - 输入
   - metadata/enrichment outputs
-  - ES naming contract
+  - `KnowledgeChunk` canonical contract
 - 输出
-  - ES hybrid index adapter
+  - chunk persistence
+  - embedding runtime boundary
+  - FAISS build/save/load foundation
 - 禁止事项
-  - no direct consumer ES access
+  - no ES adapter
+  - no retrieval, rerank, or consumer-facing service work
 - 验收标准
-  - versioned physical index and active alias behavior are explicit
+  - chunk persistence is idempotent for the same `version_id + chunk_id + content_hash`
+  - embedding/model/dimension metadata are explicit
+  - FAISS manifest and vector mapping behavior are explicit
 
-### M2D-9 RiskKnowledgeService
+### M2D-9 Indexing Job Runtime / Redis Task State
+
+- 目标
+  - add runtime orchestration for indexing, rebuild, and retry flows
+- 输入
+  - FAISS foundation
+  - ingest-job lifecycle
+- 输出
+  - indexing job runtime
+  - Redis-backed task state / locking seams
+- 禁止事项
+  - no consumer-facing retrieval or answer service yet
+- 验收标准
+  - rebuild/retry state and locking behavior are explicit
+
+### M2D-10 Retrieval Foundation
+
+- 目标
+  - add CHORD-owned retrieval primitives on top of persisted index artifacts
+- 输入
+  - FAISS foundation
+  - future lexical retrieval inputs
+- 输出
+  - retrieval foundation
+- 禁止事项
+  - no reranker or Agent-facing service yet
+- 验收标准
+  - retrieval inputs/outputs are explicit and testable
+
+### M2D-11 Reranker / Evidence Gate
+
+- 目标
+  - add rerank and evidence-selection controls before consumer integration
+- 输入
+  - retrieval outputs
+  - evidence contract
+- 输出
+  - rerank and evidence gate
+- 禁止事项
+  - no NL Chat or Profile Explanation integration yet
+- 验收标准
+  - citation/evidence boundaries are explicit
+
+### M2D-12 RiskKnowledgeService / Consumer Integration
 
 - 目标
   - expose a single consumer-facing risk knowledge service boundary
@@ -185,11 +234,11 @@ Current project reading for `M2D`:
 - 输出
   - `RiskKnowledgeService`
 - 禁止事项
-  - no direct ES access from consumers
+  - no direct index access from consumers
 - 验收标准
   - NL Chat and Profile Explanation can consume service outputs without infrastructure coupling
 
-### M2D-10 Upload / Reindex / Status API
+### M2D-13 Upload / Reindex / Status API
 
 - 目标
   - implement KB management APIs
@@ -203,21 +252,7 @@ Current project reading for `M2D`:
 - 验收标准
   - management APIs expose explicit document and ingest state
 
-### M2D-11 NL Chat / Profile Explanation Integration
-
-- 目标
-  - integrate `RiskKnowledgeService` into conversation and profile-explanation paths
-- 输入
-  - service boundary
-  - routing contract
-- 输出
-  - routed consumer integrations
-- 禁止事项
-  - no direct ES or chunk access in consumer code
-- 验收标准
-  - only in-scope requests route to `M2D`
-
-### M2D-12 Refusal / Eval / Acceptance Review
+### M2D-14 Refusal / Eval / Acceptance Review
 
 - 目标
   - complete refusal, evaluation, and acceptance closure for the first runtime release
@@ -259,5 +294,5 @@ The current pass is accepted only if:
 - `PLANNING.md` and `TASK.md` use the exact status string `M2D implementation in progress`
 - subphase wording stays at `M2D-7 metadata and evidence builder landed; no embedding/retrieval/ES runtime started`
 - `M2D` does not use any completion-state label
-- no runtime dependencies, routes, migrations, persistence, ES runtime, or retrieval services are added
+- no runtime dependencies, routes, migrations, persistence, retrieval services, or consumer integrations are added in planning-only phases
 - existing `M2C/M3` closure wording remains untouched

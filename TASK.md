@@ -41,6 +41,7 @@
     - `docs/reviews/m2d-existing-rag-integration-review.md`
     - `docs/specs/m2d-risk-domain-knowledge-rag-contract.md`
     - `docs/specs/m2d-knowledge-base-module-design.md`
+    - `docs/specs/m2d-8-faiss-foundation-spec.md`
     - `docs/plans/m2d-risk-domain-rag-integration-plan.md`
     - `docs/reviews/m2d-4-swxy-vendor-import-review.md`
     - `docs/reviews/m2d-5-knowledge-base-module-skeleton-review.md`
@@ -55,11 +56,13 @@
     - `[x] M2D-5 knowledge base module skeleton landed; no ingestion/retrieval runtime started`
     - `[x] M2D-6 SWXY ingestion adapter landed; no embedding/retrieval/ES runtime started`
     - `[x] M2D-7 metadata and evidence builder landed; no embedding/retrieval/ES runtime started`
-    - `[ ] M2D-8 ES Hybrid Index Adapter`
-    - `[ ] M2D-9 RiskKnowledgeService`
-    - `[ ] M2D-10 Upload / Reindex / Status API`
-    - `[ ] M2D-11 NL Chat / Profile Explanation Integration`
-    - `[ ] M2D-12 Refusal / Eval / Acceptance Review`
+    - `[ ] M2D-8 FAISS Foundation`
+    - `[ ] M2D-9 Indexing Job Runtime / Redis Task State`
+    - `[ ] M2D-10 Retrieval Foundation`
+    - `[ ] M2D-11 Reranker / Evidence Gate`
+    - `[ ] M2D-12 RiskKnowledgeService / Consumer Integration`
+    - `[ ] M2D-13 Upload / Reindex / Status API`
+    - `[ ] M2D-14 Refusal / Eval / Acceptance Review`
   - 当前阶段状态：
     - `M2D: implementation in progress`
     - `M2D-4 vendor import landed; no runtime integration started`
@@ -95,7 +98,7 @@
     - 不新增 dependency installation / migration / FastAPI route / runtime test
     - 不重写现有 `M2A/M2B/M2C/M3` closure wording
   - 下一步：
-    - `M2D-8 ES Hybrid Index Adapter`
+    - `M2D-8 FAISS Foundation`
 
 - [x] M2C：Status Reconciliation — 已完成（2026-06-30）
   - review：

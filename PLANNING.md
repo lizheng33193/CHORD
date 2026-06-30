@@ -12,6 +12,7 @@
   - `docs/reviews/m2d-existing-rag-integration-review.md`
   - `docs/specs/m2d-risk-domain-knowledge-rag-contract.md`
   - `docs/specs/m2d-knowledge-base-module-design.md`
+  - `docs/specs/m2d-8-faiss-foundation-spec.md`
   - `docs/plans/m2d-risk-domain-rag-integration-plan.md`
   - `docs/reviews/m2d-4-swxy-vendor-import-review.md`
   - `docs/reviews/m2d-5-knowledge-base-module-skeleton-review.md`
@@ -49,7 +50,7 @@
   - `M2D-6 SWXY ingestion adapter landed; no embedding/retrieval/ES runtime started`
   - `M2D-7 metadata and evidence builder landed; no embedding/retrieval/ES runtime started`
 - Next phase:
-  - `M2D-8 ES Hybrid Index Adapter`
+  - `M2D-8 FAISS Foundation`
 
 ## 2026-06-30 M3-1 Profile DAG Runtime Skeleton
 
