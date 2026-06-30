@@ -35,6 +35,22 @@
 - [x] E1 单用户埋点深度解析 → docs/plans/trace-analyzer-plan.md（2026-05-01）
 
 ## 当前进行中的功能
+- [x] M2C：Status Reconciliation — 已完成（2026-06-30）
+  - review：
+    - `docs/reviews/m2c-status-reconciliation-review.md`
+  - 本次状态校准结论：
+    - `M2A-RQ` 已通过 `FU4-FU7` 形成 planning / review / repair / structured-plan gate 主链
+    - `M2B` 已 through `M2B-9.1` 完成 retrieval governance / fallback / provenance / rollout readiness 主链
+    - `M2C` 作为独立阶段并未被 standalone 定义、standalone 交付、standalone closure
+  - 当前阶段状态：
+    - `M2C：partially covered by FU4-FU7 / M2B; standalone governance & semantic validator not formally reconciled`
+  - 不变项：
+    - 不新增 validator
+    - 不改 runtime
+    - 不启动 `M2D`
+  - 下一步：
+    - `M2D` 保持 not started，后续单独规划 `Risk Domain Knowledge RAG`
+
 - [x] M3-1：Profile DAG Runtime Skeleton — completed（2026-06-30）
   - spec / plan：
     - `docs/specs/m3-profile-dag-runtime-contract.md`

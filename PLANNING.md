@@ -35,6 +35,25 @@
   - `M3-1` 已完成，且 closure 未修改 `ProfileDagExecutor`、`analyze_module` 依赖闭包、legacy compatibility bridge 或 public API shape
   - `M3-2` 仍未启动；后续可在独立阶段进入 UI/SSE runtime alignment
 
+## 2026-06-30 M2C Status Reconciliation
+
+- 新增状态校准 review：
+  - `docs/reviews/m2c-status-reconciliation-review.md`
+- 当前项目状态应按如下理解：
+  - `M2A-RQ: completed`
+  - `M2B: completed through M2B-9.1`
+  - `M2C: partially covered by FU4-FU7 / M2B; standalone governance & semantic validator not formally reconciled`
+  - `M2D: not started`
+- 本次校准确认：
+  - `FU4-FU7` 已覆盖 canonical field policy、plan-to-SQL review、bounded repair、structured SQL planning gate 等 `M2C-like` 控制
+  - `M2B` 已覆盖 retrieval governance、fallback、provenance、rollout/audit boundary 等治理能力
+  - 但 repo 里没有一个被独立定义、独立交付、独立 closure 的 standalone `M2C` 阶段
+- 当前结论：
+  - `M2C` 不能标 `completed`
+  - `M2C` 也不应标 `not started`
+  - `M2C` 的剩余缺口属于阶段治理与状态归属问题，而不是 `M2D` 的硬性 runtime blocker
+  - 下一步应先保持 `M2D` 为 not started，后续再单独做 `M2D Risk Domain Knowledge RAG` 规划
+
 ## 2026-06-29 M2B-9.1 Hybrid Enabled Rollout Observability & Acceptance
 
 - `M2B-9` 已完成并合并，当前补齐 `M2B-9.1` 的 operational readiness：
