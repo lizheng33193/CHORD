@@ -13,6 +13,7 @@ Delivered frontend surfaces:
 - version upload / index / rebuild / activate / retry UI
 - job status display with light polling
 - retrieval-only debug panel
+- metadata upload UI with lightweight JSON validation
 
 ## Engineering Notes
 
@@ -38,6 +39,8 @@ Still not started in `M2D-14B`:
 
 `index` / `rebuild` continue to reuse the current in-process runtime from `M2D-14A`.
 
+Upload metadata persistence has not been expanded in this phase; the upload UI exists, but explicit metadata persistence remains future API reconciliation work.
+
 ## Validation
 
 - `pytest -q tests/frontend/test_risk_knowledge_ui_console.py tests/frontend/test_risk_knowledge_ui_console_api.py`
@@ -50,4 +53,14 @@ Still not started in `M2D-14B`:
 
 ## Acceptance Posture
 
-`M2D-14B` is accepted at stage level after targeted Knowledge Base UI Console validation; full production hardening, worker queue, advanced governance, and observability remain future stages.
+`M2D-14B` accepted at stage level after targeted Knowledge Base UI Console validation; full production hardening, worker queue, advanced governance, and observability remain future stages.
+
+Closure boundary remains explicit:
+
+- no backend runtime expansion
+- no production worker queue
+- no SSE / WebSocket
+- `debug/retrieve` remains retrieval-only v1
+- no Data Agent RAG mixing
+- metadata upload persistence remains future API reconciliation
+- full repository regression not run

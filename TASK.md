@@ -103,13 +103,16 @@
     - runtime evaluation remains opt-in / pending
     - full repository regression remains pending / optional
     - runtime baseline remains intentionally uncommitted in v1
+    - no backend runtime expansion
     - no standalone admin app
     - no production worker queue
+    - no SSE / WebSocket
     - no Data Agent RAG mixing
     - no ES / SWXY coupling
     - `debug/retrieve` remains retrieval-only v1
     - `debug/retrieve` does not call `RiskKnowledgeService`
     - `index` / `rebuild` reuse the current in-process runtime
+    - metadata upload persistence remains future API reconciliation
     - full repository regression not run for `M2D-14B`
     - production hardening remains future work
   - 本轮产出：
