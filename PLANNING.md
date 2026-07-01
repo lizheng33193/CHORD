@@ -36,6 +36,7 @@
   - `docs/reviews/m2d-14b-knowledge-base-ui-console-review.md`
   - `docs/reviews/m2d-14b-local-kb-smoke-acceptance-review.md`
   - `docs/reviews/m2d-14c-small-docx-validation-review.md`
+  - `docs/reviews/m2d-14c-small-pdf-validation-review.md`
 - 当前阶段状态：
   - `M2D: implementation in progress`
 - Purpose:
@@ -88,8 +89,9 @@
   - `M2D-14B Knowledge Base UI Console landed; local md KB smoke passed; no production-hardening runtime started`
   - `M2D-14C Targeted File-Type Validation in validation`
   - `M2D-14C-1 small DOCX validation passed`
-  - `M2D-14C-2 small PDF validation pending`
+  - `M2D-14C-2 small PDF validation passed`
   - `M2D-14C-3 real PDF validation pending`
+  - `407f058` is a validation-driven runtime fix for DashScope embedding batching, not `M2D-15 Production Hardening`
 - Acceptance posture:
   - `M2D-10 accepted at stage level after targeted retrieval foundation validation`
   - full repository regression remains pending / optional
@@ -114,7 +116,7 @@
   - `index` / `rebuild` reuse the current in-process runtime
   - metadata upload persistence remains future API reconciliation
   - small `DOCX` validation passed inside `M2D-14C`
-  - small `PDF` validation remains pending
+  - small `PDF` validation passed inside `M2D-14C`
   - real large `PDF` validation remains pending
   - full repository regression not run for `M2D-14B`
   - production hardening remains future work
