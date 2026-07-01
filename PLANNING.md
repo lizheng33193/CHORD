@@ -160,11 +160,14 @@
 
 - 新增状态校准 review：
   - `docs/reviews/m2c-status-reconciliation-review.md`
+- 说明：
+  - 本节记录的是 `2026-06-30`、`M2D` 启动前的历史状态快照
+  - 当前生效的 `M2D` 状态以上方 `2026-07-01 M2D Risk Domain Knowledge RAG & Knowledge Base Module` 段落为准
 - 当前项目状态应按如下理解：
   - `M2A-RQ: completed`
   - `M2B: completed through M2B-9.1`
   - `M2C: partially covered by FU4-FU7 / M2B; standalone governance & semantic validator not formally reconciled`
-  - `M2D: not started`
+  - `M2D: not started at that time`
 - 本次校准确认：
   - `FU4-FU7` 已覆盖 canonical field policy、plan-to-SQL review、bounded repair、structured SQL planning gate 等 `M2C-like` 控制
   - `M2B` 已覆盖 retrieval governance、fallback、provenance、rollout/audit boundary 等治理能力
@@ -173,7 +176,7 @@
   - `M2C` 不能标 `completed`
   - `M2C` 也不应标 `not started`
   - `M2C` 的剩余缺口属于阶段治理与状态归属问题，而不是 `M2D` 的硬性 runtime blocker
-  - 下一步应先保持 `M2D` 为 not started，后续再单独做 `M2D Risk Domain Knowledge RAG` 规划
+  - 当时的下一步是先保持 `M2D` 为 not started，后续再单独做 `M2D Risk Domain Knowledge RAG` 规划
 
 ## 2026-06-29 M2B-9.1 Hybrid Enabled Rollout Observability & Acceptance
 
