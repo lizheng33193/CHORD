@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 
 
@@ -45,7 +46,7 @@ def test_build_uvicorn_command_respects_reload_flag():
 
     command = build_uvicorn_command(host="127.0.0.1", port=8013, reload=False)
 
-    assert command[:4] == ["python", "-m", "uvicorn", "app.main:app"]
+    assert command[:4] == [sys.executable, "-m", "uvicorn", "app.main:app"]
     assert "--host" in command
     assert "127.0.0.1" in command
     assert "--port" in command

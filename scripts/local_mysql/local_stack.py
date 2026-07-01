@@ -177,7 +177,7 @@ def render_env_text(env: Mapping[str, str]) -> str:
 
 
 def build_uvicorn_command(host: str, port: int, reload: bool) -> list[str]:
-    command = ["python", "-m", "uvicorn", "app.main:app", "--host", host, "--port", str(port)]
+    command = [sys.executable, "-m", "uvicorn", "app.main:app", "--host", host, "--port", str(port)]
     if reload:
         command.append("--reload")
     return command
