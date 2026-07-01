@@ -19,6 +19,8 @@ _DASHSCOPE_EMBEDDING_ENDPOINT = "https://dashscope.aliyuncs.com/api/v1/services/
 
 
 class DashScopeEmbeddingProvider:
+    max_batch_size = 10
+
     def __init__(
         self,
         *,

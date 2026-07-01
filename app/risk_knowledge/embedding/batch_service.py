@@ -36,14 +36,7 @@ class EmbeddingBatchService:
     def embed_inputs(self, inputs: list[EmbeddingInput]) -> PersistedEmbeddingBatchResult:
         if not inputs:
             raise EmbeddingInputError("embedding inputs must not be empty")
-        records = self._provider.embed(inputs)
-        if len(records) != len(inputs):
-            raise EmbeddingProviderError("embedding provider returned mismatched record count")
-        for record in records:
-            if record.dimension != self._expected_dimension:
-                raise EmbeddingDimensionMismatchError(
-                    f"expected dimension {self._expected_dimension}, got {record.dimension}"
-                )
+        records = self._embed_records(inputs)
         return PersistedEmbeddingBatchResult(
             records=[
                 {
@@ -69,7 +62,7 @@ class EmbeddingBatchService:
         chunk_records = chunk_repo.list_by_version_and_chunk_ids(version_id, chunk_ids)
         if not chunk_records:
             raise EmbeddingInputError(f"no persisted chunks found for version_id={version_id}")
-        embedded = self._provider.embed(
+        embedded = self._embed_records(
             [
                 EmbeddingInput(
                     chunk_id=record.chunk_id,
@@ -83,10 +76,6 @@ class EmbeddingBatchService:
         persisted_records = []
         chunks_by_id = {record.chunk_id: record for record in chunk_records}
         for record in embedded:
-            if record.dimension != self._expected_dimension:
-                raise EmbeddingDimensionMismatchError(
-                    f"expected dimension {self._expected_dimension}, got {record.dimension}"
-                )
             parent = chunks_by_id[record.chunk_id]
             persisted = embedding_repo.create_or_validate_idempotent(
                 kb_id=parent.kb_id,
@@ -98,6 +87,30 @@ class EmbeddingBatchService:
             persisted_records.append(to_persisted_embedding_record(persisted))
         self._db.commit()
         return PersistedEmbeddingBatchResult(records=persisted_records)
+
+    def _embed_records(self, inputs: list[EmbeddingInput]):
+        max_batch_size = getattr(self._provider, "max_batch_size", None)
+        if max_batch_size is None or max_batch_size <= 0:
+            records = self._provider.embed(inputs)
+            self._validate_batch_result(inputs, records)
+            return records
+
+        all_records = []
+        for start in range(0, len(inputs), max_batch_size):
+            batch_inputs = inputs[start : start + max_batch_size]
+            batch_records = self._provider.embed(batch_inputs)
+            self._validate_batch_result(batch_inputs, batch_records)
+            all_records.extend(batch_records)
+        return all_records
+
+    def _validate_batch_result(self, inputs: list[EmbeddingInput], records) -> None:
+        if len(records) != len(inputs):
+            raise EmbeddingProviderError("embedding provider returned mismatched record count")
+        for record in records:
+            if record.dimension != self._expected_dimension:
+                raise EmbeddingDimensionMismatchError(
+                    f"expected dimension {self._expected_dimension}, got {record.dimension}"
+                )
 
     def _build_embedding_id(self, record) -> str:
         checksum = hashlib.sha256(
