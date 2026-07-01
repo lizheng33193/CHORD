@@ -598,6 +598,42 @@ def test_normalize_request_keeps_general_chat_for_plain_summary_prompt():
     assert request.intent == "general_chat"
 
 
+def test_risk_knowledge_normalize_request_routes_explicit_risk_concept_question():
+    from app.services.orchestrator_agent.request_router import normalize_request
+    from app.services.orchestrator_agent.session_store import create_session
+
+    session = create_session(country="mx")
+
+    request = normalize_request("什么是多头借贷风险？", session)
+
+    assert request.intent == "risk_knowledge_answer"
+    assert request.request_understanding is not None
+
+
+def test_risk_knowledge_normalize_request_does_not_steal_data_or_workspace_queries():
+    from app.services.orchestrator_agent.request_router import normalize_request
+    from app.services.orchestrator_agent.session_store import create_session
+
+    session = create_session(country="mx")
+    session.active_entities["workspace_snapshot"] = {
+        "country": "mx",
+        "results": [
+            {
+                "uid": "824812551379353600",
+                "module": "behavior",
+                "summary": "行为画像：近30天登录偏低，流失风险高。",
+                "structured_result": {"risk_level": "high"},
+            }
+        ],
+    }
+
+    data_request = normalize_request("统计逾期用户数量", session)
+    workspace_request = normalize_request("帮我解释为什么这个用户流失风险高", session)
+
+    assert data_request.intent != "risk_knowledge_answer"
+    assert workspace_request.intent == "answer_from_workspace"
+
+
 def test_normalize_request_enriches_request_understanding_for_followup_and_rerun():
     from app.services.orchestrator_agent.request_router import normalize_request
     from app.services.orchestrator_agent.session_store import create_session

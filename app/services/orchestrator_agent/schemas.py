@@ -18,6 +18,7 @@ ProfileModule = Literal["app", "behavior", "credit", "comprehensive", "product",
 BucketName = Literal["app", "behavior", "credit"]
 KnownIntent = Literal[
     "answer_from_workspace",
+    "risk_knowledge_answer",
     "profile_uid",
     "profile_batch",
     "need_clarification",
@@ -27,7 +28,7 @@ KnownIntent = Literal[
     "run_trace",
     "general_chat",
 ]
-AnswerMode = Literal["workspace_evidence_answer", "tool_execution", "general_chat"]
+AnswerMode = Literal["workspace_evidence_answer", "risk_knowledge_answer", "tool_execution", "general_chat"]
 PlanStepStatus = Literal["pending", "running", "awaiting_resolution", "done", "skipped", "blocked", "failed"]
 BucketStatus = Literal["available", "missing", "invalid", "unsupported"]
 

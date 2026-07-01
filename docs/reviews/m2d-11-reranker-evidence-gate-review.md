@@ -71,7 +71,7 @@ Current subphase reading:
 Acceptance posture:
 
 > `M2D-11 accepted at stage level after targeted reranker/evidence gate validation;`
-> `real reranker smoke remains opt-in and full repository regression remains optional/pending.`
+> `full repository regression and real reranker smoke remain optional/pending validation items.`
 
 Explicitly not started:
 
@@ -79,6 +79,7 @@ Explicitly not started:
 - no API runtime
 - no NL Chat / Profile Explanation integration
 - no answer generation
+- no frontend changes
 - no ES / SWXY coupling
 
 ## Next Step

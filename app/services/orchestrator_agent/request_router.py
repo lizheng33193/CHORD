@@ -32,6 +32,15 @@ _COHORT_SUBJECT_HINTS = ("用户列表", "uid列表", "uid list", "用户集合"
 _TIME_WINDOW_HINTS = ("最近", "过去", "近", "天", "周", "月", "上周", "本周", "上个月", "本月")
 _COUNTRY_HINTS = ("墨西哥", "mx", "mexico", "泰国", "th", "thailand", "哥伦比亚", "co", "colombia", "秘鲁", "pe", "peru", "智利", "cl", "chile", "巴西", "br", "brazil")
 _GENERAL_CHAT_BLOCKERS = ("讨论的方案", "这个方案", "这个计划", "刚才讨论")
+_RISK_KNOWLEDGE_QUESTION_HINTS = ("什么是", "为什么", "为何", "如何解释", "解释", "哪些", "主要看什么", "怎么看")
+_RISK_KNOWLEDGE_DOMAIN_HINTS = (
+    "多头借贷", "贷前风控", "贷中风控", "贷后风控", "风险指标", "风险策略",
+    "高频申请", "短期多次申请", "申请频率", "欺诈风险", "风控",
+)
+_RISK_KNOWLEDGE_BLOCKERS = (
+    "sql", "uid", "轨迹", "trace", "data agent", "统计", "查询", "拉取",
+    "一批", "批量", "当前用户", "这个用户", "该用户", "画像数据",
+)
 _UID_FILE_HINT = "data/id_files/"
 _DATA_AGENT_EXPLICIT_HINTS = (
     "data agent", "数据代理", "sql 审核任务", "sql review task", "创建 sql 任务",
@@ -266,6 +275,25 @@ def normalize_request(prompt: str, session=None, detected_country: str | None = 
             candidate_defaults=candidate_defaults,
         )
 
+    if _looks_like_risk_knowledge_question(stripped_prompt):
+        return _build_request(
+            intent="risk_knowledge_answer",
+            country=country,
+            uids=[],
+            uid_file_path=None,
+            modules=[],
+            trace_days=trace_days,
+            application_time_hint=_workspace_application_time(session),
+            request_summary=request_summary,
+            query_request=None,
+            data_agent_run_type=None,
+            data_agent_output_bucket=None,
+            data_agent_output_format=None,
+            read_only=False,
+            prompt=stripped_prompt,
+            focus=focus or ["risk_knowledge"],
+        )
+
     return _build_request(
         intent="general_chat",
         country=country,
@@ -339,6 +367,16 @@ def _looks_like_ambiguous_cohort_request(prompt: str) -> bool:
         any(keyword.lower() in lowered for keyword in _COHORT_ACTION_HINTS)
         and any(keyword.lower() in lowered for keyword in _COHORT_SUBJECT_HINTS)
         and (not _has_explicit_country(prompt) or not _has_time_window(prompt))
+    )
+
+
+def _looks_like_risk_knowledge_question(prompt: str) -> bool:
+    lowered = str(prompt or "").lower()
+    if any(keyword.lower() in lowered for keyword in _RISK_KNOWLEDGE_BLOCKERS):
+        return False
+    return (
+        any(keyword in prompt for keyword in _RISK_KNOWLEDGE_QUESTION_HINTS)
+        and any(keyword in prompt for keyword in _RISK_KNOWLEDGE_DOMAIN_HINTS)
     )
 
 

@@ -35,7 +35,7 @@
 - [x] E1 单用户埋点深度解析 → docs/plans/trace-analyzer-plan.md（2026-05-01）
 
 ## 当前进行中的功能
-- [ ] M2D｜Risk Domain Knowledge RAG & Knowledge Base Module — implementation in progress（2026-06-30）
+- [ ] M2D｜Risk Domain Knowledge RAG & Knowledge Base Module — implementation in progress（2026-07-01）
   - review / spec / plan：
     - `docs/reviews/m2d-current-state-and-scope-review.md`
     - `docs/reviews/m2d-existing-rag-integration-review.md`
@@ -45,6 +45,7 @@
     - `docs/specs/m2d-9-indexing-runtime-spec.md`
     - `docs/specs/m2d-10-hybrid-retrieval-spec.md`
     - `docs/specs/m2d-11-reranker-evidence-gate-spec.md`
+    - `docs/specs/m2d-12-risk-knowledge-service-spec.md`
     - `docs/plans/m2d-risk-domain-rag-integration-plan.md`
     - `docs/reviews/m2d-4-swxy-vendor-import-review.md`
     - `docs/reviews/m2d-5-knowledge-base-module-skeleton-review.md`
@@ -54,6 +55,7 @@
     - `docs/reviews/m2d-9-indexing-runtime-review.md`
     - `docs/reviews/m2d-10-hybrid-retrieval-review.md`
     - `docs/reviews/m2d-11-reranker-evidence-gate-review.md`
+    - `docs/reviews/m2d-12-risk-knowledge-service-review.md`
   - Progress:
     - `[x] M2D-0 Current State & Scope Review`
     - `[x] M2D-1 SWXY RAG Integration Review`
@@ -67,7 +69,7 @@
     - `[x] M2D-9 indexing job runtime landed; no retrieval/rerank/RiskKnowledgeService/API runtime started`
     - `[x] M2D-10 hybrid retrieval foundation landed; no rerank/evidence gate/RiskKnowledgeService/API runtime started`
     - `[x] M2D-11 Reranker / Evidence Gate`
-    - `[ ] M2D-12 RiskKnowledgeService / Consumer Integration`
+    - `[x] M2D-12 RiskKnowledgeService / Consumer Integration`
     - `[ ] M2D-13 Upload / Reindex / Status API`
     - `[ ] M2D-14 Refusal / Eval / Acceptance Review`
   - 当前阶段状态：
@@ -79,14 +81,19 @@
     - `M2D-8 FAISS foundation landed; no retrieval/rerank/RiskKnowledgeService/API runtime started`
     - `M2D-9 indexing job runtime landed; no retrieval/rerank/RiskKnowledgeService/API runtime started`
     - `M2D-11 reranker and evidence gate landed; no RiskKnowledgeService/API/NL Chat/Profile Explanation runtime started`
+    - `M2D-12 RiskKnowledgeService integration landed; no admin API/UI/golden-set evaluation runtime started`
   - acceptance closure：
-    - `M2D-11 accepted at stage level after targeted reranker/evidence gate validation; real reranker smoke remains opt-in and full repository regression remains optional/pending validation items.`
+    - `M2D-11 accepted at stage level after targeted reranker/evidence gate validation; full repository regression and real reranker smoke remain optional/pending validation items.`
+    - `M2D-12 accepted at stage level after targeted RiskKnowledgeService, NL Chat seam, and Profile Explanation adapter validation; full repository regression and real LLM answer smoke remain optional/pending validation items.`
     - full repository regression remains pending / optional
-    - real reranker smoke remains opt-in / pending
-    - no RiskKnowledgeService
-    - no API runtime
-    - no NL Chat / Profile Explanation integration
+    - real LLM answer smoke remains pending / optional
+    - no admin API/UI
+    - no document upload or reindex/status API
+    - no golden-set evaluation
+    - no frontend
+    - no Data Agent RAG mixing
     - no ES / SWXY coupling
+    - production hardening remains future work
     - unrelated frontend edits and untracked PDF remained untouched
   - 本轮产出：
     - `app/third_party/swxy_rag`
@@ -100,6 +107,7 @@
     - `app/risk_knowledge/retrieval`
     - `app/risk_knowledge/reranking`
     - `app/risk_knowledge/evidence`
+    - `app/risk_knowledge/service`
     - vendored SWXY `deepdoc/`, `rag/`, `core/api/utils/file_utils.py`, `conf/mapping.json`
     - renamed vendored entry files `file_parse_core.py` / `retrieval_core.py`
     - `M2D-4` vendor import review
@@ -110,11 +118,13 @@
     - `M2D-9` indexing runtime review
     - `M2D-10` hybrid retrieval review
     - `M2D-11` reranker/evidence gate review
+    - `M2D-12` RiskKnowledgeService review
   - Explicitly not started：
-    - RiskKnowledgeService
-    - NL Chat integration
-    - Profile Explanation integration
-    - API routes
+    - admin API/UI
+    - document upload / reindex / status API
+    - golden-set evaluation
+    - frontend changes
+    - Data Agent RAG mixing
   - 不变项：
     - 不改现有业务 runtime
     - 不新增 validator
@@ -122,7 +132,7 @@
     - 不新增 FastAPI route
     - 不重写现有 `M2A/M2B/M2C/M3` closure wording
   - 下一步：
-    - `M2D-12 RiskKnowledgeService / Consumer Integration`
+    - `M2D-13 Upload / Reindex / Status API`
 
 - [x] M2C：Status Reconciliation — 已完成（2026-06-30）
   - review：

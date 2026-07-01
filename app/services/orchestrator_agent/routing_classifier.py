@@ -15,6 +15,7 @@ _ROUTING_SCHEMA: dict[str, Any] = {
             "type": "string",
             "enum": [
                 "answer_from_workspace",
+                "risk_knowledge_answer",
                 "profile_uid",
                 "profile_batch",
                 "query_data_then_profile",
@@ -47,6 +48,7 @@ def refine_normalized_request(
     llm_prompt = (
         "你是用户画像聊天路由分类器。请只在以下 intent 中选择一个：\n"
         "- answer_from_workspace: 只读追问，复用当前已有画像结果回答\n"
+        "- risk_knowledge_answer: 明确的风控知识解释问题，进入风险知识服务\n"
         "- profile_uid: 分析单个 UID\n"
         "- profile_batch: 分析多个 UID\n"
         "- query_data_then_profile: 先取数筛 UID，再画像\n"
@@ -74,6 +76,7 @@ def refine_normalized_request(
     confidence = float(structured.get("confidence", 0.0) or 0.0)
     if intent not in {
         "answer_from_workspace",
+        "risk_knowledge_answer",
         "profile_uid",
         "profile_batch",
         "query_data_then_profile",

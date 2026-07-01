@@ -2,7 +2,7 @@
 
 ## Summary
 
-This plan defines the full staged path for `M2D`, with the current implementation having progressed through `M2D-10`.
+This plan defines the full staged path for `M2D`, with the current implementation having progressed through `M2D-12`.
 
 Current `M2D` status:
 
@@ -10,7 +10,7 @@ Current `M2D` status:
 
 Current subphase reading:
 
-> `M2D-10 hybrid retrieval foundation landed; no rerank/evidence gate/RiskKnowledgeService/API runtime started`
+> `M2D-12 RiskKnowledgeService integration landed; no admin API/UI/golden-set evaluation runtime started`
 
 ## Current Status
 
@@ -19,9 +19,10 @@ Current project reading for `M2D`:
 - scope clarified
 - SWXY identified as reusable engine asset source
 - contract/review/design closure landed
-- M2D-4 to M2D-10 code has landed
-- no NL Chat integration started
-- no Profile Explanation integration started
+- M2D-4 to M2D-12 code has landed
+- minimal NL Chat seam has landed
+- minimal Profile Explanation adapter seam has landed
+- no admin API/UI or frontend work has started
 
 ## Key Decisions
 
@@ -258,10 +259,22 @@ Current project reading for `M2D`:
   - refusal rules
 - 输出
   - `RiskKnowledgeService`
+  - deterministic grounded answer / refusal contract
+  - minimal NL Chat seam
+  - minimal Profile Explanation adapter seam
 - 禁止事项
-  - no direct index access from consumers
+  - no admin API/UI
+  - no frontend changes
+  - no document upload
+  - no golden-set evaluation
+  - no Data Agent RAG mixing
+  - no ES or SWXY runtime coupling
 - 验收标准
+  - `RiskKnowledgeService` depends on a thin `RiskEvidencePipeline`
+  - refusal path does not call answer synthesis
+  - grounded answers only use selected evidence and rendered citations
   - NL Chat and Profile Explanation can consume service outputs without infrastructure coupling
+  - route policy remains conservative and does not steal SQL / UID / cohort / trace / workspace follow-up queries
 
 ### M2D-13 Upload / Reindex / Status API
 
@@ -317,7 +330,7 @@ Primary integration risks are:
 The current pass is accepted only if:
 
 - `PLANNING.md` and `TASK.md` use the exact status string `M2D implementation in progress`
-- subphase wording stays at `M2D-7 metadata and evidence builder landed; no embedding/retrieval/ES runtime started`
+- subphase wording stays at `M2D-12 RiskKnowledgeService integration landed; no admin API/UI/golden-set evaluation runtime started`
 - `M2D` does not use any completion-state label
 - no runtime dependencies, routes, migrations, persistence, retrieval services, or consumer integrations are added in planning-only phases
 - existing `M2C/M3` closure wording remains untouched
