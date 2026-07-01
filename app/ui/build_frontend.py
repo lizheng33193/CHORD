@@ -97,7 +97,7 @@ _HTML_TEMPLATE = """<!DOCTYPE html>
     <script crossorigin src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.development.js"></script>
     <script>window.react = window.React;</script>
     <script src="https://unpkg.com/lucide-react@0.292.0/dist/umd/lucide-react.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone@7/babel.min.js"></script>
     <style>
       :root {
         --maps-bg: #f4f7f9;

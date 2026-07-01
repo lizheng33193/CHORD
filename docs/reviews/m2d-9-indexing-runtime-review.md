@@ -72,6 +72,12 @@ Validated with:
 - legacy `knowledge_base` and `risk_knowledge` contract suites
 - default embedding tests remain offline and do not access external APIs
 - real embedding smoke remains opt-in and requires local `DASHSCOPE_API_KEY` plus `CHORD_RUN_REAL_EMBEDDING_TESTS=1`
+- real DashScope embedding validation:
+  - `DashScopeEmbeddingProvider` real smoke passed with `text-embedding-v4`, `dimension=1024`
+  - `EmbeddingBatchService` single persisted chunk real smoke passed
+  - `chunk_id` and `content_hash` were preserved
+  - embedding metadata/result contract is ready for FAISS build consumption
+  - API key was not committed; locally exposed key was recommended for rotation
 - `compileall`
 - `git diff --check`
 - coupling guard over new M2D-9 directories
