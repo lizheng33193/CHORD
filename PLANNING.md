@@ -87,10 +87,10 @@
   - `M2D-12 RiskKnowledgeService integration landed; no admin API/UI/golden-set evaluation runtime started`
   - `M2D-14A Knowledge Base Admin API landed; no UI console/production-hardening runtime started`
   - `M2D-14B Knowledge Base UI Console landed; local md KB smoke passed; no production-hardening runtime started`
-  - `M2D-14C Targeted File-Type Validation in validation`
+  - `M2D-14C Targeted File-Type Validation accepted with md/docx/small-pdf/real-pdf validation passed`
   - `M2D-14C-1 small DOCX validation passed`
   - `M2D-14C-2 small PDF validation passed`
-  - `M2D-14C-3 real PDF validation pending`
+  - `M2D-14C-3 real PDF validation passed`
   - `407f058` is a validation-driven runtime fix for DashScope embedding batching, not `M2D-15 Production Hardening`
 - Acceptance posture:
   - `M2D-10 accepted at stage level after targeted retrieval foundation validation`
@@ -102,6 +102,7 @@
   - `M2D-13 accepted at stage level after targeted golden-set evaluation and regression validation; runtime evaluation, full repository regression, and runtime baseline remain optional/pending validation items.`
   - `M2D-14A accepted at stage level after targeted Knowledge Base Admin API validation; UI console, full production hardening, and advanced governance remain future stages.`
   - `M2D-14B accepted at stage level after targeted Knowledge Base UI Console validation; local md KB smoke also passed; full production hardening, worker queue, advanced governance, and observability remain future stages.`
+  - `M2D-14C accepted at stage level after targeted file-type validation; local md/docx/small-pdf/real-pdf validation passed; worker queue, SSE/WebSocket, and production hardening remain future stages.`
   - v1 regression remains report-only / advisory
   - runtime evaluation remains opt-in / pending
   - runtime baseline remains intentionally uncommitted in v1
@@ -117,11 +118,12 @@
   - metadata upload persistence remains future API reconciliation
   - small `DOCX` validation passed inside `M2D-14C`
   - small `PDF` validation passed inside `M2D-14C`
-  - real large `PDF` validation remains pending
+  - real `PDF` validation passed inside `M2D-14C`
   - full repository regression not run for `M2D-14B`
-  - production hardening remains future work
+  - no production worker queue
+  - no SSE / WebSocket
+  - no production hardening
 - Next phase:
-  - `M2D-14C Targeted File-Type Validation`
   - `M2D-15 Production Hardening` remains not started
 
 ## 2026-06-30 M3-1 Profile DAG Runtime Skeleton

@@ -85,10 +85,10 @@
     - `[x] M2D-14A Knowledge Base Admin API`
     - `[x] M2D-14B Knowledge Base UI Console`
     - `[x] M2D-14B local md KB smoke acceptance`
-    - `[ ] M2D-14C Targeted File-Type Validation`
+    - `[x] M2D-14C Targeted File-Type Validation`
     - `[x] M2D-14C-1 small DOCX validation`
     - `[x] M2D-14C-2 small PDF validation`
-    - `[ ] M2D-14C-3 real PDF validation`
+    - `[x] M2D-14C-3 real PDF validation`
     - `[ ] M2D-15 Production Hardening`
   - 当前阶段状态：
     - `M2D: implementation in progress`
@@ -102,10 +102,10 @@
     - `M2D-12 RiskKnowledgeService integration landed; no admin API/UI/golden-set evaluation runtime started`
     - `M2D-14A Knowledge Base Admin API landed; no UI console/production-hardening runtime started`
     - `M2D-14B Knowledge Base UI Console landed; local md KB smoke passed; no production-hardening runtime started`
-    - `M2D-14C Targeted File-Type Validation in validation`
+    - `M2D-14C Targeted File-Type Validation accepted with md/docx/small-pdf/real-pdf validation passed`
     - `M2D-14C-1 small DOCX validation passed`
     - `M2D-14C-2 small PDF validation passed`
-    - `M2D-14C-3 real PDF validation pending`
+    - `M2D-14C-3 real PDF validation passed`
     - `407f058` is a validation-driven runtime fix for DashScope embedding batching, not `M2D-15 Production Hardening`
   - acceptance closure：
     - `M2D-11 accepted at stage level after targeted reranker/evidence gate validation; full repository regression and real reranker smoke remain optional/pending validation items.`
@@ -113,6 +113,7 @@
     - `M2D-13 accepted at stage level after targeted golden-set evaluation and regression validation; runtime evaluation, full repository regression, and runtime baseline remain optional/pending validation items.`
     - `M2D-14A accepted at stage level after targeted Knowledge Base Admin API validation; UI console, full production hardening, and advanced governance remain future stages.`
     - `M2D-14B accepted at stage level after targeted Knowledge Base UI Console validation; local md KB smoke also passed; full production hardening, worker queue, advanced governance, and observability remain future stages.`
+    - `M2D-14C accepted at stage level after targeted file-type validation; local md/docx/small-pdf/real-pdf validation passed; worker queue, SSE/WebSocket, and production hardening remain future stages.`
     - v1 regression remains report-only / advisory
     - runtime evaluation remains opt-in / pending
     - full repository regression remains pending / optional
@@ -129,7 +130,18 @@
     - metadata upload persistence remains future API reconciliation
     - small `DOCX` validation passed inside `M2D-14C`
     - small `PDF` validation passed inside `M2D-14C`
-    - real large `PDF` validation remains pending
+    - real `PDF` validation passed inside `M2D-14C`
+    - real `PDF` smoke facts:
+      - file size `26,482,250` bytes
+      - page count `253`
+      - version `item_real_pdf_v1`
+      - job `idxjob_a7bbd18187a7489caccd8a5117977e31`
+      - manifest `idx_item_real_pdf_v1_8a5117977e31`
+      - duration about `10m12s`
+      - `knowledge_chunks=1139`
+      - `knowledge_chunk_embeddings=1139`
+      - `faiss_vector_mappings=1139`
+    - real `PDF` validation exposed a long-running job visibility gap and should be tracked only as an observability / production-hardening candidate
     - full repository regression not run for `M2D-14B`
     - production hardening remains future work
   - 本轮产出：
@@ -172,7 +184,6 @@
     - 不新增 migration
     - 不重写现有 `M2A/M2B/M2C/M3` closure wording
   - 下一步：
-    - `M2D-14C Targeted File-Type Validation`
     - `M2D-15 Production Hardening` 保持 not started
 
 - [x] M2C：Status Reconciliation — 已完成（2026-06-30）
