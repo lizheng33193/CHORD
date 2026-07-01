@@ -10,6 +10,29 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.auth.database import Base
 
 
+class KnowledgeBaseModel(Base):
+    __tablename__ = "knowledge_bases"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    kb_id: Mapped[str] = mapped_column(String(128), nullable=False, unique=True)
+    kb_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    kb_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    index_alias: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=False),
+        nullable=False,
+        server_default=func.current_timestamp(),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=False),
+        nullable=False,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+    )
+
+
 class KnowledgeDocumentModel(Base):
     __tablename__ = "knowledge_documents"
 

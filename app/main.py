@@ -14,6 +14,7 @@ from app.api.analyze_module import router as analyze_module_router
 from app.api.analyze_stream import router as analyze_stream_router
 from app.auth.errors import AuthenticationError, AuthorizationError
 from app.auth.router import router as auth_router
+from app.api.risk_knowledge_admin import router as risk_knowledge_admin_router
 from app.api.trace import router as trace_router
 from app.core.config import settings
 from app.core.data_acquisition_capability import get_data_acquisition_capability
@@ -96,6 +97,7 @@ app.include_router(analyze_router, prefix="/api", tags=["analyze"])
 app.include_router(analyze_module_router, prefix="/api", tags=["analyze"])
 app.include_router(analyze_stream_router, prefix="/api", tags=["analyze"])
 app.include_router(auth_router)
+app.include_router(risk_knowledge_admin_router)
 app.include_router(trace_router)
 from app.data_agent.api import router as data_agent_router
 from app.data_knowledge.api import router as data_knowledge_router

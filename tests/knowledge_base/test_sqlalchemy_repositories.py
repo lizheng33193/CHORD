@@ -171,3 +171,31 @@ def test_sqlalchemy_job_repository_tracks_retry_lineage(auth_db) -> None:
         assert [item.job_id for item in stored] == ["idxjob_retry_2", "idxjob_root"]
         assert retry.retry_of_job_id == "idxjob_root"
         assert retry.root_job_id == "idxjob_root"
+
+
+def test_sqlalchemy_knowledge_base_repository_persists_kb_records(auth_db) -> None:
+    from app.auth.database import AuthSessionLocal
+    from app.knowledge_base.repositories.sqlalchemy import SqlAlchemyKnowledgeBaseRepository
+    from app.knowledge_base.schemas import KnowledgeBase, KnowledgeBaseStatus, KnowledgeBaseType
+
+    with AuthSessionLocal() as db:
+        kb_repo = SqlAlchemyKnowledgeBaseRepository(db)
+        created = kb_repo.create(
+            KnowledgeBase(
+                kb_id="risk_domain_knowledge",
+                kb_name="风控领域知识库",
+                kb_type=KnowledgeBaseType.RISK_DOMAIN,
+                description="Risk-domain document knowledge base for M2D.",
+                status=KnowledgeBaseStatus.ACTIVE,
+                index_alias="chord_m2d_risk_knowledge_active",
+            )
+        )
+        db.commit()
+
+        fetched = kb_repo.get(created.kb_id)
+        listed = kb_repo.list()
+
+        assert fetched is not None
+        assert fetched.kb_name == "风控领域知识库"
+        assert fetched.index_alias == "chord_m2d_risk_knowledge_active"
+        assert [item.kb_id for item in listed] == ["risk_domain_knowledge"]

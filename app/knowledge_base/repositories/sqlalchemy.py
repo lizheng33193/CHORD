@@ -6,11 +6,52 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.knowledge_base.models import (
+    KnowledgeBaseModel,
     KnowledgeDocumentModel,
     KnowledgeDocumentVersionModel,
     KnowledgeIngestJobModel,
 )
-from app.knowledge_base.schemas import KnowledgeDocument, KnowledgeDocumentVersion, KnowledgeIngestJob
+from app.knowledge_base.schemas import KnowledgeBase, KnowledgeDocument, KnowledgeDocumentVersion, KnowledgeIngestJob
+
+
+class SqlAlchemyKnowledgeBaseRepository:
+    def __init__(self, db: Session) -> None:
+        self._db = db
+
+    def create(self, kb: KnowledgeBase) -> KnowledgeBase:
+        model = KnowledgeBaseModel(
+            kb_id=kb.kb_id,
+            kb_name=kb.kb_name,
+            kb_type=kb.kb_type.value,
+            description=kb.description,
+            status=kb.status.value,
+            index_alias=kb.index_alias,
+        )
+        self._db.add(model)
+        self._db.flush()
+        self._db.refresh(model)
+        return _to_kb(model)
+
+    def get(self, kb_id: str) -> KnowledgeBase | None:
+        model = self._db.scalar(select(KnowledgeBaseModel).where(KnowledgeBaseModel.kb_id == kb_id))
+        return _to_kb(model) if model is not None else None
+
+    def list(self) -> list[KnowledgeBase]:
+        items = self._db.scalars(select(KnowledgeBaseModel).order_by(KnowledgeBaseModel.kb_id.asc())).all()
+        return [_to_kb(item) for item in items]
+
+    def update(self, kb: KnowledgeBase) -> KnowledgeBase:
+        model = self._db.scalar(select(KnowledgeBaseModel).where(KnowledgeBaseModel.kb_id == kb.kb_id))
+        if model is None:
+            raise ValueError(f"knowledge base not found: {kb.kb_id}")
+        model.kb_name = kb.kb_name
+        model.kb_type = kb.kb_type.value
+        model.description = kb.description
+        model.status = kb.status.value
+        model.index_alias = kb.index_alias
+        self._db.flush()
+        self._db.refresh(model)
+        return _to_kb(model)
 
 
 class SqlAlchemyKnowledgeDocumentRepository:
@@ -199,6 +240,19 @@ def _to_document(model: KnowledgeDocumentModel) -> KnowledgeDocument:
             "current_version_id": model.current_version_id,
             "status": model.status,
             "permission_scope": model.permission_scope,
+        }
+    )
+
+
+def _to_kb(model: KnowledgeBaseModel) -> KnowledgeBase:
+    return KnowledgeBase.model_validate(
+        {
+            "kb_id": model.kb_id,
+            "kb_name": model.kb_name,
+            "kb_type": model.kb_type,
+            "description": model.description,
+            "status": model.status,
+            "index_alias": model.index_alias,
         }
     )
 

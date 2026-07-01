@@ -41,14 +41,15 @@ class IndexingOrchestrator:
             lose_lock_before_activation=lose_lock_before_activation,
         )
 
-    def start_initial_index(self, *, parsed_document, document, version):
+    def start_initial_index(self, *, parsed_document, document, version, job_id: str | None = None):
         return self._runner.run_initial_index(
             parsed_document=parsed_document,
             document=document,
             version=version,
+            job_id=job_id,
         )
 
-    def start_retry(self, *, parsed_document, document, version, failed_job_id: str):
+    def start_retry(self, *, parsed_document, document, version, failed_job_id: str, job_id: str | None = None):
         with AuthSessionLocal() as db:
             failed_job = SqlAlchemyKnowledgeIngestJobRepository(db).get(failed_job_id)
         if failed_job is None:
@@ -58,18 +59,21 @@ class IndexingOrchestrator:
             document=document,
             version=version,
             failed_job=failed_job,
+            job_id=job_id,
         )
 
-    def start_rebuild_from_parsed(self, *, parsed_document, document, version):
+    def start_rebuild_from_parsed(self, *, parsed_document, document, version, job_id: str | None = None):
         return self._runner.run_rebuild_from_parsed(
             parsed_document=parsed_document,
             document=document,
             version=version,
+            job_id=job_id,
         )
 
-    def start_rebuild_from_persisted_chunks(self, *, document, version, force: bool = False):
+    def start_rebuild_from_persisted_chunks(self, *, document, version, force: bool = False, job_id: str | None = None):
         return self._runner.run_rebuild_from_persisted_chunks(
             document=document,
             version=version,
             force=force,
+            job_id=job_id,
         )
