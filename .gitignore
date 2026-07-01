@@ -2,7 +2,10 @@ __pycache__/
 *.pyc
 .venv/
 .env
+.env.local-mysql
 outputs/
+local_test_docs/
+storage/risk_knowledge/uploads/
 outputs/pycache/
 app/__pycache__/
 *.csv
