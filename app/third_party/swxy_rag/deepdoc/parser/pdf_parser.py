@@ -18,7 +18,6 @@ import logging
 import os
 import random
 
-import xgboost as xgb
 from io import BytesIO
 import re
 import pdfplumber
@@ -33,8 +32,20 @@ from app.third_party.swxy_rag.rag.nlp import rag_tokenizer
 from copy import deepcopy
 from huggingface_hub import snapshot_download
 
+try:
+    import xgboost as xgb
+    _XGBOOST_IMPORT_ERROR = None
+except Exception as exc:  # pragma: no cover - exercised via smoke import path
+    xgb = None
+    _XGBOOST_IMPORT_ERROR = exc
+
 class RAGFlowPdfParser:
     def __init__(self):
+        if xgb is None:
+            raise RuntimeError(
+                "xgboost runtime is unavailable for SWXY PDF parsing; "
+                f"install the required runtime dependencies first: {_XGBOOST_IMPORT_ERROR}"
+            )
         self.ocr = OCR()
         if hasattr(self, "model_speciess"):
             self.layouter = LayoutRecognizer("layout." + self.model_speciess)
