@@ -178,6 +178,9 @@
 - [x] M2C：Status Reconciliation — 已完成（2026-06-30）
   - review：
     - `docs/reviews/m2c-status-reconciliation-review.md`
+  - 说明：
+    - 本节记录的是 `2026-06-30`、`M2D` 启动前的历史状态快照
+    - 当前生效的 `M2D` 状态以上方 `2026-07-01` 的 `M2D` 主段落为准
   - 本次状态校准结论：
     - `M2A-RQ` 已通过 `FU4-FU7` 形成 planning / review / repair / structured-plan gate 主链
     - `M2B` 已 through `M2B-9.1` 完成 retrieval governance / fallback / provenance / rollout readiness 主链
@@ -187,9 +190,9 @@
   - 不变项：
     - 不新增 validator
     - 不改 runtime
-    - 不启动 `M2D`
+    - 当时不启动 `M2D`
   - 下一步：
-    - `M2D` 保持 not started，后续单独规划 `Risk Domain Knowledge RAG`
+    - 当时计划让 `M2D` 保持 not started，后续单独规划 `Risk Domain Knowledge RAG`
 
 - [x] M3-1：Profile DAG Runtime Skeleton — completed（2026-06-30）
   - spec / plan：
