@@ -62,6 +62,7 @@
     - `docs/reviews/m2d-13-golden-set-evaluation-review.md`
     - `docs/reviews/m2d-14a-knowledge-base-admin-api-review.md`
     - `docs/reviews/m2d-14b-knowledge-base-ui-console-review.md`
+    - `docs/reviews/m2d-14b-local-kb-smoke-acceptance-review.md`
   - Progress:
     - `[x] baseline reconciliation: accepted M2D-11~13 lives on origin/codex/m2d-13-golden-evaluation; local M2D-10 was stale workspace state only`
     - `[x] M2D-0 Current State & Scope Review`
@@ -80,6 +81,7 @@
     - `[x] M2D-13 Golden Set Evaluation + Regression`
     - `[x] M2D-14A Knowledge Base Admin API`
     - `[x] M2D-14B Knowledge Base UI Console`
+    - `[x] M2D-14B local md KB smoke acceptance`
     - `[ ] M2D-15 Production Hardening`
   - 当前阶段状态：
     - `M2D: implementation in progress`
@@ -92,13 +94,13 @@
     - `M2D-11 reranker and evidence gate landed; no RiskKnowledgeService/API/NL Chat/Profile Explanation runtime started`
     - `M2D-12 RiskKnowledgeService integration landed; no admin API/UI/golden-set evaluation runtime started`
     - `M2D-14A Knowledge Base Admin API landed; no UI console/production-hardening runtime started`
-    - `M2D-14B Knowledge Base UI Console landed; no production-hardening runtime started`
+    - `M2D-14B Knowledge Base UI Console landed; local md KB smoke passed; no production-hardening runtime started`
   - acceptance closure：
     - `M2D-11 accepted at stage level after targeted reranker/evidence gate validation; full repository regression and real reranker smoke remain optional/pending validation items.`
     - `M2D-12 accepted at stage level after targeted RiskKnowledgeService, NL Chat seam, and Profile Explanation adapter validation; full repository regression and real LLM answer smoke remain optional/pending validation items.`
     - `M2D-13 accepted at stage level after targeted golden-set evaluation and regression validation; runtime evaluation, full repository regression, and runtime baseline remain optional/pending validation items.`
     - `M2D-14A accepted at stage level after targeted Knowledge Base Admin API validation; UI console, full production hardening, and advanced governance remain future stages.`
-    - `M2D-14B accepted at stage level after targeted Knowledge Base UI Console validation; full production hardening, worker queue, advanced governance, and observability remain future stages.`
+    - `M2D-14B accepted at stage level after targeted Knowledge Base UI Console validation; local md KB smoke also passed; full production hardening, worker queue, advanced governance, and observability remain future stages.`
     - v1 regression remains report-only / advisory
     - runtime evaluation remains opt-in / pending
     - full repository regression remains pending / optional
@@ -113,6 +115,7 @@
     - `debug/retrieve` does not call `RiskKnowledgeService`
     - `index` / `rebuild` reuse the current in-process runtime
     - metadata upload persistence remains future API reconciliation
+    - PDF / DOCX / large-document validation remains future targeted validation
     - full repository regression not run for `M2D-14B`
     - production hardening remains future work
   - 本轮产出：
