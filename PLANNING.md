@@ -77,7 +77,14 @@
   - real query embedding smoke remains pending / optional
   - M2D-10 acceptance does not include real Redis smoke
   - `M2D-11 accepted at stage level after targeted reranker/evidence gate validation; full repository regression and real reranker smoke remain optional/pending validation items.`
-  - `M2D-12 accepted at stage level after targeted RiskKnowledgeService, NL Chat seam, and Profile Explanation adapter validation; admin API/UI, golden-set evaluation, and production hardening remain future stages.`
+  - `M2D-12 accepted at stage level after targeted RiskKnowledgeService, NL Chat seam, and Profile Explanation adapter validation; full repository regression and real LLM answer smoke remain optional/pending validation items.`
+  - no admin API/UI
+  - no document upload or reindex/status API
+  - no golden-set evaluation
+  - no frontend
+  - no Data Agent RAG mixing
+  - no ES / SWXY coupling
+  - production hardening remains future work
 - Next phase:
   - `M2D-13 Upload / Reindex / Status API`
 

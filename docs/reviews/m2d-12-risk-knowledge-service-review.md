@@ -71,16 +71,20 @@ Current subphase reading:
 Acceptance posture:
 
 > `M2D-12 accepted at stage level after targeted RiskKnowledgeService, NL Chat seam, and Profile Explanation adapter validation;`
-> `admin API/UI, golden-set evaluation, and production hardening remain future stages.`
+> `full repository regression and real LLM answer smoke remain optional/pending validation items.`
 
 Explicitly not started:
 
 - no admin API/UI
 - no document upload or reindex/status API
 - no golden-set evaluation
-- no frontend changes
+- no frontend
 - no Data Agent RAG mixing
 - no ES / SWXY coupling
+
+Future work:
+
+- production hardening remains future work
 
 ## Next Step
 

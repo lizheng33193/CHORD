@@ -84,15 +84,16 @@
     - `M2D-12 RiskKnowledgeService integration landed; no admin API/UI/golden-set evaluation runtime started`
   - acceptance closure：
     - `M2D-11 accepted at stage level after targeted reranker/evidence gate validation; full repository regression and real reranker smoke remain optional/pending validation items.`
-    - `M2D-12 accepted at stage level after targeted RiskKnowledgeService, NL Chat seam, and Profile Explanation adapter validation; admin API/UI, golden-set evaluation, and production hardening remain future stages.`
+    - `M2D-12 accepted at stage level after targeted RiskKnowledgeService, NL Chat seam, and Profile Explanation adapter validation; full repository regression and real LLM answer smoke remain optional/pending validation items.`
     - full repository regression remains pending / optional
-    - real reranker smoke remains opt-in / pending
+    - real LLM answer smoke remains pending / optional
     - no admin API/UI
     - no document upload or reindex/status API
     - no golden-set evaluation
-    - no frontend changes
+    - no frontend
     - no Data Agent RAG mixing
     - no ES / SWXY coupling
+    - production hardening remains future work
     - unrelated frontend edits and untracked PDF remained untouched
   - 本轮产出：
     - `app/third_party/swxy_rag`
