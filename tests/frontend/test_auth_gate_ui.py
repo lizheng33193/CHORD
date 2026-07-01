@@ -25,6 +25,18 @@ def test_frontend_bundle_includes_auth_components_and_store() -> None:
     assert "js/components/RegisterPage.jsx" in build_src
 
 
+def test_frontend_bundle_locks_babel7() -> None:
+    from app.ui.build_frontend import build_frontend_html
+
+    build_src = BUILD_FRONTEND.read_text(encoding="utf-8")
+    html = build_frontend_html()
+
+    assert "https://unpkg.com/@babel/standalone@7" in build_src
+    assert "https://unpkg.com/@babel/standalone@7" in html
+    assert "https://unpkg.com/@babel/standalone/babel.min.js" not in build_src
+    assert "https://unpkg.com/@babel/standalone/babel.min.js" not in html
+
+
 def test_app_uses_auth_gate_and_logout_capabilities() -> None:
     app_src = APP.read_text(encoding="utf-8")
 
