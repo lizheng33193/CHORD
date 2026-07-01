@@ -2,7 +2,7 @@
 
 ## Summary
 
-This plan defines the full staged path for `M2D`, with the current implementation having progressed through `M2D-13`.
+This plan defines the full staged path for `M2D`, with the current implementation having progressed through `M2D-14A`.
 
 Current `M2D` status:
 
@@ -10,7 +10,7 @@ Current `M2D` status:
 
 Current subphase reading:
 
-> `M2D-13 golden-set evaluation landed; no admin API/UI/production-hardening runtime started`
+> `M2D-14A Knowledge Base Admin API landed; no UI/production-hardening runtime started`
 
 ## Current Status
 
@@ -20,10 +20,12 @@ Current project reading for `M2D`:
 - SWXY identified as reusable engine asset source
 - contract/review/design closure landed
 - M2D-4 to M2D-13 code has landed
+- `M2D-14A` starts from the accepted `M2D-13` baseline (`origin/codex/m2d-13-golden-evaluation`, closure `fd26319`)
 - minimal NL Chat seam has landed
 - minimal Profile Explanation adapter seam has landed
 - golden-set evaluation harness has landed
-- no admin API/UI or frontend work has started
+- admin API has landed
+- no UI or frontend work has started
 
 ## Key Decisions
 
@@ -315,10 +317,15 @@ Current project reading for `M2D`:
   - ingest-job model
 - 输出
   - upload / reindex / status management APIs
+  - durable knowledge-base CRUD
+  - retrieval-only debug API
 - 禁止事项
   - no consumer retrieval bypass through management routes
+  - no UI console or worker queue
 - 验收标准
-  - management APIs expose explicit document and ingest state
+  - management APIs expose explicit KB / document / version / ingest state
+  - uploads stay local-only with bounded file handling
+  - `debug/retrieve` remains retrieval-only and does not call `RiskKnowledgeService`
 
 ### M2D-14B Knowledge Base UI Console
 
@@ -375,7 +382,7 @@ Primary integration risks are:
 The current pass is accepted only if:
 
 - `PLANNING.md` and `TASK.md` use the exact status string `M2D implementation in progress`
-- subphase wording stays at `M2D-13 golden-set evaluation landed; no admin API/UI/production-hardening runtime started`
+- subphase wording stays at `M2D-14A Knowledge Base Admin API landed; no UI/production-hardening runtime started`
 - `M2D` does not use any completion-state label
 - no runtime dependencies, routes, migrations, persistence, retrieval services, or consumer integrations are added in planning-only phases
 - existing `M2C/M3` closure wording remains untouched

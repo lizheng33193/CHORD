@@ -78,6 +78,7 @@ class IndexingJobRunner:
         parsed_document: ParsedDocument,
         document: KnowledgeDocument,
         version: KnowledgeDocumentVersion,
+        job_id: str | None = None,
     ) -> IndexingJobRunResult:
         return self._run(
             parsed_document=parsed_document,
@@ -87,6 +88,7 @@ class IndexingJobRunner:
             reuse_persisted_chunks=False,
             force_rebuild=False,
             failed_job=None,
+            job_id=job_id,
         )
 
     def run_retry(
@@ -96,6 +98,7 @@ class IndexingJobRunner:
         document: KnowledgeDocument,
         version: KnowledgeDocumentVersion,
         failed_job: KnowledgeIngestJob,
+        job_id: str | None = None,
     ) -> IndexingJobRunResult:
         if failed_job.status != IndexingJobStatus.FAILED:
             raise IndexingJobNotRetryableError(f"job is not retryable: {failed_job.job_id}")
@@ -107,6 +110,7 @@ class IndexingJobRunner:
             reuse_persisted_chunks=False,
             force_rebuild=False,
             failed_job=failed_job,
+            job_id=job_id,
         )
 
     def run_rebuild_from_parsed(
@@ -115,6 +119,7 @@ class IndexingJobRunner:
         parsed_document: ParsedDocument,
         document: KnowledgeDocument,
         version: KnowledgeDocumentVersion,
+        job_id: str | None = None,
     ) -> IndexingJobRunResult:
         return self._run(
             parsed_document=parsed_document,
@@ -124,6 +129,7 @@ class IndexingJobRunner:
             reuse_persisted_chunks=False,
             force_rebuild=False,
             failed_job=None,
+            job_id=job_id,
         )
 
     def run_rebuild_from_persisted_chunks(
@@ -132,6 +138,7 @@ class IndexingJobRunner:
         document: KnowledgeDocument,
         version: KnowledgeDocumentVersion,
         force: bool = False,
+        job_id: str | None = None,
     ) -> IndexingJobRunResult:
         return self._run(
             parsed_document=None,
@@ -141,6 +148,7 @@ class IndexingJobRunner:
             reuse_persisted_chunks=True,
             force_rebuild=force,
             failed_job=None,
+            job_id=job_id,
         )
 
     def _run(
@@ -153,11 +161,12 @@ class IndexingJobRunner:
         reuse_persisted_chunks: bool,
         force_rebuild: bool,
         failed_job: KnowledgeIngestJob | None,
+        job_id: str | None,
     ) -> IndexingJobRunResult:
         self._validate_version_status(version, trigger)
         attempt = 1 if failed_job is None else failed_job.attempt + 1
         root_job_id = failed_job.root_job_id if failed_job is not None and failed_job.root_job_id else None
-        job_id = build_indexing_job_id()
+        job_id = job_id or build_indexing_job_id()
         lock_token = self._deps.version_lock.acquire(version.version_id)
         now = self._now()
         state = RedisIndexingJobState(
@@ -365,6 +374,9 @@ class IndexingJobRunner:
     ) -> KnowledgeIngestJob:
         with self._deps.session_factory() as db:
             repo = SqlAlchemyKnowledgeIngestJobRepository(db)
+            existing = repo.get(job_id)
+            if existing is not None:
+                return existing
             job = repo.create(
                 KnowledgeIngestJob(
                     job_id=job_id,

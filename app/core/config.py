@@ -112,6 +112,17 @@ class Settings(BaseModel):
         "RISK_KNOWLEDGE_FAISS_ARTIFACT_DIR",
         "outputs/risk_knowledge/faiss",
     )
+    risk_knowledge_upload_dir: str = os.getenv(
+        "RISK_KNOWLEDGE_UPLOAD_DIR",
+        "storage/risk_knowledge/uploads",
+    )
+    risk_knowledge_max_upload_mb: int = int(
+        os.getenv("RISK_KNOWLEDGE_MAX_UPLOAD_MB", "50")
+    )
+    risk_knowledge_allowed_upload_extensions: str = os.getenv(
+        "RISK_KNOWLEDGE_ALLOWED_UPLOAD_EXTENSIONS",
+        "pdf,docx,md,txt",
+    ).strip() or "pdf,docx,md,txt"
     risk_knowledge_redis_url: str = os.getenv(
         "RISK_KNOWLEDGE_REDIS_URL",
         "redis://127.0.0.1:6379/15",
