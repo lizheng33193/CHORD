@@ -50,6 +50,7 @@
     - `docs/specs/m2d-14a-knowledge-base-admin-api-spec.md`
     - `docs/specs/m2d-14b-knowledge-base-ui-console-spec.md`
     - `docs/plans/m2d-risk-domain-rag-integration-plan.md`
+    - `docs/plans/m2d-14c-targeted-file-type-validation-plan.md`
     - `docs/reviews/m2d-4-swxy-vendor-import-review.md`
     - `docs/reviews/m2d-5-knowledge-base-module-skeleton-review.md`
     - `docs/reviews/m2d-6-swxy-ingestion-adapter-review.md`
@@ -82,6 +83,7 @@
     - `[x] M2D-14A Knowledge Base Admin API`
     - `[x] M2D-14B Knowledge Base UI Console`
     - `[x] M2D-14B local md KB smoke acceptance`
+    - `[ ] M2D-14C Targeted File-Type Validation`
     - `[ ] M2D-15 Production Hardening`
   - 当前阶段状态：
     - `M2D: implementation in progress`
@@ -95,6 +97,7 @@
     - `M2D-12 RiskKnowledgeService integration landed; no admin API/UI/golden-set evaluation runtime started`
     - `M2D-14A Knowledge Base Admin API landed; no UI console/production-hardening runtime started`
     - `M2D-14B Knowledge Base UI Console landed; local md KB smoke passed; no production-hardening runtime started`
+    - `M2D-14C Targeted File-Type Validation planned; not started`
   - acceptance closure：
     - `M2D-11 accepted at stage level after targeted reranker/evidence gate validation; full repository regression and real reranker smoke remain optional/pending validation items.`
     - `M2D-12 accepted at stage level after targeted RiskKnowledgeService, NL Chat seam, and Profile Explanation adapter validation; full repository regression and real LLM answer smoke remain optional/pending validation items.`
@@ -158,7 +161,8 @@
     - 不新增 migration
     - 不重写现有 `M2A/M2B/M2C/M3` closure wording
   - 下一步：
-    - `M2D-15 Production Hardening`
+    - `M2D-14C Targeted File-Type Validation`
+    - `M2D-15 Production Hardening` 保持 not started
 
 - [x] M2C：Status Reconciliation — 已完成（2026-06-30）
   - review：

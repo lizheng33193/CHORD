@@ -21,6 +21,7 @@
   - `docs/specs/m2d-14a-knowledge-base-admin-api-spec.md`
   - `docs/specs/m2d-14b-knowledge-base-ui-console-spec.md`
   - `docs/plans/m2d-risk-domain-rag-integration-plan.md`
+  - `docs/plans/m2d-14c-targeted-file-type-validation-plan.md`
   - `docs/reviews/m2d-4-swxy-vendor-import-review.md`
   - `docs/reviews/m2d-5-knowledge-base-module-skeleton-review.md`
   - `docs/reviews/m2d-6-swxy-ingestion-adapter-review.md`
@@ -84,6 +85,7 @@
   - `M2D-12 RiskKnowledgeService integration landed; no admin API/UI/golden-set evaluation runtime started`
   - `M2D-14A Knowledge Base Admin API landed; no UI console/production-hardening runtime started`
   - `M2D-14B Knowledge Base UI Console landed; local md KB smoke passed; no production-hardening runtime started`
+  - `M2D-14C Targeted File-Type Validation planned; not started`
 - Acceptance posture:
   - `M2D-10 accepted at stage level after targeted retrieval foundation validation`
   - full repository regression remains pending / optional
@@ -111,7 +113,8 @@
   - full repository regression not run for `M2D-14B`
   - production hardening remains future work
 - Next phase:
-  - `M2D-15 Production Hardening`
+  - `M2D-14C Targeted File-Type Validation`
+  - `M2D-15 Production Hardening` remains not started
 
 ## 2026-06-30 M3-1 Profile DAG Runtime Skeleton
 
