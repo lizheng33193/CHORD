@@ -40,6 +40,7 @@ def auth_db(tmp_path: Path, monkeypatch):
 
 class DeterministicTestEmbeddingProvider:
     provider_name = "deterministic_test"
+    max_batch_size = None
 
     def embed(self, inputs: list[EmbeddingInput]) -> list[EmbeddingVectorResult]:
         results: list[EmbeddingVectorResult] = []
@@ -54,6 +55,35 @@ class DeterministicTestEmbeddingProvider:
                     dimension=2,
                     vector=vector,
                     vector_checksum=f"sha256:{len(item.text)}",
+                )
+            )
+        return results
+
+
+class TrackingBatchEmbeddingProvider:
+    provider_name = "tracking_batch_test"
+    max_batch_size = 2
+
+    def __init__(self, *, dimension: int = 2) -> None:
+        self.dimension = dimension
+        self.batch_sizes: list[int] = []
+
+    def embed(self, inputs: list[EmbeddingInput]) -> list[EmbeddingVectorResult]:
+        self.batch_sizes.append(len(inputs))
+        results: list[EmbeddingVectorResult] = []
+        for item in inputs:
+            vector = [float(len(item.text)), float(len(item.chunk_id))][: self.dimension]
+            if self.dimension > 2:
+                vector.extend([1.0] * (self.dimension - 2))
+            results.append(
+                EmbeddingVectorResult(
+                    chunk_id=item.chunk_id,
+                    content_hash=item.content_hash,
+                    provider=self.provider_name,
+                    model="tracking-batch-v1",
+                    dimension=self.dimension,
+                    vector=vector,
+                    vector_checksum=f"sha256:{item.chunk_id}:{self.dimension}",
                 )
             )
         return results
@@ -158,6 +188,84 @@ def test_embedding_batch_service_rejects_dimension_mismatch() -> None:
         )
 
 
+def test_embedding_batch_service_batches_embed_inputs() -> None:
+    from app.risk_knowledge.embedding.batch_service import EmbeddingBatchService
+
+    provider = TrackingBatchEmbeddingProvider()
+    service = EmbeddingBatchService(provider=provider, expected_dimension=2)
+
+    result = service.embed_inputs(
+        [
+            EmbeddingInput(
+                chunk_id=f"risk_guide_202607_chunk_{index:06d}",
+                content_hash=f"sha256:content:{index}",
+                text=f"风险知识内容 {index}",
+            )
+            for index in range(5)
+        ]
+    )
+
+    assert provider.batch_sizes == [2, 2, 1]
+    assert len(result.records) == 5
+
+
+def test_embedding_batch_service_batches_persisted_chunks(auth_db) -> None:
+    from app.auth.database import AuthSessionLocal
+    from app.knowledge_base.schemas import ChunkStatus, DocumentVersionStatus, KnowledgeChunk, KnowledgeDocumentVersion, PermissionScope, SourceType
+    from app.risk_knowledge.embedding.batch_service import EmbeddingBatchService
+    from app.risk_knowledge.persistence.service import KnowledgeChunkPersistenceService
+
+    version = KnowledgeDocumentVersion(
+        version_id="risk_guide_202607",
+        doc_id="risk_guide",
+        kb_id="risk_domain_knowledge",
+        version="2026-07",
+        file_hash="sha256:file",
+        file_uri="knowledge/risk/risk_guide.pdf",
+        parser_version="swxy-parser-v1",
+        chunker_version="chunker-v1",
+        embedding_model=None,
+        embedding_dim=None,
+        index_name=None,
+        status=DocumentVersionStatus.PARSED,
+    )
+    chunks = [
+        KnowledgeChunk(
+            chunk_id=f"risk_guide_202607_chunk_{index:06d}",
+            kb_id="risk_domain_knowledge",
+            doc_id="risk_guide",
+            version_id="risk_guide_202607",
+            chunk_order=index,
+            chunk_type="paragraph",
+            section_title="贷后风险识别",
+            section_path=["智能风控指南", "贷后风险识别"],
+            page_start=12,
+            page_end=12,
+            content=f"贷后风险识别是指...{index}",
+            content_hash=f"sha256:content:{index}",
+            status=ChunkStatus.PENDING,
+            permission_scope=PermissionScope.INTERNAL,
+            source_type=SourceType.PDF,
+            source_uri="knowledge/risk/risk_guide.pdf",
+            source_metadata={"doc_name": "risk_guide.pdf"},
+        )
+        for index in range(1, 6)
+    ]
+
+    with AuthSessionLocal() as db:
+        KnowledgeChunkPersistenceService(db).persist_chunks(version, chunks)
+        provider = TrackingBatchEmbeddingProvider()
+        service = EmbeddingBatchService(provider=provider, expected_dimension=2, db=db)
+
+        result = service.embed_persisted_chunks(
+            version_id=version.version_id,
+            chunk_ids=[chunk.chunk_id for chunk in chunks],
+        )
+
+        assert provider.batch_sizes == [2, 2, 1]
+        assert len(result.records) == 5
+
+
 def test_openai_compatible_provider_requires_runtime_dependency(monkeypatch) -> None:
     from app.risk_knowledge.embedding import openai_compatible_provider as provider_module
     from app.risk_knowledge.embedding.openai_compatible_provider import OpenAICompatibleEmbeddingProvider
@@ -248,6 +356,20 @@ def test_dashscope_provider_requires_dashscope_api_key(monkeypatch) -> None:
                 )
             ]
         )
+
+
+def test_dashscope_provider_declares_max_batch_size() -> None:
+    from app.risk_knowledge.embedding.dashscope_provider import DashScopeEmbeddingProvider
+
+    provider = DashScopeEmbeddingProvider(
+        api_key="dashscope-test-key",
+        model="text-embedding-v4",
+        dimension=1024,
+        output_type="dense",
+        text_type="document",
+    )
+
+    assert provider.max_batch_size == 10
 
 
 def test_dashscope_provider_error_does_not_leak_api_key(monkeypatch) -> None:
