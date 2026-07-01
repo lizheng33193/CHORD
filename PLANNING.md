@@ -78,7 +78,7 @@
   - `M2D-9 indexing job runtime landed; no retrieval/rerank/RiskKnowledgeService/API runtime started`
   - `M2D-11 reranker and evidence gate landed; no RiskKnowledgeService/API/NL Chat/Profile Explanation runtime started`
   - `M2D-12 RiskKnowledgeService integration landed; no admin API/UI/golden-set evaluation runtime started`
-  - `M2D-14A Knowledge Base Admin API landed; no UI/production-hardening runtime started`
+  - `M2D-14A Knowledge Base Admin API landed; no UI console/production-hardening runtime started`
 - Acceptance posture:
   - `M2D-10 accepted at stage level after targeted retrieval foundation validation`
   - full repository regression remains pending / optional
@@ -87,13 +87,19 @@
   - `M2D-11 accepted at stage level after targeted reranker/evidence gate validation; full repository regression and real reranker smoke remain optional/pending validation items.`
   - `M2D-12 accepted at stage level after targeted RiskKnowledgeService, NL Chat seam, and Profile Explanation adapter validation; full repository regression and real LLM answer smoke remain optional/pending validation items.`
   - `M2D-13 accepted at stage level after targeted golden-set evaluation and regression validation; runtime evaluation, full repository regression, and runtime baseline remain optional/pending validation items.`
+  - `M2D-14A accepted at stage level after targeted Knowledge Base Admin API validation; UI console, full production hardening, and advanced governance remain future stages.`
   - v1 regression remains report-only / advisory
   - runtime evaluation remains opt-in / pending
   - runtime baseline remains intentionally uncommitted in v1
-  - no admin UI
+  - no UI console
   - no frontend
+  - no production worker queue
   - no Data Agent RAG mixing
   - no ES / SWXY coupling
+  - `debug/retrieve` remains retrieval-only v1
+  - `debug/retrieve` does not call `RiskKnowledgeService`
+  - `index` / `rebuild` reuse the current in-process runtime
+  - full repository regression not run for `M2D-14A`
   - production hardening remains future work
 - Next phase:
   - `M2D-14B Knowledge Base UI Console`

@@ -15,6 +15,7 @@ Delivered surfaces:
 Not started in this phase:
 
 - UI console
+- frontend changes
 - worker queue / production hardening
 - Data Agent RAG coupling
 - evidence/answer debug endpoints
@@ -24,6 +25,7 @@ Not started in this phase:
 - `KnowledgeBase` durable state was added to `app/knowledge_base` because honest admin CRUD required persistent KB records.
 - upload writes are streamed, hashed during write, and atomically renamed under a configured upload root.
 - admin indexing reuses the current in-process runtime and adds a pre-created `job_id` seam so APIs can return immediate job metadata.
+- no production worker queue was introduced in `M2D-14A`
 - runtime status reads tolerate missing Redis state and fall back to durable job data.
 - `debug/retrieve` is a deliberate retrieval-only v1 contract and does not call `RiskKnowledgeService`.
 
@@ -32,6 +34,21 @@ Not started in this phase:
 - `pytest -q tests/risk_knowledge/admin tests/risk_knowledge/service tests/risk_knowledge/evaluation tests/risk_knowledge/evidence tests/risk_knowledge/reranking tests/risk_knowledge/retrieval tests/risk_knowledge/runtime tests/knowledge_base`
 - `python -m compileall -q app/risk_knowledge app/knowledge_base tests/risk_knowledge tests/knowledge_base`
 - `git diff --check`
+- full repository regression was not run in this stage closure
+
+## Acceptance Closure
+
+`M2D-14A` accepted at stage level after targeted Knowledge Base Admin API validation; UI console, full production hardening, and advanced governance remain future stages.
+
+Closure boundary remains explicit:
+
+- no UI console
+- no frontend changes
+- no production worker queue
+- `debug/retrieve` remains retrieval-only v1
+- `debug/retrieve` does not call `RiskKnowledgeService`
+- `index` / `rebuild` reuse the current in-process runtime
+- full repository regression not run
 
 ## Result
 
@@ -41,4 +58,4 @@ Status wording can now move from:
 
 to:
 
-> `M2D-14A Knowledge Base Admin API landed; no UI/production-hardening runtime started`
+> `M2D-14A Knowledge Base Admin API landed; no UI console/production-hardening runtime started`
