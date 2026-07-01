@@ -15,6 +15,7 @@ const {
   TracePanel,
   ModuleStatusPanel,
   ChatPanel,
+  KnowledgeBaseConsole,
 } = window.AppComponents;
 
 const FALLBACK_RESULT_DASHBOARD = {
@@ -420,6 +421,7 @@ function DashboardView({
   );
   const permissionSet = React.useMemo(() => new Set(Array.isArray(permissions) ? permissions : []), [permissions]);
   const canAccessTrace = !currentUser || currentUser.is_superuser || permissionSet.has('trace:run') || permissionSet.has('trace:view');
+  const canManageProject = !currentUser || currentUser.is_superuser || permissionSet.has('project:manage');
   const dashboardTabs = [
     { id: 'comprehensive', title: '综合画像', sub: 'COMPREHENSIVE', icon: Network, iconColor: '#f97316', bgStart: '#f5bf48', bgEnd: '#b04ed3', shadow: 'rgba(212, 106, 25, 0.28)' },
     { id: 'app', title: 'App画像', sub: 'APP USAGE', icon: Smartphone, iconColor: '#3b82f6', bgStart: '#5db7f0', bgEnd: '#2c59d6', shadow: 'rgba(37, 99, 235, 0.28)' },
@@ -428,7 +430,12 @@ function DashboardView({
     { id: 'product', title: '产品策略', sub: 'PRODUCT ADVICE', icon: Package, iconColor: '#14b8a6', bgStart: '#8bd8a6', bgEnd: '#68bebd', shadow: 'rgba(20, 184, 166, 0.22)' },
     { id: 'ops', title: '运营策略', sub: 'OPERATIONS', icon: Headphones, iconColor: '#8b5cf6', bgStart: '#b28ef4', bgEnd: '#8d72ea', shadow: 'rgba(139, 92, 246, 0.22)' },
     { id: 'trace', title: '深度行为解析', sub: 'TRACE ANALYSIS', icon: Search, iconColor: '#a855f7', bgStart: '#d59dff', bgEnd: '#a855f7', shadow: 'rgba(168, 85, 247, 0.22)' },
-  ].filter((tab) => (tab.id === 'trace' ? canAccessTrace : true));
+    { id: 'knowledge', title: '知识库管理', sub: 'RISK KNOWLEDGE', icon: Settings, iconColor: '#0891b2', bgStart: '#6ee7f9', bgEnd: '#0284c7', shadow: 'rgba(8, 145, 178, 0.24)' },
+  ].filter((tab) => {
+    if (tab.id === 'trace') return canAccessTrace;
+    if (tab.id === 'knowledge') return canManageProject;
+    return true;
+  });
   const hasVisibleTab = dashboardTabs.some((tab) => tab.id === activeTab);
   const visibleActiveTab = hasVisibleTab ? activeTab : 'comprehensive';
   const activeTabMeta = dashboardTabs.find((tab) => tab.id === visibleActiveTab) || dashboardTabs[0];
@@ -443,6 +450,7 @@ function DashboardView({
     product: 'min-w-[960px]',
     ops: 'min-w-[960px]',
     trace: 'min-w-[960px]',
+    knowledge: 'min-w-[1080px]',
   }[visibleActiveTab] || 'min-w-full';
 
   React.useEffect(() => {
@@ -566,6 +574,9 @@ function DashboardView({
   function renderActivePanel() {
     if (visibleActiveTab === 'trace') {
       return <TracePanel uid={uid} cacheEntry={traceCacheByUid[uid]} onRetry={() => handleTraceRetry(uid)} />;
+    }
+    if (visibleActiveTab === 'knowledge') {
+      return <KnowledgeBaseConsole activeTab={visibleActiveTab} currentUser={currentUser} />;
     }
     return (
       <ModuleStatusPanel state={activeModuleState} onRetry={() => onRetryModule && onRetryModule(visibleActiveTab)}>

@@ -32,7 +32,7 @@ const MODULE_RESULT_MAP = {
   ops: 'ops_advice'
 };
 
-const VALID_DASHBOARD_TABS = ['comprehensive', 'app', 'behavior', 'credit', 'product', 'ops', 'trace', 'chat'];
+const VALID_DASHBOARD_TABS = ['comprehensive', 'app', 'behavior', 'credit', 'product', 'ops', 'trace', 'knowledge', 'chat'];
 const WORKSPACE_SNAPSHOT_STORAGE_KEY = 'maps-lz.workspace-snapshot.v1';
 
 function getInitialDashboardTab() {
@@ -333,6 +333,7 @@ function AppShell({ currentUser, onLogout, setPreferredCountry, setPreferredProj
   const [country, setCountry] = useState(getInitialCountry);
   const authorizedScopes = Array.isArray(authState && authState.authorizedScopes) ? authState.authorizedScopes : [];
   const preferredProjectId = authState && authState.preferredProjectId ? String(authState.preferredProjectId) : '';
+  const canManageProject = !currentUser || currentUser.is_superuser || userPermissions.includes('project:manage');
 
   function getProjectEntries(scopes) {
     const entries = [];
@@ -477,8 +478,15 @@ function AppShell({ currentUser, onLogout, setPreferredCountry, setPreferredProj
 
   useEffect(() => {
     if (view !== 'dashboard') return;
+    if (activeTab === 'knowledge' && !canManageProject) {
+      setActiveTab('comprehensive');
+      return;
+    }
     const params = new URLSearchParams(window.location.search);
     const tabTarget = (chatSessionId || chatFocusRequested) ? 'chat' : activeTab;
+    if (params.get('tab') === 'knowledge' && !canManageProject) {
+      params.set('tab', 'comprehensive');
+    }
     if (chatSessionId) {
       params.set('session', chatSessionId);
     } else {
@@ -489,7 +497,15 @@ function AppShell({ currentUser, onLogout, setPreferredCountry, setPreferredProj
     }
     const nextUrl = `${window.location.pathname}?${params.toString()}${window.location.hash}`;
     window.history.replaceState({}, '', nextUrl);
-  }, [view, activeTab, chatFocusRequested, chatSessionId]);
+  }, [view, activeTab, chatFocusRequested, chatSessionId, canManageProject]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get('tab');
+    if (tab === 'knowledge' && !canManageProject) {
+      setActiveTab('comprehensive');
+    }
+  }, [canManageProject]);
 
   function playLoadingSequence() {
     return new Promise((resolve) => {

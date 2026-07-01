@@ -48,6 +48,7 @@
     - `docs/specs/m2d-12-risk-knowledge-service-spec.md`
     - `docs/specs/m2d-13-golden-set-evaluation-spec.md`
     - `docs/specs/m2d-14a-knowledge-base-admin-api-spec.md`
+    - `docs/specs/m2d-14b-knowledge-base-ui-console-spec.md`
     - `docs/plans/m2d-risk-domain-rag-integration-plan.md`
     - `docs/reviews/m2d-4-swxy-vendor-import-review.md`
     - `docs/reviews/m2d-5-knowledge-base-module-skeleton-review.md`
@@ -60,6 +61,7 @@
     - `docs/reviews/m2d-12-risk-knowledge-service-review.md`
     - `docs/reviews/m2d-13-golden-set-evaluation-review.md`
     - `docs/reviews/m2d-14a-knowledge-base-admin-api-review.md`
+    - `docs/reviews/m2d-14b-knowledge-base-ui-console-review.md`
   - Progress:
     - `[x] baseline reconciliation: accepted M2D-11~13 lives on origin/codex/m2d-13-golden-evaluation; local M2D-10 was stale workspace state only`
     - `[x] M2D-0 Current State & Scope Review`
@@ -77,7 +79,7 @@
     - `[x] M2D-12 RiskKnowledgeService / Consumer Integration`
     - `[x] M2D-13 Golden Set Evaluation + Regression`
     - `[x] M2D-14A Knowledge Base Admin API`
-    - `[ ] M2D-14B Knowledge Base UI Console`
+    - `[x] M2D-14B Knowledge Base UI Console`
     - `[ ] M2D-15 Production Hardening`
   - 当前阶段状态：
     - `M2D: implementation in progress`
@@ -90,24 +92,25 @@
     - `M2D-11 reranker and evidence gate landed; no RiskKnowledgeService/API/NL Chat/Profile Explanation runtime started`
     - `M2D-12 RiskKnowledgeService integration landed; no admin API/UI/golden-set evaluation runtime started`
     - `M2D-14A Knowledge Base Admin API landed; no UI console/production-hardening runtime started`
+    - `M2D-14B Knowledge Base UI Console landed; no production-hardening runtime started`
   - acceptance closure：
     - `M2D-11 accepted at stage level after targeted reranker/evidence gate validation; full repository regression and real reranker smoke remain optional/pending validation items.`
     - `M2D-12 accepted at stage level after targeted RiskKnowledgeService, NL Chat seam, and Profile Explanation adapter validation; full repository regression and real LLM answer smoke remain optional/pending validation items.`
     - `M2D-13 accepted at stage level after targeted golden-set evaluation and regression validation; runtime evaluation, full repository regression, and runtime baseline remain optional/pending validation items.`
     - `M2D-14A accepted at stage level after targeted Knowledge Base Admin API validation; UI console, full production hardening, and advanced governance remain future stages.`
+    - `M2D-14B accepted at stage level after targeted Knowledge Base UI Console validation; full production hardening, worker queue, advanced governance, and observability remain future stages.`
     - v1 regression remains report-only / advisory
     - runtime evaluation remains opt-in / pending
     - full repository regression remains pending / optional
     - runtime baseline remains intentionally uncommitted in v1
-    - no UI console
-    - no frontend
+    - no standalone admin app
     - no production worker queue
     - no Data Agent RAG mixing
     - no ES / SWXY coupling
     - `debug/retrieve` remains retrieval-only v1
     - `debug/retrieve` does not call `RiskKnowledgeService`
     - `index` / `rebuild` reuse the current in-process runtime
-    - full repository regression not run for `M2D-14A`
+    - full repository regression not run for `M2D-14B`
     - production hardening remains future work
   - 本轮产出：
     - `app/third_party/swxy_rag`
@@ -125,6 +128,8 @@
     - `app/risk_knowledge/evaluation`
     - `app/risk_knowledge/admin`
     - `app/api/risk_knowledge_admin.py`
+    - `app/static/js/services/riskKnowledgeAdminApi.js`
+    - `app/static/js/components/panels/knowledge`
     - vendored SWXY `deepdoc/`, `rag/`, `core/api/utils/file_utils.py`, `conf/mapping.json`
     - renamed vendored entry files `file_parse_core.py` / `retrieval_core.py`
     - `M2D-4` vendor import review
@@ -139,8 +144,6 @@
     - `M2D-13` golden-set evaluation review
     - `M2D-14A` knowledge-base admin API spec/review
   - Explicitly not started：
-    - admin UI
-    - frontend changes
     - Data Agent RAG mixing
     - production hardening
   - 不变项：
@@ -149,7 +152,7 @@
     - 不新增 migration
     - 不重写现有 `M2A/M2B/M2C/M3` closure wording
   - 下一步：
-    - `M2D-14B Knowledge Base UI Console`
+    - `M2D-15 Production Hardening`
 
 - [x] M2C：Status Reconciliation — 已完成（2026-06-30）
   - review：
