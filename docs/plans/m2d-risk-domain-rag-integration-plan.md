@@ -2,7 +2,7 @@
 
 ## Summary
 
-This plan defines the full staged path for `M2D`, with the current implementation having progressed through `M2D-14A`.
+This plan defines the full staged path for `M2D`, with the current implementation having progressed through `M2D-14B`.
 
 Current `M2D` status:
 
@@ -10,7 +10,7 @@ Current `M2D` status:
 
 Current subphase reading:
 
-> `M2D-14A Knowledge Base Admin API landed; no UI/production-hardening runtime started`
+> `M2D-14B Knowledge Base UI Console landed; no production-hardening runtime started`
 
 ## Current Status
 
@@ -25,7 +25,7 @@ Current project reading for `M2D`:
 - minimal Profile Explanation adapter seam has landed
 - golden-set evaluation harness has landed
 - admin API has landed
-- no UI or frontend work has started
+- dashboard-side Knowledge Base UI Console has landed
 
 ## Key Decisions
 
@@ -336,9 +336,13 @@ Current project reading for `M2D`:
 - 输出
   - knowledge-base admin UI console
 - 禁止事项
-  - no production-hardening expansion yet
+  - no backend runtime expansion
+  - no standalone admin app
+  - no worker queue or SSE/WebSocket
 - 验收标准
   - upload / status / reindex flows are operable from UI without changing M2D runtime semantics
+  - unauthorized users do not see the `knowledge` tab
+  - `debug/retrieve` stays retrieval-only v1
 
 ### M2D-15 Production Hardening
 
@@ -382,7 +386,7 @@ Primary integration risks are:
 The current pass is accepted only if:
 
 - `PLANNING.md` and `TASK.md` use the exact status string `M2D implementation in progress`
-- subphase wording stays at `M2D-14A Knowledge Base Admin API landed; no UI/production-hardening runtime started`
+- subphase wording stays at `M2D-14B Knowledge Base UI Console landed; no production-hardening runtime started`
 - `M2D` does not use any completion-state label
 - no runtime dependencies, routes, migrations, persistence, retrieval services, or consumer integrations are added in planning-only phases
 - existing `M2C/M3` closure wording remains untouched
