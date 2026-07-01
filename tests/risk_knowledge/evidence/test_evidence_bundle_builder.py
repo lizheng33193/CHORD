@@ -112,3 +112,34 @@ def test_bundle_builder_preserves_citations_when_gate_fails() -> None:
     assert bundle.citations[0].chunk_id == bundle.selected_evidence[0].chunk_id
     assert "answer" not in bundle.model_dump()
     assert "generated_text" not in bundle.model_dump()
+
+
+def test_bundle_builder_build_with_trace_preserves_bundle_core_output() -> None:
+    from app.risk_knowledge.evidence.evidence_bundle_builder import RiskEvidenceBundleBuilder
+
+    retrieval_result = HybridRetrievalResult(
+        query="loan risk",
+        normalized_query="loan risk",
+        kb_id="risk_domain_knowledge",
+        scope_type=RetrievalScopeType.KB_ACTIVE_DOCUMENTS,
+        active_manifest_index_ids=["idx_risk_guide"],
+        embedding_provider="deterministic_test",
+        embedding_model="deterministic-v1",
+        embedding_dimension=2,
+        candidates=[_build_candidate()],
+        diagnostics={},
+    )
+
+    builder = RiskEvidenceBundleBuilder.from_provider(
+        provider=_FixedProvider(),
+        rerank_model="fixed-rerank-v1",
+        min_rerank_score=0.05,
+    )
+
+    bundle = builder.build(retrieval_result)
+    trace = builder.build_with_trace(retrieval_result)
+
+    assert trace.bundle.should_answer == bundle.should_answer
+    assert trace.bundle.gate_decision == bundle.gate_decision
+    assert trace.bundle.citations == bundle.citations
+    assert trace.bundle.selected_evidence == bundle.selected_evidence

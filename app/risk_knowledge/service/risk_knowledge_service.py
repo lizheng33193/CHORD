@@ -2,7 +2,13 @@
 
 from __future__ import annotations
 
+from app.risk_knowledge.evidence.schemas import RiskEvidenceBundle
 from app.risk_knowledge.evidence.errors import EvidenceError
+from app.risk_knowledge.retrieval.schemas import (
+    HybridRetrievalCandidate,
+    HybridRetrievalResult,
+    RetrievalQuery,
+)
 from app.risk_knowledge.retrieval.errors import RetrievalError
 from app.risk_knowledge.reranking.errors import RerankerError
 from app.risk_knowledge.service.answer_synthesizer import (
@@ -21,8 +27,10 @@ from app.risk_knowledge.service.route_policy import RiskKnowledgeRoutePolicy
 from app.risk_knowledge.service.schemas import (
     GroundedAnswerRequest,
     RiskKnowledgeAnswer,
+    RiskKnowledgeAnswerTrace,
     RiskKnowledgeQuery,
 )
+from app.risk_knowledge.traces import RiskEvidenceBuildTrace
 
 
 class RiskKnowledgeService:
@@ -44,13 +52,21 @@ class RiskKnowledgeService:
         self._refusal_builder = refusal_builder or RefusalBuilder()
 
     def answer(self, query: RiskKnowledgeQuery) -> RiskKnowledgeAnswer:
+        return self.answer_with_trace(query).answer
+
+    def answer_with_trace(self, query: RiskKnowledgeQuery) -> RiskKnowledgeAnswerTrace:
         route = self._route_policy.decide(query)
         if not route.should_route:
             raise RiskKnowledgeRoutingError(route.reason)
         try:
-            bundle = self._pipeline.build_bundle(query)
+            if hasattr(self._pipeline, "build_trace"):
+                build_trace = self._pipeline.build_trace(query)
+            else:
+                bundle = self._pipeline.build_bundle(query)
+                build_trace = _build_fallback_trace(query, bundle)
         except (RetrievalError, RerankerError, EvidenceError, RuntimeError) as exc:
             raise RiskEvidenceUnavailableError(str(exc)) from exc
+        bundle = build_trace.bundle
 
         citations = self._citation_renderer.render(bundle)
         diagnostics: dict[str, object] = {
@@ -60,12 +76,10 @@ class RiskKnowledgeService:
             "selected_count": len(bundle.selected_evidence),
         }
         if not bundle.should_answer:
-            return self._refusal_builder.build(
-                query=query,
-                bundle=bundle,
-                citations=citations,
-                diagnostics=diagnostics,
+            answer = self._refusal_builder.build(
+                query=query, bundle=bundle, citations=citations, diagnostics=diagnostics
             )
+            return RiskKnowledgeAnswerTrace(query=query, build_trace=build_trace, answer=answer)
 
         evidence_context = self._context_builder.build(bundle)
         synthesized = self._synthesizer.synthesize(
@@ -89,7 +103,7 @@ class RiskKnowledgeService:
                 "used_citation_ids": list(synthesized.used_citation_ids),
             }
         )
-        return RiskKnowledgeAnswer(
+        answer = RiskKnowledgeAnswer(
             query=query.query,
             normalized_query=bundle.normalized_query,
             answer=synthesized.answer,
@@ -101,10 +115,58 @@ class RiskKnowledgeService:
             used_citation_ids=list(synthesized.used_citation_ids),
             diagnostics=diagnostics,
         )
+        return RiskKnowledgeAnswerTrace(query=query, build_trace=build_trace, answer=answer)
 
 
 def build_risk_knowledge_service_from_settings() -> RiskKnowledgeService:
     return RiskKnowledgeService(
         pipeline=RiskEvidencePipeline(),
         route_policy=RiskKnowledgeRoutePolicy(),
+    )
+
+
+def _build_fallback_trace(query: RiskKnowledgeQuery, bundle: RiskEvidenceBundle) -> RiskEvidenceBuildTrace:
+    retrieval_result = HybridRetrievalResult(
+        query=bundle.query,
+        normalized_query=bundle.normalized_query,
+        kb_id=bundle.kb_id,
+        scope_type=bundle.scope_type,
+        active_manifest_index_ids=list(bundle.active_manifest_index_ids),
+        embedding_provider="unknown",
+        embedding_model="unknown",
+        embedding_dimension=1,
+        candidates=[
+            HybridRetrievalCandidate(
+                retrieval_key=f"{item.manifest_index_id}:{item.chunk_id}",
+                chunk_id=item.chunk_id,
+                document_id=item.document_id,
+                version_id=item.version_id,
+                manifest_index_id=item.manifest_index_id,
+                content_hash=item.content_hash,
+                section_path=item.section_path,
+                page_start=item.page_start,
+                page_end=item.page_end,
+                text=item.text,
+                vector_raw_score=None,
+                keyword_score=None,
+                vector_rank=None,
+                keyword_rank=None,
+                fused_score=item.retrieval_fused_score,
+                fused_rank=item.retrieval_fused_rank,
+                matched_channels=item.matched_channels,
+            )
+            for item in bundle.selected_evidence
+        ],
+        diagnostics=dict(bundle.retrieval_diagnostics),
+    )
+    return RiskEvidenceBuildTrace(
+        retrieval_query=RetrievalQuery(
+            query=query.query,
+            kb_id=query.kb_id,
+            version_id=query.version_id,
+            document_id=query.document_id,
+        ),
+        retrieval_result=retrieval_result,
+        rerank_result=None,
+        bundle=bundle,
     )

@@ -208,6 +208,125 @@ def test_risk_knowledge_service_returns_refusal_without_calling_synthesizer() ->
     assert synthesizer_called["value"] is False
 
 
+def test_risk_knowledge_service_answer_with_trace_preserves_core_answer_output() -> None:
+    from app.risk_knowledge.service.risk_knowledge_service import RiskKnowledgeService
+    from app.risk_knowledge.service.schemas import (
+        EvidenceContext,
+        EvidenceContextItem,
+        GroundedAnswerResult,
+        RenderedCitation,
+        RiskEvidenceBuildTrace,
+        RiskKnowledgeQuery,
+        RouteDecision,
+    )
+    from app.risk_knowledge.retrieval.schemas import HybridRetrievalResult, RetrievalQuery, RetrievalScopeType
+    from app.risk_knowledge.reranking.schemas import RerankItem, RerankResult
+
+    bundle = _build_bundle(should_answer=True, reason=EvidenceGateReason.SUFFICIENT)
+
+    class _Pipeline:
+        def build_bundle(self, query):
+            return bundle
+
+        def build_trace(self, query):
+            return RiskEvidenceBuildTrace(
+                retrieval_query=RetrievalQuery(query=query.query, kb_id=query.kb_id),
+                retrieval_result=HybridRetrievalResult(
+                    query=query.query,
+                    normalized_query=query.query,
+                    kb_id=query.kb_id,
+                    scope_type=RetrievalScopeType.KB_ACTIVE_DOCUMENTS,
+                    active_manifest_index_ids=["idx_risk_guide"],
+                    embedding_provider="deterministic",
+                    embedding_model="deterministic-v1",
+                    embedding_dimension=2,
+                    candidates=[],
+                    diagnostics={},
+                ),
+                rerank_result=RerankResult(
+                    provider="deterministic",
+                    model="deterministic-rerank-v1",
+                    items=[
+                        RerankItem(
+                            candidate_index=0,
+                            candidate_id="cand_risk_1",
+                            chunk_id="risk_chunk_001",
+                            rerank_score=0.92,
+                            rerank_rank=1,
+                        )
+                    ],
+                ),
+                bundle=bundle,
+            )
+
+    class _RoutePolicy:
+        def decide(self, query):
+            return RouteDecision(should_route=True, reason="risk_concept", target_kb_id=query.kb_id)
+
+    class _ContextBuilder:
+        def build(self, bundle):
+            return EvidenceContext(
+                query=bundle.query,
+                evidence_items=[
+                    EvidenceContextItem(
+                        citation_id="cite_risk_1",
+                        text=bundle.selected_evidence[0].text,
+                        document_title="风控手册",
+                        section_path=["风控手册", "贷前风险"],
+                        page_start=1,
+                        page_end=1,
+                        rerank_score=0.92,
+                        evidence_rank=1,
+                    )
+                ],
+                citation_map={citation.citation_id: citation for citation in bundle.citations},
+                total_chars=len(bundle.selected_evidence[0].text),
+            )
+
+    class _Synthesizer:
+        def synthesize(self, request):
+            return GroundedAnswerResult(
+                answer="多头借贷风险表示借款人短时间内向多家机构重复申请借款。[cite_risk_1]",
+                used_citation_ids=["cite_risk_1"],
+                provider="deterministic",
+                model="deterministic-answer-v1",
+            )
+
+    class _Renderer:
+        def render(self, bundle):
+            return [
+                RenderedCitation(
+                    citation_id="cite_risk_1",
+                    label="[1] 风控手册 / 贷前风险 / p.1",
+                    document_id="risk_guide",
+                    document_title="风控手册",
+                    version_id="risk_guide_v1",
+                    chunk_id="risk_chunk_001",
+                    section_path="风控手册 / 贷前风险",
+                    page_start=1,
+                    page_end=1,
+                )
+            ]
+
+    service = RiskKnowledgeService(
+        pipeline=_Pipeline(),
+        route_policy=_RoutePolicy(),
+        context_builder=_ContextBuilder(),
+        synthesizer=_Synthesizer(),
+        citation_renderer=_Renderer(),
+    )
+
+    query = RiskKnowledgeQuery(query="什么是多头借贷风险？", intent="risk_knowledge_qa")
+    answer = service.answer(query)
+    trace = service.answer_with_trace(query)
+
+    assert trace.answer.answer == answer.answer
+    assert trace.answer.should_answer == answer.should_answer
+    assert trace.answer.citations == answer.citations
+    assert trace.answer.evidence_bundle.gate_decision == answer.evidence_bundle.gate_decision
+    assert trace.answer.evidence_bundle.selected_evidence == answer.evidence_bundle.selected_evidence
+
+
 def test_risk_knowledge_service_wraps_pipeline_failures() -> None:
     from app.risk_knowledge.service.errors import RiskEvidenceUnavailableError
     from app.risk_knowledge.service.risk_knowledge_service import RiskKnowledgeService

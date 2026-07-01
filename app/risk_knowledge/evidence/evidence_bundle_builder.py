@@ -18,6 +18,7 @@ from app.risk_knowledge.reranking.factory import build_reranker_provider_from_se
 from app.risk_knowledge.reranking.provider import RerankerProvider
 from app.risk_knowledge.reranking.rerank_service import RerankService
 from app.risk_knowledge.reranking.schemas import RerankResult
+from app.risk_knowledge.traces import RiskEvidenceBuildTrace
 
 
 class RiskEvidenceBundleBuilder:
@@ -74,6 +75,9 @@ class RiskEvidenceBundleBuilder:
         )
 
     def build(self, retrieval_result: HybridRetrievalResult) -> RiskEvidenceBundle:
+        return self.build_with_trace(retrieval_result).bundle
+
+    def build_with_trace(self, retrieval_result: HybridRetrievalResult) -> RiskEvidenceBuildTrace:
         if not retrieval_result.candidates:
             gate_decision = EvidenceGateDecision(
                 should_answer=False,
@@ -88,7 +92,7 @@ class RiskEvidenceBundleBuilder:
                     "threshold_source": "m2d11_contract_default",
                 },
             )
-            return RiskEvidenceBundle(
+            bundle = RiskEvidenceBundle(
                 query=retrieval_result.query,
                 normalized_query=retrieval_result.normalized_query,
                 kb_id=retrieval_result.kb_id,
@@ -103,9 +107,21 @@ class RiskEvidenceBundleBuilder:
                 should_answer=False,
                 refusal_reason=gate_decision.reason.value,
             )
+            return RiskEvidenceBuildTrace(
+                retrieval_query=None,  # type: ignore[arg-type]
+                retrieval_result=retrieval_result,
+                rerank_result=None,
+                bundle=bundle,
+            )
 
         rerank_result = self._rerank_service.rerank_retrieval_result(retrieval_result)
-        return self._build_from_rerank_result(retrieval_result=retrieval_result, rerank_result=rerank_result)
+        bundle = self._build_from_rerank_result(retrieval_result=retrieval_result, rerank_result=rerank_result)
+        return RiskEvidenceBuildTrace(
+            retrieval_query=None,  # type: ignore[arg-type]
+            retrieval_result=retrieval_result,
+            rerank_result=rerank_result,
+            bundle=bundle,
+        )
 
     def _build_from_rerank_result(
         self,
