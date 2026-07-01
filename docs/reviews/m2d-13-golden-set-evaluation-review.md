@@ -44,13 +44,13 @@ Current subphase reading:
 
 Acceptance posture:
 
-> `M2D-13 accepted at stage level after targeted golden-set evaluation and regression validation;`
-> `admin API/UI, document upload console, and production hardening remain future stages.`
+> `M2D-13 accepted at stage level after targeted golden-set evaluation and regression validation; runtime evaluation, full repository regression, and runtime baseline remain optional/pending validation items.`
 
 Additional posture:
 
-- full repository regression remains pending / optional
+- v1 regression remains report-only / advisory
 - runtime evaluation remains opt-in / pending
+- full repository regression remains pending / optional
 - runtime baseline remains intentionally uncommitted in v1
 
 Explicitly not started:
