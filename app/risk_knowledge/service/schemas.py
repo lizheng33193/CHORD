@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.knowledge_base.config import DEFAULT_RISK_KB_ID
 from app.risk_knowledge.evidence.schemas import Citation, RiskEvidenceBundle
+from app.risk_knowledge.traces import RiskEvidenceBuildTrace
 
 
 class _StrictModel(BaseModel):
@@ -101,6 +102,12 @@ class RiskKnowledgeAnswer(_StrictModel):
     citations: list[RenderedCitation] = Field(default_factory=list)
     used_citation_ids: list[str] = Field(default_factory=list)
     diagnostics: dict[str, object] = Field(default_factory=dict)
+
+
+class RiskKnowledgeAnswerTrace(_StrictModel):
+    query: RiskKnowledgeQuery
+    build_trace: RiskEvidenceBuildTrace
+    answer: RiskKnowledgeAnswer
 
 
 class ProfileExplanationRequest(_StrictModel):

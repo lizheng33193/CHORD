@@ -13,6 +13,7 @@ from app.risk_knowledge.evidence.schemas import RiskEvidenceBundle
 from app.risk_knowledge.retrieval.hybrid_retriever import HybridRiskKnowledgeRetriever
 from app.risk_knowledge.retrieval.schemas import RetrievalQuery
 from app.risk_knowledge.service.schemas import RiskKnowledgeQuery
+from app.risk_knowledge.traces import RiskEvidenceBuildTrace
 
 
 class RiskEvidencePipeline:
@@ -30,6 +31,9 @@ class RiskEvidencePipeline:
         self._bundle_builder_factory = bundle_builder_factory or RiskEvidenceBundleBuilder.from_settings
 
     def build_bundle(self, query: RiskKnowledgeQuery) -> RiskEvidenceBundle:
+        return self.build_trace(query).bundle
+
+    def build_trace(self, query: RiskKnowledgeQuery) -> RiskEvidenceBuildTrace:
         retrieval_query = RetrievalQuery(
             query=query.query,
             kb_id=query.kb_id,
@@ -43,4 +47,5 @@ class RiskEvidencePipeline:
             retriever = self._retriever_factory(db)
             bundle_builder = self._bundle_builder_factory()
             retrieval_result = retriever.retrieve(retrieval_query)
-            return bundle_builder.build(retrieval_result)
+            build_trace = bundle_builder.build_with_trace(retrieval_result)
+            return build_trace.model_copy(update={"retrieval_query": retrieval_query})

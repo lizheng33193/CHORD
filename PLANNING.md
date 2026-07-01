@@ -17,6 +17,7 @@
   - `docs/specs/m2d-10-hybrid-retrieval-spec.md`
   - `docs/specs/m2d-11-reranker-evidence-gate-spec.md`
   - `docs/specs/m2d-12-risk-knowledge-service-spec.md`
+  - `docs/specs/m2d-13-golden-set-evaluation-spec.md`
   - `docs/plans/m2d-risk-domain-rag-integration-plan.md`
   - `docs/reviews/m2d-4-swxy-vendor-import-review.md`
   - `docs/reviews/m2d-5-knowledge-base-module-skeleton-review.md`
@@ -27,6 +28,7 @@
   - `docs/reviews/m2d-10-hybrid-retrieval-review.md`
   - `docs/reviews/m2d-11-reranker-evidence-gate-review.md`
   - `docs/reviews/m2d-12-risk-knowledge-service-review.md`
+  - `docs/reviews/m2d-13-golden-set-evaluation-review.md`
 - 当前阶段状态：
   - `M2D: implementation in progress`
 - Purpose:
@@ -55,13 +57,14 @@
   - `app/risk_knowledge/evidence` now selects evidence, evaluates sufficiency, builds stable citations, and assembles `RiskEvidenceBundle`.
   - `app/risk_knowledge/service` now exposes `RiskKnowledgeService`, a thin `RiskEvidencePipeline`, deterministic answer/refusal synthesis, conservative routing, rendered citations, and a profile-explanation adapter seam.
   - `app/services/orchestrator_agent` now includes a minimal `risk_knowledge_answer` flow and intent seam for consumer integration.
+  - `app/risk_knowledge/evaluation` now provides golden-set schemas, loader, matchers, metrics, evaluator, report builder, advisory regression decision logic, fixture CLI, and runtime opt-in evaluation.
 - Runtime surfaces still not started:
   - no admin API/UI has been implemented
   - no document upload or reindex/status runtime has been implemented
-  - no golden-set evaluation runtime has been implemented
   - no frontend changes have been introduced
   - no Data Agent RAG mixing has been introduced
   - no ES or SWXY retrieval/runtime coupling has been introduced
+  - no production hardening has been implemented
 - Subphase status:
   - `M2D-4 vendor import landed; no runtime integration started`
   - `M2D-5 knowledge base module skeleton landed; no ingestion/retrieval runtime started`
@@ -71,6 +74,7 @@
   - `M2D-9 indexing job runtime landed; no retrieval/rerank/RiskKnowledgeService/API runtime started`
   - `M2D-11 reranker and evidence gate landed; no RiskKnowledgeService/API/NL Chat/Profile Explanation runtime started`
   - `M2D-12 RiskKnowledgeService integration landed; no admin API/UI/golden-set evaluation runtime started`
+  - `M2D-13 golden-set evaluation landed; no admin API/UI/production-hardening runtime started`
 - Acceptance posture:
   - `M2D-10 accepted at stage level after targeted retrieval foundation validation`
   - full repository regression remains pending / optional
@@ -78,15 +82,15 @@
   - M2D-10 acceptance does not include real Redis smoke
   - `M2D-11 accepted at stage level after targeted reranker/evidence gate validation; full repository regression and real reranker smoke remain optional/pending validation items.`
   - `M2D-12 accepted at stage level after targeted RiskKnowledgeService, NL Chat seam, and Profile Explanation adapter validation; full repository regression and real LLM answer smoke remain optional/pending validation items.`
+  - `M2D-13 accepted at stage level after targeted golden-set evaluation and regression validation; admin API/UI, document upload console, and production hardening remain future stages.`
   - no admin API/UI
   - no document upload or reindex/status API
-  - no golden-set evaluation
   - no frontend
   - no Data Agent RAG mixing
   - no ES / SWXY coupling
   - production hardening remains future work
 - Next phase:
-  - `M2D-13 Upload / Reindex / Status API`
+  - `M2D-14A Knowledge Base Admin API`
 
 ## 2026-06-30 M3-1 Profile DAG Runtime Skeleton
 
