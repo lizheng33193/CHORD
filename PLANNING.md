@@ -82,7 +82,10 @@
   - M2D-10 acceptance does not include real Redis smoke
   - `M2D-11 accepted at stage level after targeted reranker/evidence gate validation; full repository regression and real reranker smoke remain optional/pending validation items.`
   - `M2D-12 accepted at stage level after targeted RiskKnowledgeService, NL Chat seam, and Profile Explanation adapter validation; full repository regression and real LLM answer smoke remain optional/pending validation items.`
-  - `M2D-13 accepted at stage level after targeted golden-set evaluation and regression validation; admin API/UI, document upload console, and production hardening remain future stages.`
+  - `M2D-13 accepted at stage level after targeted golden-set evaluation and regression validation; runtime evaluation, full repository regression, and runtime baseline remain optional/pending validation items.`
+  - v1 regression remains report-only / advisory
+  - runtime evaluation remains opt-in / pending
+  - runtime baseline remains intentionally uncommitted in v1
   - no admin API/UI
   - no document upload or reindex/status API
   - no frontend
