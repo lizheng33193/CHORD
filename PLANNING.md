@@ -35,6 +35,7 @@
   - `docs/reviews/m2d-14a-knowledge-base-admin-api-review.md`
   - `docs/reviews/m2d-14b-knowledge-base-ui-console-review.md`
   - `docs/reviews/m2d-14b-local-kb-smoke-acceptance-review.md`
+  - `docs/reviews/m2d-14c-small-docx-validation-review.md`
 - 当前阶段状态：
   - `M2D: implementation in progress`
 - Purpose:
@@ -85,7 +86,10 @@
   - `M2D-12 RiskKnowledgeService integration landed; no admin API/UI/golden-set evaluation runtime started`
   - `M2D-14A Knowledge Base Admin API landed; no UI console/production-hardening runtime started`
   - `M2D-14B Knowledge Base UI Console landed; local md KB smoke passed; no production-hardening runtime started`
-  - `M2D-14C Targeted File-Type Validation planned; not started`
+  - `M2D-14C Targeted File-Type Validation in validation`
+  - `M2D-14C-1 small DOCX validation passed`
+  - `M2D-14C-2 small PDF validation pending`
+  - `M2D-14C-3 real PDF validation pending`
 - Acceptance posture:
   - `M2D-10 accepted at stage level after targeted retrieval foundation validation`
   - full repository regression remains pending / optional
@@ -109,7 +113,9 @@
   - `debug/retrieve` does not call `RiskKnowledgeService`
   - `index` / `rebuild` reuse the current in-process runtime
   - metadata upload persistence remains future API reconciliation
-  - PDF / DOCX / large-document validation remains future targeted validation
+  - small `DOCX` validation passed inside `M2D-14C`
+  - small `PDF` validation remains pending
+  - real large `PDF` validation remains pending
   - full repository regression not run for `M2D-14B`
   - production hardening remains future work
 - Next phase:
