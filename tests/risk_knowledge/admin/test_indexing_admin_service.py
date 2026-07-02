@@ -14,6 +14,8 @@ def _seed_version(
     latest_manifest_index_id: str | None = None,
     active_manifest_index_id: str | None = None,
     last_job_id: str | None = None,
+    source_type: str = "txt",
+    filename: str | None = None,
 ) -> tuple[str, str]:
     from app.auth.database import AuthSessionLocal
     from app.knowledge_base.repositories.sqlalchemy import (
@@ -32,7 +34,9 @@ def _seed_version(
         SourceType,
     )
 
-    file_path = tmp_path / "risk-guide.txt"
+    resolved_source_type = SourceType(source_type)
+    resolved_filename = filename or f"risk-guide.{resolved_source_type.value}"
+    file_path = tmp_path / resolved_filename
     file_path.write_text("risk knowledge body", encoding="utf-8")
 
     with AuthSessionLocal() as db:
@@ -53,8 +57,8 @@ def _seed_version(
                 doc_id="risk_guide",
                 kb_id="risk_domain_knowledge",
                 doc_title="智能风控指南",
-                doc_name="risk-guide.txt",
-                source_type=SourceType.TXT,
+                doc_name=resolved_filename,
+                source_type=resolved_source_type,
                 source_uri=str(file_path),
                 current_version_id=current_version_id,
                 status=DocumentStatus.ACTIVE if current_version_id else DocumentStatus.INACTIVE,
@@ -330,6 +334,96 @@ def test_indexing_service_job_summary_falls_back_to_durable_runtime_state(auth_d
         assert summary.chunk_count == 1139
         assert summary.embedding_batches_completed == 110
         assert summary.total_duration_ms == 500000
+
+
+def test_indexing_service_page_count_propagates_from_parser_metadata(auth_db, tmp_path, fake_redis_client) -> None:
+    from app.auth.database import AuthSessionLocal
+    from app.knowledge_base.repositories.sqlalchemy import SqlAlchemyKnowledgeIngestJobRuntimeStateRepository
+    from app.knowledge_base.schemas import SourceType
+    from app.risk_knowledge.admin.indexing_admin_service import IndexingAdminService
+    from app.risk_knowledge.ingestion.schemas import ParsedDocument, RawParsedChunk, SourceDocumentRef
+
+    class ParserWithPageCount:
+        def parse(self, context, *, progress_callback=None):
+            if progress_callback is not None:
+                progress_callback(None, "OCR started")
+            return ParsedDocument(
+                source=SourceDocumentRef(
+                    kb_id=context.kb_id,
+                    doc_id=context.doc_id,
+                    version_id=context.version_id,
+                    file_path=context.file_path,
+                    doc_name=context.doc_name,
+                    source_type=SourceType.PDF,
+                ),
+                parser_name="stub-parser",
+                parser_version="stub-v1",
+                raw_chunks=[
+                    RawParsedChunk(
+                        chunk_order=1,
+                        raw_content="风险知识内容",
+                        chunk_type="paragraph",
+                        source_metadata={},
+                    )
+                ],
+                document_metadata={"page_count": 253},
+            )
+
+    class NoopOrchestrator:
+        def start_initial_index(self, **_kwargs):
+            return None
+
+    _seed_version(tmp_path, source_type="pdf", filename="risk-guide.pdf")
+
+    with AuthSessionLocal() as db:
+        service = IndexingAdminService(
+            db,
+            parser_adapter=ParserWithPageCount(),
+            redis_client=fake_redis_client,
+            job_launcher=lambda task: task(),
+            orchestrator_factory=lambda _redis, _embedding: NoopOrchestrator(),
+        )
+        launched = service.start_index("risk_guide_v1")
+        summary = service.get_job(launched.job_id)
+        durable_runtime = SqlAlchemyKnowledgeIngestJobRuntimeStateRepository(db).get(launched.job_id)
+
+        assert durable_runtime is not None
+        assert durable_runtime.page_count == 253
+        assert summary.page_count == 253
+
+
+def test_indexing_service_parser_failure_marks_durable_job_failed(auth_db, tmp_path, fake_redis_client) -> None:
+    from app.auth.database import AuthSessionLocal
+    from app.knowledge_base.repositories.sqlalchemy import SqlAlchemyKnowledgeIngestJobRuntimeStateRepository
+    from app.risk_knowledge.admin.indexing_admin_service import IndexingAdminService
+
+    class FailingParser:
+        def parse(self, _context, *, progress_callback=None):
+            raise RuntimeError("parser exploded before runner")
+
+    _seed_version(tmp_path, source_type="pdf", filename="risk-guide.pdf")
+
+    with AuthSessionLocal() as db:
+        service = IndexingAdminService(
+            db,
+            parser_adapter=FailingParser(),
+            redis_client=fake_redis_client,
+            job_launcher=lambda task: task(),
+        )
+        launched = service.start_index("risk_guide_v1")
+        summary = service.get_job(launched.job_id)
+        durable_runtime = SqlAlchemyKnowledgeIngestJobRuntimeStateRepository(db).get(launched.job_id)
+
+        assert summary.status == "failed"
+        assert summary.current_step == "parsing_pdf"
+        assert summary.runtime_status == "failed"
+        assert summary.runtime_current_step == "parsing_pdf"
+        assert summary.error_message == "parser exploded before runner"
+        assert summary.progress_message == "failed during parsing_pdf: parser exploded before runner"
+        assert summary.completed_at is not None
+        assert summary.last_heartbeat_at is not None
+        assert durable_runtime is not None
+        assert durable_runtime.progress_message == "failed during parsing_pdf: parser exploded before runner"
 
 
 def test_indexing_service_activate_is_idempotent_for_same_manifest(auth_db, tmp_path, fake_redis_client) -> None:

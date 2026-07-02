@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
+import subprocess
 from threading import Thread
 
 from sqlalchemy import select
@@ -361,7 +362,7 @@ class IndexingAdminService:
                         progress_completed_steps=resolve_stage_progress(current_step_ref["value"].value),
                         progress_total_steps=DEFAULT_PROGRESS_TOTAL_STEPS,
                         file_size_bytes=self._resolve_file_size_bytes(file_path),
-                        page_count=self._estimate_page_count(parsed),
+                        page_count=self._estimate_page_count(parsed, file_path=file_path),
                         parser_duration_ms=self._elapsed_ms(parse_started_at),
                     ),
                     force=True,
@@ -401,6 +402,7 @@ class IndexingAdminService:
                         )
                     if job_repo.get(job_id) is not None:
                         job_service.fail_job(job_id, str(exc), current_step=current_step_ref["value"])
+                    db.commit()
                     if progress_updater is not None:
                         progress_updater.update(
                             ProgressUpdate(
@@ -416,7 +418,6 @@ class IndexingAdminService:
                             ),
                             force=True,
                         )
-                    db.commit()
                 except Exception:
                     db.rollback()
 
@@ -641,16 +642,24 @@ class IndexingAdminService:
             return IngestStep.PARSING_PDF
         return IngestStep.PARSING_DOCUMENT
 
-    @staticmethod
-    def _estimate_page_count(parsed_document: ParsedDocument) -> int | None:
+    @classmethod
+    def _estimate_page_count(cls, parsed_document: ParsedDocument, *, file_path: str | None = None) -> int | None:
+        metadata = parsed_document.document_metadata or {}
+        for key in ("page_count", "page_total", "pages"):
+            page_count = cls._coerce_positive_int(metadata.get(key))
+            if page_count is not None:
+                return page_count
         page_numbers = [
             max(filter(None, [chunk.page_start, chunk.page_end]))
             for chunk in parsed_document.raw_chunks
             if chunk.page_start is not None or chunk.page_end is not None
         ]
-        if not page_numbers:
-            return None
-        return max(page_numbers)
+        if page_numbers:
+            return max(page_numbers)
+        source_type = getattr(parsed_document.source, "source_type", None)
+        if file_path is not None and getattr(source_type, "value", source_type) == "pdf":
+            return cls._extract_pdf_page_count(file_path)
+        return None
 
     @staticmethod
     def _resolve_file_size_bytes(file_path: str) -> int | None:
@@ -685,6 +694,52 @@ class IndexingAdminService:
         if total_duration_ms is None:
             return None
         return total_duration_ms // 1000
+
+    @staticmethod
+    def _coerce_positive_int(value) -> int | None:
+        if value is None or value == "":
+            return None
+        try:
+            parsed = int(value)
+        except (TypeError, ValueError):
+            return None
+        return parsed if parsed >= 1 else None
+
+    @classmethod
+    def _extract_pdf_page_count(cls, file_path: str) -> int | None:
+        page_count = cls._extract_pdf_page_count_with_pypdf(file_path)
+        if page_count is not None:
+            return page_count
+        return cls._extract_pdf_page_count_with_pdfinfo(file_path)
+
+    @staticmethod
+    def _extract_pdf_page_count_with_pypdf(file_path: str) -> int | None:
+        try:
+            from pypdf import PdfReader
+
+            return len(PdfReader(file_path).pages)
+        except Exception:
+            return None
+
+    @classmethod
+    def _extract_pdf_page_count_with_pdfinfo(cls, file_path: str) -> int | None:
+        try:
+            result = subprocess.run(
+                ["pdfinfo", file_path],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+        except Exception:
+            return None
+        if result.returncode != 0:
+            return None
+        for line in result.stdout.splitlines():
+            if not line.lower().startswith("pages:"):
+                continue
+            return cls._coerce_positive_int(line.split(":", 1)[1].strip())
+        return None
 
     @staticmethod
     def _now() -> datetime:
