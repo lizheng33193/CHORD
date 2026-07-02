@@ -72,13 +72,19 @@ class IngestJobService:
         )
         return self._repository.update(updated)
 
-    def fail_job(self, job_id: str, error_message: str) -> KnowledgeIngestJob:
+    def fail_job(
+        self,
+        job_id: str,
+        error_message: str,
+        *,
+        current_step: IngestStep | None = None,
+    ) -> KnowledgeIngestJob:
         job = self.get_job(job_id)
         now = datetime.now(UTC).replace(tzinfo=None)
         updated = job.model_copy(
             update={
                 "status": IngestJobStatus.FAILED,
-                "current_step": IngestStep.FAILED,
+                "current_step": current_step or (job.current_step if job.current_step != IngestStep.QUEUED else IngestStep.FAILED),
                 "error_message": error_message,
                 "completed_at": now,
                 "last_heartbeat_at": now,

@@ -17,6 +17,7 @@ from app.knowledge_base.schemas import (
     KnowledgeDocument,
     KnowledgeDocumentVersion,
     KnowledgeIngestJob,
+    KnowledgeIngestJobRuntimeState,
 )
 
 
@@ -108,3 +109,15 @@ class InMemoryKnowledgeIngestJobRepository:
 
     def list_by_version(self, version_id: str) -> list[KnowledgeIngestJob]:
         return [job for job in self._items.values() if job.version_id == version_id]
+
+
+class InMemoryKnowledgeIngestJobRuntimeStateRepository:
+    def __init__(self) -> None:
+        self._items: dict[str, KnowledgeIngestJobRuntimeState] = {}
+
+    def get(self, job_id: str) -> KnowledgeIngestJobRuntimeState | None:
+        return self._items.get(job_id)
+
+    def upsert(self, state: KnowledgeIngestJobRuntimeState) -> KnowledgeIngestJobRuntimeState:
+        self._items[state.job_id] = state
+        return state

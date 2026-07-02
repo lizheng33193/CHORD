@@ -91,7 +91,7 @@
     - `[x] M2D-14C-1 small DOCX validation`
     - `[x] M2D-14C-2 small PDF validation`
     - `[x] M2D-14C-3 real PDF validation`
-    - `[ ] M2D-15A Indexing Job Observability & Runtime State Fidelity`
+    - `[x] M2D-15A Indexing Job Observability & Runtime State Fidelity`
     - `[ ] M2D-15 Production Hardening`
   - 当前阶段状态：
     - `M2D: implementation in progress`
@@ -109,7 +109,7 @@
     - `M2D-14C-1 small DOCX validation passed`
     - `M2D-14C-2 small PDF validation passed`
     - `M2D-14C-3 real PDF validation passed`
-    - `M2D-15A Indexing Job Observability & Runtime State Fidelity planned / not started`
+    - `M2D-15A Indexing Job Observability & Runtime State Fidelity implemented on branch; targeted validation passed; acceptance pending review`
     - `407f058` is a validation-driven runtime fix for DashScope embedding batching, not `M2D-15 Production Hardening`
   - acceptance closure：
     - `M2D-11 accepted at stage level after targeted reranker/evidence gate validation; full repository regression and real reranker smoke remain optional/pending validation items.`
@@ -136,7 +136,7 @@
     - small `PDF` validation passed inside `M2D-14C`
     - real large `PDF` validation passed inside `M2D-14C`
     - full repository regression not run for `M2D-14B`
-    - `M2D-15A` remains planning-only / not started
+    - `M2D-15A` implementation landed on branch without worker queue / SSE / retrieval changes
     - production hardening remains not started beyond planning
   - 本轮产出：
     - `app/third_party/swxy_rag`
@@ -158,6 +158,7 @@
     - `app/static/js/components/panels/knowledge`
     - `docs/specs/m2d-15a-indexing-observability-spec.md`
     - `docs/plans/m2d-15a-indexing-observability-plan.md`
+    - `docs/reviews/m2d-15a-indexing-observability-review.md`
     - vendored SWXY `deepdoc/`, `rag/`, `core/api/utils/file_utils.py`, `conf/mapping.json`
     - renamed vendored entry files `file_parse_core.py` / `retrieval_core.py`
     - `M2D-4` vendor import review

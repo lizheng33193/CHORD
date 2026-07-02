@@ -126,3 +126,35 @@ class KnowledgeIngestJobModel(Base):
         server_default=func.current_timestamp(),
         onupdate=func.current_timestamp(),
     )
+
+
+class KnowledgeIngestJobRuntimeStateModel(Base):
+    __tablename__ = "knowledge_ingest_job_runtime_states"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    job_id: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    progress_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    progress_completed_steps: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    progress_total_steps: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    file_size_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    page_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    chunk_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    embedding_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    embedding_batch_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    embedding_batches_completed: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    vector_mapping_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    parser_duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    embedding_duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    faiss_duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    total_duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=False),
+        nullable=False,
+        server_default=func.current_timestamp(),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=False),
+        nullable=False,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+    )

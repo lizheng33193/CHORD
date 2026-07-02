@@ -130,6 +130,18 @@ class IndexingJobSummaryResponse(_StrictModel):
     progress_completed_steps: int | None = None
     progress_total_steps: int | None = None
     progress_message: str | None = None
+    elapsed_seconds: int | None = None
+    file_size_bytes: int | None = None
+    page_count: int | None = None
+    chunk_count: int | None = None
+    embedding_count: int | None = None
+    embedding_batch_count: int | None = None
+    embedding_batches_completed: int | None = None
+    vector_mapping_count: int | None = None
+    parser_duration_ms: int | None = None
+    embedding_duration_ms: int | None = None
+    faiss_duration_ms: int | None = None
+    total_duration_ms: int | None = None
 
 
 class IndexingJobListResponse(_StrictModel):

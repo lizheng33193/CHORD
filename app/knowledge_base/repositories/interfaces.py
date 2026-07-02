@@ -9,6 +9,7 @@ from app.knowledge_base.schemas import (
     KnowledgeDocument,
     KnowledgeDocumentVersion,
     KnowledgeIngestJob,
+    KnowledgeIngestJobRuntimeState,
 )
 
 
@@ -35,3 +36,8 @@ class KnowledgeIngestJobRepository(Protocol):
     def get(self, job_id: str) -> KnowledgeIngestJob | None: ...
     def update(self, job: KnowledgeIngestJob) -> KnowledgeIngestJob: ...
     def list_by_version(self, version_id: str) -> list[KnowledgeIngestJob]: ...
+
+
+class KnowledgeIngestJobRuntimeStateRepository(Protocol):
+    def get(self, job_id: str) -> KnowledgeIngestJobRuntimeState | None: ...
+    def upsert(self, state: KnowledgeIngestJobRuntimeState) -> KnowledgeIngestJobRuntimeState: ...

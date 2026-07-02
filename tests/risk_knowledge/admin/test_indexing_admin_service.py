@@ -285,6 +285,53 @@ def test_indexing_service_job_summary_survives_missing_redis_state(auth_db, tmp_
         assert summary.runtime_state_available is False
 
 
+def test_indexing_service_job_summary_falls_back_to_durable_runtime_state(auth_db, tmp_path) -> None:
+    from app.auth.database import AuthSessionLocal
+    from app.knowledge_base.repositories.sqlalchemy import SqlAlchemyKnowledgeIngestJobRuntimeStateRepository
+    from app.knowledge_base.schemas import KnowledgeIngestJobRuntimeState
+    from app.risk_knowledge.admin.indexing_admin_service import IndexingAdminService
+
+    class BrokenRedisClient:
+        def get(self, *_args, **_kwargs):
+            raise RuntimeError("redis unavailable")
+
+        def set(self, *_args, **_kwargs):
+            raise RuntimeError("redis unavailable")
+
+    _seed_version(tmp_path)
+    _seed_job(job_id="idxjob_existing", status="failed")
+
+    with AuthSessionLocal() as db:
+        SqlAlchemyKnowledgeIngestJobRuntimeStateRepository(db).upsert(
+            KnowledgeIngestJobRuntimeState(
+                job_id="idxjob_existing",
+                progress_message="failed during embedding: provider timeout",
+                progress_completed_steps=6,
+                progress_total_steps=10,
+                chunk_count=1139,
+                embedding_count=1100,
+                embedding_batch_count=114,
+                embedding_batches_completed=110,
+                vector_mapping_count=None,
+                parser_duration_ms=120000,
+                embedding_duration_ms=330000,
+                faiss_duration_ms=None,
+                total_duration_ms=500000,
+            )
+        )
+        db.commit()
+
+    with AuthSessionLocal() as db:
+        service = IndexingAdminService(db, redis_client=BrokenRedisClient(), job_launcher=lambda task: None)
+        summary = service.get_job("idxjob_existing")
+
+        assert summary.runtime_state_available is False
+        assert summary.progress_message == "failed during embedding: provider timeout"
+        assert summary.chunk_count == 1139
+        assert summary.embedding_batches_completed == 110
+        assert summary.total_duration_ms == 500000
+
+
 def test_indexing_service_activate_is_idempotent_for_same_manifest(auth_db, tmp_path, fake_redis_client) -> None:
     from app.auth.database import AuthSessionLocal
     from app.risk_knowledge.admin.indexing_admin_service import IndexingAdminService

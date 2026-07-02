@@ -59,3 +59,6 @@ def test_knowledge_console_contains_confirmation_and_polling_guards() -> None:
     assert "clearInterval" in console_src
     assert "manual refresh" not in console_src.lower()
     assert "刷新" in version_src
+    assert "progress_completed_steps" in version_src
+    assert "embedding_batches_completed" in version_src
+    assert "vector_mapping_count" in version_src
