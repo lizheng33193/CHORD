@@ -5,6 +5,38 @@
 - 整体架构：单体 FastAPI 后端，五层（API → 编排 → Skill 执行 → 数据访问 → 外部服务）
 - 入口文件：`app/main.py`
 
+## 2026-07-02 M2D-14C Acceptance & M2D-15A Planning
+
+- 新增 planning artifacts：
+  - `docs/specs/m2d-15a-indexing-observability-spec.md`
+  - `docs/plans/m2d-15a-indexing-observability-plan.md`
+- `M2D-14C Targeted File-Type Validation` 当前结论：
+  - accepted at stage level after targeted file-type validation closure
+  - accepted facts:
+    - real PDF: `253 pages`
+    - file size: `26.48MB`
+    - indexing duration: about `10m12s`
+    - `chunk_count = 1139`
+    - `embedding_count = 1139`
+    - `vector_mapping_count = 1139`
+    - manifest id: `idx_item_real_pdf_v1_8a5117977e31`
+- 暴露出的下一阶段问题：
+  - long-running indexing jobs progress correctly in OCR / layout / embedding / FAISS runtime
+  - external polling still stays too long at coarse `queued/running`
+- `M2D-15A Indexing Job Observability & Runtime State Fidelity` 当前状态：
+  - planned / not started
+  - planning-only scope landed; no runtime implementation started
+  - parser progress integration is explicitly planned at `IndexingAdminService`, not via runner ownership refactor
+  - durable progress writes are planned to be throttled
+  - stage progress and embedding sub-progress are explicitly separated
+  - failure semantics are planned to preserve the real failing stage
+- `M2D-15 Production Hardening` 当前状态：
+  - not started beyond planning
+  - no worker queue
+  - no SSE / WebSocket
+  - no retrieval / rerank / answer expansion
+  - no `M2D-15D` console redesign started
+
 ## 2026-07-01 M2D Risk Domain Knowledge RAG & Knowledge Base Module
 
 - 新增 `M2D` artifacts：
@@ -20,8 +52,10 @@
   - `docs/specs/m2d-13-golden-set-evaluation-spec.md`
   - `docs/specs/m2d-14a-knowledge-base-admin-api-spec.md`
   - `docs/specs/m2d-14b-knowledge-base-ui-console-spec.md`
+  - `docs/specs/m2d-15a-indexing-observability-spec.md`
   - `docs/plans/m2d-risk-domain-rag-integration-plan.md`
   - `docs/plans/m2d-14c-targeted-file-type-validation-plan.md`
+  - `docs/plans/m2d-15a-indexing-observability-plan.md`
   - `docs/reviews/m2d-4-swxy-vendor-import-review.md`
   - `docs/reviews/m2d-5-knowledge-base-module-skeleton-review.md`
   - `docs/reviews/m2d-6-swxy-ingestion-adapter-review.md`
@@ -87,10 +121,11 @@
   - `M2D-12 RiskKnowledgeService integration landed; no admin API/UI/golden-set evaluation runtime started`
   - `M2D-14A Knowledge Base Admin API landed; no UI console/production-hardening runtime started`
   - `M2D-14B Knowledge Base UI Console landed; local md KB smoke passed; no production-hardening runtime started`
-  - `M2D-14C Targeted File-Type Validation in validation`
+  - `M2D-14C Targeted File-Type Validation accepted`
   - `M2D-14C-1 small DOCX validation passed`
   - `M2D-14C-2 small PDF validation passed`
-  - `M2D-14C-3 real PDF validation pending`
+  - `M2D-14C-3 real PDF validation passed`
+  - `M2D-15A Indexing Job Observability & Runtime State Fidelity planned / not started`
   - `407f058` is a validation-driven runtime fix for DashScope embedding batching, not `M2D-15 Production Hardening`
 - Acceptance posture:
   - `M2D-10 accepted at stage level after targeted retrieval foundation validation`
@@ -117,12 +152,13 @@
   - metadata upload persistence remains future API reconciliation
   - small `DOCX` validation passed inside `M2D-14C`
   - small `PDF` validation passed inside `M2D-14C`
-  - real large `PDF` validation remains pending
+  - real large `PDF` validation passed inside `M2D-14C`
   - full repository regression not run for `M2D-14B`
-  - production hardening remains future work
+  - `M2D-15A` planning landed; runtime implementation not started
+  - production hardening remains not started beyond planning
 - Next phase:
-  - `M2D-14C Targeted File-Type Validation`
-  - `M2D-15 Production Hardening` remains not started
+  - `M2D-15A Indexing Job Observability & Runtime State Fidelity`
+  - `M2D-15 Production Hardening` remains not started beyond planning
 
 ## 2026-06-30 M3-1 Profile DAG Runtime Skeleton
 
