@@ -109,7 +109,7 @@
     - `M2D-14C-1 small DOCX validation passed`
     - `M2D-14C-2 small PDF validation passed`
     - `M2D-14C-3 real PDF validation passed`
-    - `M2D-15A Indexing Job Observability & Runtime State Fidelity implemented on branch; targeted validation passed; acceptance pending review`
+    - `M2D-15A Indexing Job Observability & Runtime State Fidelity accepted`
     - `407f058` is a validation-driven runtime fix for DashScope embedding batching, not `M2D-15 Production Hardening`
   - acceptance closure：
     - `M2D-11 accepted at stage level after targeted reranker/evidence gate validation; full repository regression and real reranker smoke remain optional/pending validation items.`
@@ -136,7 +136,7 @@
     - small `PDF` validation passed inside `M2D-14C`
     - real large `PDF` validation passed inside `M2D-14C`
     - full repository regression not run for `M2D-14B`
-    - `M2D-15A` implementation landed on branch without worker queue / SSE / retrieval changes
+    - `M2D-15A` accepted after targeted validation, real-PDF runtime acceptance, and acceptance hardening without worker queue / SSE / retrieval changes
     - production hardening remains not started beyond planning
   - 本轮产出：
     - `app/third_party/swxy_rag`
@@ -181,7 +181,7 @@
     - 不新增 migration
     - 不重写现有 `M2A/M2B/M2C/M3` closure wording
   - 下一步：
-    - `M2D-15A Indexing Job Observability & Runtime State Fidelity`
+    - `M2D-15B Indexing Worker Queue + Durable Async Execution`
     - `M2D-15 Production Hardening` 保持 not started beyond planning
 
 - [x] M2C：Status Reconciliation — 已完成（2026-06-30）

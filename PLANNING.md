@@ -25,7 +25,7 @@
   - long-running indexing jobs progress correctly in OCR / layout / embedding / FAISS runtime
   - external polling still stays too long at coarse `queued/running`
 - `M2D-15A Indexing Job Observability & Runtime State Fidelity` 当前状态：
-  - implementation landed on current branch; targeted validation passed
+  - accepted after implementation, targeted validation, real-PDF runtime acceptance, and acceptance hardening closure
   - shared `ProgressUpdater` now spans parser-stage admin execution and runner-stage indexing execution
   - admin API job summary now merges Redis live state with durable runtime sidecar state
   - existing Knowledge Jobs panel is minimally upgraded for stage progress, embedding batches, and runtime metrics
@@ -33,8 +33,21 @@
   - durable progress writes are throttled
   - stage progress and embedding sub-progress are explicitly separated
   - failure semantics preserve the real failing stage
+  - accepted real runtime facts:
+    - file size: `26,482,250 bytes`
+    - page count: `253`
+    - total duration: `575.880s`
+    - `chunk_count = 1139`
+    - `embedding_count = 1139`
+    - `vector_mapping_count = 1139`
+    - `embedding_batch_count = 114`
+    - `embedding_batches_completed = 114`
+  - acceptance hardening closed:
+    - `page_count` now appears in job summary
+    - parser early failure now sets durable `status=failed` while preserving the failing `current_step`
 - `M2D-15 Production Hardening` 当前状态：
   - not started beyond planning
+  - `M2D-15B` worker queue not started
   - no worker queue
   - no SSE / WebSocket
   - no retrieval / rerank / answer expansion
@@ -128,7 +141,7 @@
   - `M2D-14C-1 small DOCX validation passed`
   - `M2D-14C-2 small PDF validation passed`
   - `M2D-14C-3 real PDF validation passed`
-  - `M2D-15A Indexing Job Observability & Runtime State Fidelity implemented on branch; acceptance pending review`
+  - `M2D-15A Indexing Job Observability & Runtime State Fidelity accepted`
   - `407f058` is a validation-driven runtime fix for DashScope embedding batching, not `M2D-15 Production Hardening`
 - Acceptance posture:
   - `M2D-10 accepted at stage level after targeted retrieval foundation validation`
@@ -157,10 +170,10 @@
   - small `PDF` validation passed inside `M2D-14C`
   - real large `PDF` validation passed inside `M2D-14C`
   - full repository regression not run for `M2D-14B`
-  - `M2D-15A` implementation landed on branch with targeted validation; production hardening remains separate
+  - `M2D-15A` accepted after targeted validation, real-PDF runtime acceptance, and acceptance hardening; production hardening remains separate
   - production hardening remains not started beyond planning
 - Next phase:
-  - `M2D-15A Indexing Job Observability & Runtime State Fidelity`
+  - `M2D-15B Indexing Worker Queue + Durable Async Execution`
   - `M2D-15 Production Hardening` remains not started beyond planning
 
 ## 2026-06-30 M3-1 Profile DAG Runtime Skeleton
