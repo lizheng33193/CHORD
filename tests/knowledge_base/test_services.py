@@ -247,3 +247,24 @@ def test_fail_job_sets_failed_state_and_error_message() -> None:
     assert failed.status == IngestJobStatus.FAILED
     assert failed.current_step == IngestStep.FAILED
     assert failed.error_message == "parse failed"
+
+
+def test_fail_job_preserves_failing_step_when_provided() -> None:
+    service = IngestJobService(InMemoryKnowledgeIngestJobRepository())
+    job = service.create_job(
+        kb_id="risk_domain_knowledge",
+        doc_id="risk_guide",
+        version_id="risk_guide_202606",
+        job_id="job_1",
+    )
+    service.transition_job(job.job_id, IngestJobStatus.RUNNING, current_step=IngestStep.EMBEDDING)
+
+    failed = service.fail_job(
+        job.job_id,
+        "provider timeout",
+        current_step=IngestStep.EMBEDDING,
+    )
+
+    assert failed.status == IngestJobStatus.FAILED
+    assert failed.current_step == IngestStep.EMBEDDING
+    assert failed.error_message == "provider timeout"

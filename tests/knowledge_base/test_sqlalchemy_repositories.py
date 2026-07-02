@@ -173,6 +173,43 @@ def test_sqlalchemy_job_repository_tracks_retry_lineage(auth_db) -> None:
         assert retry.root_job_id == "idxjob_root"
 
 
+def test_sqlalchemy_runtime_state_repository_persists_observability_fields(auth_db) -> None:
+    from app.auth.database import AuthSessionLocal
+    from app.knowledge_base.repositories.sqlalchemy import SqlAlchemyKnowledgeIngestJobRuntimeStateRepository
+    from app.knowledge_base.schemas import KnowledgeIngestJobRuntimeState
+
+    with AuthSessionLocal() as db:
+        runtime_repo = SqlAlchemyKnowledgeIngestJobRuntimeStateRepository(db)
+        created = runtime_repo.upsert(
+            KnowledgeIngestJobRuntimeState(
+                job_id="idxjob_root",
+                progress_message="embedding batch 31 / 114",
+                progress_completed_steps=6,
+                progress_total_steps=10,
+                file_size_bytes=26482250,
+                page_count=253,
+                chunk_count=1139,
+                embedding_count=1139,
+                embedding_batch_count=114,
+                embedding_batches_completed=31,
+                vector_mapping_count=1139,
+                parser_duration_ms=120000,
+                embedding_duration_ms=330000,
+                faiss_duration_ms=18000,
+                total_duration_ms=612000,
+            )
+        )
+        db.commit()
+
+        fetched = runtime_repo.get("idxjob_root")
+
+        assert created.job_id == "idxjob_root"
+        assert fetched is not None
+        assert fetched.progress_message == "embedding batch 31 / 114"
+        assert fetched.page_count == 253
+        assert fetched.vector_mapping_count == 1139
+
+
 def test_sqlalchemy_knowledge_base_repository_persists_kb_records(auth_db) -> None:
     from app.auth.database import AuthSessionLocal
     from app.knowledge_base.repositories.sqlalchemy import SqlAlchemyKnowledgeBaseRepository

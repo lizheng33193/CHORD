@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Callable
 
 from app.auth.database import AuthSessionLocal
 from app.core.config import settings
 from app.knowledge_base.repositories.sqlalchemy import SqlAlchemyKnowledgeIngestJobRepository
 from app.risk_knowledge.runtime.redis_lock import RedisVersionLock
+from app.risk_knowledge.runtime.progress import IndexingProgressUpdater
 from app.risk_knowledge.runtime.redis_state import RedisIndexingTaskStateStore
 from app.risk_knowledge.runtime.runner import IndexingJobRunner, RunnerDependencies
 
@@ -20,7 +22,9 @@ class IndexingOrchestrator:
         embedding_provider,
         artifact_root: Path | None = None,
         lose_lock_before_activation: bool = False,
+        session_factory: Callable = AuthSessionLocal,
     ) -> None:
+        self._session_factory = session_factory
         dependencies = RunnerDependencies(
             redis_state_store=RedisIndexingTaskStateStore(
                 client=redis_client,
@@ -34,23 +38,41 @@ class IndexingOrchestrator:
             ),
             embedding_provider=embedding_provider,
             artifact_root=artifact_root or settings.resolve_path(settings.risk_knowledge_faiss_artifact_dir),
-            session_factory=AuthSessionLocal,
+            session_factory=session_factory,
         )
         self._runner = IndexingJobRunner(
             dependencies=dependencies,
             lose_lock_before_activation=lose_lock_before_activation,
         )
 
-    def start_initial_index(self, *, parsed_document, document, version, job_id: str | None = None):
+    def start_initial_index(
+        self,
+        *,
+        parsed_document,
+        document,
+        version,
+        job_id: str | None = None,
+        progress_updater: IndexingProgressUpdater | None = None,
+    ):
         return self._runner.run_initial_index(
             parsed_document=parsed_document,
             document=document,
             version=version,
             job_id=job_id,
+            progress_updater=progress_updater,
         )
 
-    def start_retry(self, *, parsed_document, document, version, failed_job_id: str, job_id: str | None = None):
-        with AuthSessionLocal() as db:
+    def start_retry(
+        self,
+        *,
+        parsed_document,
+        document,
+        version,
+        failed_job_id: str,
+        job_id: str | None = None,
+        progress_updater: IndexingProgressUpdater | None = None,
+    ):
+        with self._session_factory() as db:
             failed_job = SqlAlchemyKnowledgeIngestJobRepository(db).get(failed_job_id)
         if failed_job is None:
             raise ValueError(f"failed job not found: {failed_job_id}")
@@ -60,20 +82,39 @@ class IndexingOrchestrator:
             version=version,
             failed_job=failed_job,
             job_id=job_id,
+            progress_updater=progress_updater,
         )
 
-    def start_rebuild_from_parsed(self, *, parsed_document, document, version, job_id: str | None = None):
+    def start_rebuild_from_parsed(
+        self,
+        *,
+        parsed_document,
+        document,
+        version,
+        job_id: str | None = None,
+        progress_updater: IndexingProgressUpdater | None = None,
+    ):
         return self._runner.run_rebuild_from_parsed(
             parsed_document=parsed_document,
             document=document,
             version=version,
             job_id=job_id,
+            progress_updater=progress_updater,
         )
 
-    def start_rebuild_from_persisted_chunks(self, *, document, version, force: bool = False, job_id: str | None = None):
+    def start_rebuild_from_persisted_chunks(
+        self,
+        *,
+        document,
+        version,
+        force: bool = False,
+        job_id: str | None = None,
+        progress_updater: IndexingProgressUpdater | None = None,
+    ):
         return self._runner.run_rebuild_from_persisted_chunks(
             document=document,
             version=version,
             force=force,
             job_id=job_id,
+            progress_updater=progress_updater,
         )

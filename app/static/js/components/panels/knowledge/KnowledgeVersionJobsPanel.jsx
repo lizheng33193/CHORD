@@ -7,6 +7,15 @@ function formatKnowledgeDate(value) {
   return date.toLocaleString();
 }
 
+function formatKnowledgeDuration(seconds) {
+  if (seconds === null || seconds === undefined || Number.isNaN(Number(seconds))) return '暂无';
+  const totalSeconds = Math.max(0, Number(seconds));
+  const minutes = Math.floor(totalSeconds / 60);
+  const remainingSeconds = totalSeconds % 60;
+  if (minutes <= 0) return `${remainingSeconds}s`;
+  return `${minutes}m ${remainingSeconds}s`;
+}
+
 function KnowledgeVersionJobsPanel({
   selectedDocument = null,
   versions = [],
@@ -224,8 +233,28 @@ function KnowledgeVersionJobsPanel({
                   <div>Runtime：{job.runtime_status || 'durable-only'}</div>
                   <div>Started：{formatKnowledgeDate(job.started_at)}</div>
                   <div>Completed：{formatKnowledgeDate(job.completed_at)}</div>
+                  <div>Heartbeat：{formatKnowledgeDate(job.last_heartbeat_at)}</div>
+                  <div>Elapsed：{formatKnowledgeDuration(job.elapsed_seconds)}</div>
                 </div>
+                {(job.progress_completed_steps !== null && job.progress_completed_steps !== undefined) || job.embedding_batches_completed ? (
+                  <div className="mt-3 grid gap-2 text-xs text-slate-500 md:grid-cols-2">
+                    <div>
+                      Stage Progress：{job.progress_completed_steps ?? '-'} / {job.progress_total_steps ?? '-'}
+                    </div>
+                    <div>
+                      Embedding Batches：{job.embedding_batches_completed ?? '-'} / {job.embedding_batch_count ?? '-'}
+                    </div>
+                  </div>
+                ) : null}
                 {job.progress_message ? <div className="mt-3 rounded-xl bg-white px-3 py-2 text-xs text-slate-500">{job.progress_message}</div> : null}
+                {(job.chunk_count || job.embedding_count || job.vector_mapping_count || job.page_count) ? (
+                  <div className="mt-3 grid gap-2 text-xs text-slate-500 md:grid-cols-2">
+                    <div>Pages：{job.page_count || '暂无'}</div>
+                    <div>Chunks：{job.chunk_count || '暂无'}</div>
+                    <div>Embeddings：{job.embedding_count || '暂无'}</div>
+                    <div>Vector Mappings：{job.vector_mapping_count || '暂无'}</div>
+                  </div>
+                ) : null}
                 {job.status === 'failed' ? (
                   <div className="mt-3 flex flex-wrap gap-3">
                     <button

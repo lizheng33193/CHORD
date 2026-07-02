@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Callable
 
 from sqlalchemy.orm import Session
 
@@ -33,10 +34,15 @@ class EmbeddingBatchService:
         self._expected_dimension = expected_dimension
         self._db = db
 
-    def embed_inputs(self, inputs: list[EmbeddingInput]) -> PersistedEmbeddingBatchResult:
+    def embed_inputs(
+        self,
+        inputs: list[EmbeddingInput],
+        *,
+        progress_callback: Callable[[int, int], None] | None = None,
+    ) -> PersistedEmbeddingBatchResult:
         if not inputs:
             raise EmbeddingInputError("embedding inputs must not be empty")
-        records = self._embed_records(inputs)
+        records = self._embed_records(inputs, progress_callback=progress_callback)
         return PersistedEmbeddingBatchResult(
             records=[
                 {
@@ -54,7 +60,13 @@ class EmbeddingBatchService:
             ]
         )
 
-    def embed_persisted_chunks(self, *, version_id: str, chunk_ids: list[str]) -> PersistedEmbeddingBatchResult:
+    def embed_persisted_chunks(
+        self,
+        *,
+        version_id: str,
+        chunk_ids: list[str],
+        progress_callback: Callable[[int, int], None] | None = None,
+    ) -> PersistedEmbeddingBatchResult:
         if self._db is None:
             raise ValueError("db session is required for embed_persisted_chunks")
         chunk_repo = SqlAlchemyKnowledgeChunkRepository(self._db)
@@ -71,7 +83,8 @@ class EmbeddingBatchService:
                     input_type="document",
                 )
                 for record in chunk_records
-            ]
+            ],
+            progress_callback=progress_callback,
         )
         persisted_records = []
         chunks_by_id = {record.chunk_id: record for record in chunk_records}
@@ -88,19 +101,31 @@ class EmbeddingBatchService:
         self._db.commit()
         return PersistedEmbeddingBatchResult(records=persisted_records)
 
-    def _embed_records(self, inputs: list[EmbeddingInput]):
+    def _embed_records(
+        self,
+        inputs: list[EmbeddingInput],
+        *,
+        progress_callback: Callable[[int, int], None] | None = None,
+    ):
         max_batch_size = getattr(self._provider, "max_batch_size", None)
         if max_batch_size is None or max_batch_size <= 0:
+            self._emit_progress(progress_callback, completed_batches=0, total_batches=1)
             records = self._provider.embed(inputs)
             self._validate_batch_result(inputs, records)
+            self._emit_progress(progress_callback, completed_batches=1, total_batches=1)
             return records
 
         all_records = []
+        total_batches = (len(inputs) + max_batch_size - 1) // max_batch_size
+        completed_batches = 0
         for start in range(0, len(inputs), max_batch_size):
+            self._emit_progress(progress_callback, completed_batches=completed_batches, total_batches=total_batches)
             batch_inputs = inputs[start : start + max_batch_size]
             batch_records = self._provider.embed(batch_inputs)
             self._validate_batch_result(batch_inputs, batch_records)
             all_records.extend(batch_records)
+            completed_batches += 1
+            self._emit_progress(progress_callback, completed_batches=completed_batches, total_batches=total_batches)
         return all_records
 
     def _validate_batch_result(self, inputs: list[EmbeddingInput], records) -> None:
@@ -117,3 +142,14 @@ class EmbeddingBatchService:
             f"{record.chunk_id}|{record.provider}|{record.model}|{record.dimension}|{record.content_hash}".encode("utf-8")
         ).hexdigest()[:12]
         return f"emb_{record.chunk_id}_{checksum}"
+
+    @staticmethod
+    def _emit_progress(
+        callback: Callable[[int, int], None] | None,
+        *,
+        completed_batches: int,
+        total_batches: int,
+    ) -> None:
+        if callback is None:
+            return
+        callback(completed_batches, total_batches)

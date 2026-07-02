@@ -20,7 +20,12 @@ class SwxyParserAdapter:
     def __init__(self, chunker: Callable[..., Any] | None = None) -> None:
         self._chunker = chunker
 
-    def parse(self, context: IngestionContext) -> ParsedDocument:
+    def parse(
+        self,
+        context: IngestionContext,
+        *,
+        progress_callback: Callable[[float | None, str], None] | None = None,
+    ) -> ParsedDocument:
         self._validate_source_type(context.source_type)
         chunker = self._chunker or self._load_default_chunker()
         try:
@@ -29,7 +34,7 @@ class SwxyParserAdapter:
                 binary=None,
                 from_page=0,
                 to_page=100000,
-                callback=self._noop_callback,
+                callback=self._build_progress_callback(progress_callback),
             )
         except SwxyParserUnavailableError:
             raise
@@ -179,6 +184,36 @@ class SwxyParserAdapter:
             return None
         text = str(value).strip()
         return text or None
+
+    def _build_progress_callback(
+        self,
+        progress_callback: Callable[[float | None, str], None] | None,
+    ) -> Callable[..., None]:
+        if progress_callback is None:
+            return self._noop_callback
+
+        def _callback(progress: float | None = None, msg: str | None = None, *args: Any, **kwargs: Any) -> None:
+            resolved_progress = progress
+            resolved_message = msg
+            if args:
+                if resolved_progress is None and isinstance(args[0], (int, float)):
+                    resolved_progress = float(args[0])
+                    if len(args) > 1 and resolved_message is None:
+                        resolved_message = str(args[1])
+                elif resolved_message is None:
+                    resolved_message = str(args[0])
+            if resolved_progress is None and kwargs.get("progress") is not None:
+                try:
+                    resolved_progress = float(kwargs["progress"])
+                except (TypeError, ValueError):
+                    resolved_progress = None
+            if resolved_message is None:
+                resolved_message = kwargs.get("msg") or kwargs.get("message")
+            if resolved_message is None:
+                return
+            progress_callback(resolved_progress, str(resolved_message))
+
+        return _callback
 
     @staticmethod
     def _noop_callback(*_args: Any, **_kwargs: Any) -> None:

@@ -21,6 +21,7 @@ from app.knowledge_base.schemas import (
     KnowledgeDocument,
     KnowledgeDocumentVersion,
     KnowledgeIngestJob,
+    KnowledgeIngestJobRuntimeState,
     PermissionScope,
     SourceType,
 )
@@ -99,6 +100,38 @@ def test_version_and_job_require_core_fields() -> None:
 
     assert version.status == DocumentVersionStatus.PARSED
     assert job.current_step == IngestStep.QUEUED
+
+
+def test_runtime_state_schema_accepts_observability_metrics() -> None:
+    runtime_state = KnowledgeIngestJobRuntimeState(
+        job_id="idxjob_1",
+        progress_message="embedding batch 31 / 114",
+        progress_completed_steps=6,
+        progress_total_steps=10,
+        file_size_bytes=26482250,
+        page_count=253,
+        chunk_count=1139,
+        embedding_count=1139,
+        embedding_batch_count=114,
+        embedding_batches_completed=31,
+        vector_mapping_count=1139,
+        parser_duration_ms=120000,
+        embedding_duration_ms=330000,
+        faiss_duration_ms=18000,
+        total_duration_ms=612000,
+    )
+
+    assert runtime_state.embedding_batch_count == 114
+    assert runtime_state.vector_mapping_count == 1139
+
+
+def test_ingest_step_supports_fine_grained_observability_values() -> None:
+    assert IngestStep.PARSING_DOCUMENT.value == "parsing_document"
+    assert IngestStep.PARSING_PDF.value == "parsing_pdf"
+    assert IngestStep.OCR_RUNNING.value == "ocr_running"
+    assert IngestStep.LAYOUT_ANALYZING.value == "layout_analyzing"
+    assert IngestStep.TABLE_ANALYZING.value == "table_analyzing"
+    assert IngestStep.TEXT_MERGING.value == "text_merging"
 
 
 def test_chunk_schema_can_be_created_without_repository() -> None:

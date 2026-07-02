@@ -76,6 +76,12 @@ class IngestJobStatus(str, Enum):
 class IngestStep(str, Enum):
     QUEUED = "queued"
     LOCK_ACQUIRED = "lock_acquired"
+    PARSING_DOCUMENT = "parsing_document"
+    PARSING_PDF = "parsing_pdf"
+    OCR_RUNNING = "ocr_running"
+    LAYOUT_ANALYZING = "layout_analyzing"
+    TABLE_ANALYZING = "table_analyzing"
+    TEXT_MERGING = "text_merging"
     CHUNKING = "chunking"
     PERSISTING_CHUNKS = "persisting_chunks"
     EMBEDDING = "embedding"
@@ -191,3 +197,23 @@ class KnowledgeIngestJob(_StrictModel):
     last_heartbeat_at: datetime | None = None
     latest_manifest_index_id: str | None = None
     active_manifest_index_id: str | None = None
+
+
+class KnowledgeIngestJobRuntimeState(_StrictModel):
+    job_id: str = Field(..., min_length=1)
+    progress_message: str | None = None
+    progress_completed_steps: int | None = Field(default=None, ge=0)
+    progress_total_steps: int | None = Field(default=None, ge=1)
+    file_size_bytes: int | None = Field(default=None, ge=0)
+    page_count: int | None = Field(default=None, ge=0)
+    chunk_count: int | None = Field(default=None, ge=0)
+    embedding_count: int | None = Field(default=None, ge=0)
+    embedding_batch_count: int | None = Field(default=None, ge=0)
+    embedding_batches_completed: int | None = Field(default=None, ge=0)
+    vector_mapping_count: int | None = Field(default=None, ge=0)
+    parser_duration_ms: int | None = Field(default=None, ge=0)
+    embedding_duration_ms: int | None = Field(default=None, ge=0)
+    faiss_duration_ms: int | None = Field(default=None, ge=0)
+    total_duration_ms: int | None = Field(default=None, ge=0)
+    created_at: datetime | None = None
+    updated_at: datetime | None = None

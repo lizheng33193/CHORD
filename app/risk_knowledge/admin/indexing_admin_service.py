@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
 from threading import Thread
 
@@ -16,6 +17,7 @@ from app.knowledge_base.models import KnowledgeIngestJobModel
 from app.knowledge_base.repositories.sqlalchemy import (
     SqlAlchemyKnowledgeDocumentRepository,
     SqlAlchemyKnowledgeIngestJobRepository,
+    SqlAlchemyKnowledgeIngestJobRuntimeStateRepository,
 )
 from app.knowledge_base.schemas import (
     DocumentVersionStatus,
@@ -42,9 +44,16 @@ from app.risk_knowledge.admin.schemas import (
 )
 from app.risk_knowledge.embedding.factory import build_embedding_provider_from_settings
 from app.risk_knowledge.ingestion.context import IngestionContext
+from app.risk_knowledge.ingestion.schemas import ParsedDocument
 from app.risk_knowledge.ingestion.swxy_parser_adapter import SwxyParserAdapter
 from app.risk_knowledge.persistence.repositories import SqlAlchemyFaissIndexRepository
 from app.risk_knowledge.runtime.orchestrator import IndexingOrchestrator
+from app.risk_knowledge.runtime.progress import (
+    DEFAULT_PROGRESS_TOTAL_STEPS,
+    IndexingProgressUpdater,
+    ProgressUpdate,
+    resolve_stage_progress,
+)
 from app.risk_knowledge.runtime.redis_state import RedisIndexingTaskStateStore
 
 _JobLauncher = Callable[[Callable[[], None]], None]
@@ -70,6 +79,7 @@ class IndexingAdminService:
         self._db = db
         self._doc_repo = SqlAlchemyKnowledgeDocumentRepository(db)
         self._job_repo = SqlAlchemyKnowledgeIngestJobRepository(db)
+        self._runtime_state_repo = SqlAlchemyKnowledgeIngestJobRuntimeStateRepository(db)
         self._document_service = DocumentService(self._doc_repo)
         self._job_service = IngestJobService(self._job_repo)
         self._manifest_repo = SqlAlchemyFaissIndexRepository(db)
@@ -300,19 +310,61 @@ class IndexingAdminService:
                     job_service.fail_job(job_id, "document or version not found before background execution")
                     db.commit()
                 return
+            file_path = self._resolve_local_file(version.file_uri)
+            progress_updater: IndexingProgressUpdater | None = None
+            current_step_ref = {"value": IngestStep.QUEUED}
             try:
-                job_service.transition_job(job_id, IndexingJobStatus.RUNNING, current_step=IngestStep.QUEUED)
+                job = job_service.transition_job(job_id, IndexingJobStatus.RUNNING, current_step=IngestStep.QUEUED)
                 db.commit()
+                progress_updater = self._build_progress_updater(
+                    job=job,
+                    document=document,
+                    version=version,
+                )
+                current_step_ref["value"] = (
+                    IngestStep.PARSING_PDF if document.source_type.value == "pdf" else IngestStep.PARSING_DOCUMENT
+                )
+                parse_started_at = self._now()
+                progress_updater.update(
+                    ProgressUpdate(
+                        runtime_status="running",
+                        current_step=current_step_ref["value"].value,
+                        progress_message="parsing document",
+                        progress_completed_steps=resolve_stage_progress(current_step_ref["value"].value),
+                        progress_total_steps=DEFAULT_PROGRESS_TOTAL_STEPS,
+                        file_size_bytes=self._resolve_file_size_bytes(file_path),
+                    ),
+                    force=True,
+                )
                 parsed = self._parser_adapter.parse(
                     IngestionContext(
                         kb_id=document.kb_id,
                         doc_id=document.doc_id,
                         version_id=version.version_id,
                         job_id=job_id,
-                        file_path=self._resolve_local_file(version.file_uri),
+                        file_path=file_path,
                         doc_name=document.doc_name,
                         source_type=document.source_type,
-                    )
+                    ),
+                    progress_callback=self._build_parser_progress_callback(
+                        document_source_type=document.source_type.value,
+                        progress_updater=progress_updater,
+                        current_step_ref=current_step_ref,
+                    ),
+                )
+                current_step_ref["value"] = IngestStep.CHUNKING
+                progress_updater.update(
+                    ProgressUpdate(
+                        runtime_status="running",
+                        current_step=current_step_ref["value"].value,
+                        progress_message="parser completed; building chunks",
+                        progress_completed_steps=resolve_stage_progress(current_step_ref["value"].value),
+                        progress_total_steps=DEFAULT_PROGRESS_TOTAL_STEPS,
+                        file_size_bytes=self._resolve_file_size_bytes(file_path),
+                        page_count=self._estimate_page_count(parsed),
+                        parser_duration_ms=self._elapsed_ms(parse_started_at),
+                    ),
+                    force=True,
                 )
                 orchestrator = self._build_orchestrator()
                 if trigger == IndexingJobTrigger.RETRY and failed_job_id is not None:
@@ -322,6 +374,7 @@ class IndexingAdminService:
                         version=version,
                         failed_job_id=failed_job_id,
                         job_id=job_id,
+                        progress_updater=progress_updater,
                     )
                 elif trigger == IndexingJobTrigger.REBUILD_FROM_PARSED:
                     orchestrator.start_rebuild_from_parsed(
@@ -329,6 +382,7 @@ class IndexingAdminService:
                         document=document,
                         version=version,
                         job_id=job_id,
+                        progress_updater=progress_updater,
                     )
                 else:
                     orchestrator.start_initial_index(
@@ -336,6 +390,7 @@ class IndexingAdminService:
                         document=document,
                         version=version,
                         job_id=job_id,
+                        progress_updater=progress_updater,
                     )
             except Exception as exc:  # pylint: disable=broad-except
                 try:
@@ -345,7 +400,22 @@ class IndexingAdminService:
                             refreshed_version.model_copy(update={"status": DocumentVersionStatus.FAILED})
                         )
                     if job_repo.get(job_id) is not None:
-                        job_service.fail_job(job_id, str(exc))
+                        job_service.fail_job(job_id, str(exc), current_step=current_step_ref["value"])
+                    if progress_updater is not None:
+                        progress_updater.update(
+                            ProgressUpdate(
+                                runtime_status="failed",
+                                current_step=current_step_ref["value"].value,
+                                progress_message=f"failed during {current_step_ref['value'].value}: {exc}",
+                                progress_completed_steps=resolve_stage_progress(current_step_ref["value"].value),
+                                progress_total_steps=DEFAULT_PROGRESS_TOTAL_STEPS,
+                                error_code=exc.__class__.__name__,
+                                error_message=str(exc),
+                                total_duration_ms=self._elapsed_ms(job.started_at if 'job' in locals() else None),
+                                completed=True,
+                            ),
+                            force=True,
+                        )
                     db.commit()
                 except Exception:
                     db.rollback()
@@ -359,6 +429,7 @@ class IndexingAdminService:
             redis_client=redis_client,
             embedding_provider=embedding_provider,
             artifact_root=settings.resolve_path(settings.risk_knowledge_faiss_artifact_dir),
+            session_factory=self._session_factory,
         )
 
     def _get_runtime_state(self, job_id: str):
@@ -366,6 +437,12 @@ class IndexingAdminService:
             return self._build_runtime_state_store().get(job_id), True
         except Exception:
             return None, False
+
+    def _get_durable_runtime_state(self, job_id: str):
+        try:
+            return self._runtime_state_repo.get(job_id)
+        except Exception:
+            return None
 
     def _build_runtime_state_store(self) -> RedisIndexingTaskStateStore:
         return RedisIndexingTaskStateStore(
@@ -384,6 +461,24 @@ class IndexingAdminService:
 
     def _build_job_summary(self, job) -> IndexingJobSummaryResponse:
         runtime_state, runtime_state_available = self._get_runtime_state(job.job_id)
+        durable_runtime_state = self._get_durable_runtime_state(job.job_id)
+        progress_state = runtime_state or durable_runtime_state
+        started_at = self._first_non_none(
+            runtime_state.started_at if runtime_state is not None else None,
+            job.started_at,
+        )
+        completed_at = self._first_non_none(
+            runtime_state.completed_at if runtime_state is not None else None,
+            job.completed_at,
+        )
+        last_heartbeat_at = self._first_non_none(
+            runtime_state.last_heartbeat_at if runtime_state is not None else None,
+            job.last_heartbeat_at,
+        )
+        total_duration_ms = self._first_non_none(
+            progress_state.total_duration_ms if progress_state is not None else None,
+            self._elapsed_ms(started_at, completed_at or last_heartbeat_at),
+        )
         return IndexingJobSummaryResponse(
             job_id=job.job_id,
             kb_id=job.kb_id,
@@ -397,23 +492,43 @@ class IndexingAdminService:
             max_attempts=job.max_attempts,
             root_job_id=job.root_job_id,
             retry_of_job_id=job.retry_of_job_id,
-            latest_manifest_index_id=(
-                runtime_state.latest_manifest_index_id if runtime_state is not None else job.latest_manifest_index_id
+            latest_manifest_index_id=self._first_non_none(
+                runtime_state.latest_manifest_index_id if runtime_state is not None else None,
+                job.latest_manifest_index_id,
             ),
-            active_manifest_index_id=(
-                runtime_state.active_manifest_index_id if runtime_state is not None else job.active_manifest_index_id
+            active_manifest_index_id=self._first_non_none(
+                runtime_state.active_manifest_index_id if runtime_state is not None else None,
+                job.active_manifest_index_id,
             ),
-            started_at=runtime_state.started_at if runtime_state is not None else job.started_at,
-            completed_at=runtime_state.completed_at if runtime_state is not None else job.completed_at,
-            last_heartbeat_at=(
-                runtime_state.last_heartbeat_at if runtime_state is not None else job.last_heartbeat_at
-            ),
+            started_at=started_at,
+            completed_at=completed_at,
+            last_heartbeat_at=last_heartbeat_at,
             runtime_state_available=runtime_state_available and runtime_state is not None,
             runtime_status=runtime_state.runtime_status if runtime_state is not None else None,
             runtime_current_step=runtime_state.current_step if runtime_state is not None else None,
-            progress_completed_steps=runtime_state.progress_completed_steps if runtime_state is not None else None,
-            progress_total_steps=runtime_state.progress_total_steps if runtime_state is not None else None,
-            progress_message=runtime_state.progress_message if runtime_state is not None else None,
+            progress_completed_steps=self._coalesce_progress_field(
+                runtime_state,
+                durable_runtime_state,
+                "progress_completed_steps",
+            ),
+            progress_total_steps=self._coalesce_progress_field(
+                runtime_state,
+                durable_runtime_state,
+                "progress_total_steps",
+            ),
+            progress_message=self._coalesce_progress_field(runtime_state, durable_runtime_state, "progress_message"),
+            elapsed_seconds=self._elapsed_seconds(total_duration_ms),
+            file_size_bytes=self._coalesce_progress_field(runtime_state, durable_runtime_state, "file_size_bytes"),
+            page_count=self._coalesce_progress_field(runtime_state, durable_runtime_state, "page_count"),
+            chunk_count=self._coalesce_progress_field(runtime_state, durable_runtime_state, "chunk_count"),
+            embedding_count=self._coalesce_progress_field(runtime_state, durable_runtime_state, "embedding_count"),
+            embedding_batch_count=self._coalesce_progress_field(runtime_state, durable_runtime_state, "embedding_batch_count"),
+            embedding_batches_completed=self._coalesce_progress_field(runtime_state, durable_runtime_state, "embedding_batches_completed"),
+            vector_mapping_count=self._coalesce_progress_field(runtime_state, durable_runtime_state, "vector_mapping_count"),
+            parser_duration_ms=self._coalesce_progress_field(runtime_state, durable_runtime_state, "parser_duration_ms"),
+            embedding_duration_ms=self._coalesce_progress_field(runtime_state, durable_runtime_state, "embedding_duration_ms"),
+            faiss_duration_ms=self._coalesce_progress_field(runtime_state, durable_runtime_state, "faiss_duration_ms"),
+            total_duration_ms=total_duration_ms,
         )
 
     def _load_document_and_version(self, version_id: str):
@@ -474,3 +589,103 @@ class IndexingAdminService:
                 resource_id=file_uri,
             )
         return str(path)
+
+    def _build_progress_updater(self, *, job, document, version) -> IndexingProgressUpdater:
+        return IndexingProgressUpdater(
+            job=job,
+            document=document,
+            version=version,
+            redis_state_store=self._build_runtime_state_store(),
+            session_factory=self._session_factory,
+        )
+
+    def _build_parser_progress_callback(
+        self,
+        *,
+        document_source_type: str,
+        progress_updater: IndexingProgressUpdater,
+        current_step_ref: dict[str, IngestStep],
+    ) -> Callable[[float | None, str], None]:
+        last_step: dict[str, IngestStep | None] = {"value": None}
+
+        def _callback(_progress: float | None, message: str) -> None:
+            step = self._map_parser_step(document_source_type, message)
+            force = step != last_step["value"]
+            last_step["value"] = step
+            current_step_ref["value"] = step
+            progress_updater.update(
+                ProgressUpdate(
+                    runtime_status="running",
+                    current_step=step.value,
+                    progress_message=message,
+                    progress_completed_steps=resolve_stage_progress(step.value),
+                    progress_total_steps=DEFAULT_PROGRESS_TOTAL_STEPS,
+                ),
+                force=force,
+            )
+
+        return _callback
+
+    @staticmethod
+    def _map_parser_step(document_source_type: str, message: str) -> IngestStep:
+        normalized = message.strip().lower()
+        if document_source_type == "pdf":
+            if "ocr" in normalized:
+                return IngestStep.OCR_RUNNING
+            if "layout" in normalized:
+                return IngestStep.LAYOUT_ANALYZING
+            if "table" in normalized:
+                return IngestStep.TABLE_ANALYZING
+            if "merged" in normalized or "merge" in normalized:
+                return IngestStep.TEXT_MERGING
+            return IngestStep.PARSING_PDF
+        return IngestStep.PARSING_DOCUMENT
+
+    @staticmethod
+    def _estimate_page_count(parsed_document: ParsedDocument) -> int | None:
+        page_numbers = [
+            max(filter(None, [chunk.page_start, chunk.page_end]))
+            for chunk in parsed_document.raw_chunks
+            if chunk.page_start is not None or chunk.page_end is not None
+        ]
+        if not page_numbers:
+            return None
+        return max(page_numbers)
+
+    @staticmethod
+    def _resolve_file_size_bytes(file_path: str) -> int | None:
+        try:
+            return Path(file_path).stat().st_size
+        except OSError:
+            return None
+
+    @staticmethod
+    def _first_non_none(*values):
+        for value in values:
+            if value is not None:
+                return value
+        return None
+
+    @classmethod
+    def _coalesce_progress_field(cls, runtime_state, durable_runtime_state, field_name: str):
+        return cls._first_non_none(
+            getattr(runtime_state, field_name, None) if runtime_state is not None else None,
+            getattr(durable_runtime_state, field_name, None) if durable_runtime_state is not None else None,
+        )
+
+    @staticmethod
+    def _elapsed_ms(started_at: datetime | None, ended_at: datetime | None = None) -> int | None:
+        if started_at is None:
+            return None
+        end = ended_at or datetime.now(UTC).replace(tzinfo=None)
+        return max(0, int((end - started_at).total_seconds() * 1000))
+
+    @staticmethod
+    def _elapsed_seconds(total_duration_ms: int | None) -> int | None:
+        if total_duration_ms is None:
+            return None
+        return total_duration_ms // 1000
+
+    @staticmethod
+    def _now() -> datetime:
+        return datetime.now(UTC).replace(tzinfo=None)

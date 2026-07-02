@@ -10,6 +10,7 @@
 - 新增 planning artifacts：
   - `docs/specs/m2d-15a-indexing-observability-spec.md`
   - `docs/plans/m2d-15a-indexing-observability-plan.md`
+  - `docs/reviews/m2d-15a-indexing-observability-review.md`
 - `M2D-14C Targeted File-Type Validation` 当前结论：
   - accepted at stage level after targeted file-type validation closure
   - accepted facts:
@@ -24,12 +25,14 @@
   - long-running indexing jobs progress correctly in OCR / layout / embedding / FAISS runtime
   - external polling still stays too long at coarse `queued/running`
 - `M2D-15A Indexing Job Observability & Runtime State Fidelity` 当前状态：
-  - planned / not started
-  - planning-only scope landed; no runtime implementation started
+  - implementation landed on current branch; targeted validation passed
+  - shared `ProgressUpdater` now spans parser-stage admin execution and runner-stage indexing execution
+  - admin API job summary now merges Redis live state with durable runtime sidecar state
+  - existing Knowledge Jobs panel is minimally upgraded for stage progress, embedding batches, and runtime metrics
   - parser progress integration is explicitly planned at `IndexingAdminService`, not via runner ownership refactor
-  - durable progress writes are planned to be throttled
+  - durable progress writes are throttled
   - stage progress and embedding sub-progress are explicitly separated
-  - failure semantics are planned to preserve the real failing stage
+  - failure semantics preserve the real failing stage
 - `M2D-15 Production Hardening` 当前状态：
   - not started beyond planning
   - no worker queue
@@ -125,7 +128,7 @@
   - `M2D-14C-1 small DOCX validation passed`
   - `M2D-14C-2 small PDF validation passed`
   - `M2D-14C-3 real PDF validation passed`
-  - `M2D-15A Indexing Job Observability & Runtime State Fidelity planned / not started`
+  - `M2D-15A Indexing Job Observability & Runtime State Fidelity implemented on branch; acceptance pending review`
   - `407f058` is a validation-driven runtime fix for DashScope embedding batching, not `M2D-15 Production Hardening`
 - Acceptance posture:
   - `M2D-10 accepted at stage level after targeted retrieval foundation validation`
@@ -154,7 +157,7 @@
   - small `PDF` validation passed inside `M2D-14C`
   - real large `PDF` validation passed inside `M2D-14C`
   - full repository regression not run for `M2D-14B`
-  - `M2D-15A` planning landed; runtime implementation not started
+  - `M2D-15A` implementation landed on branch with targeted validation; production hardening remains separate
   - production hardening remains not started beyond planning
 - Next phase:
   - `M2D-15A Indexing Job Observability & Runtime State Fidelity`

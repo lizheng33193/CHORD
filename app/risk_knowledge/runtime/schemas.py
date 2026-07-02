@@ -18,6 +18,12 @@ RuntimeStatus = Literal["queued", "running", "completed", "failed"]
 RuntimeStep = Literal[
     "queued",
     "lock_acquired",
+    "parsing_document",
+    "parsing_pdf",
+    "ocr_running",
+    "layout_analyzing",
+    "table_analyzing",
+    "text_merging",
     "chunking",
     "persisting_chunks",
     "embedding",
@@ -42,11 +48,22 @@ class RedisIndexingJobState(_StrictModel):
     progress_completed_steps: int = Field(..., ge=0)
     progress_total_steps: int = Field(..., ge=1)
     progress_message: str = Field(..., min_length=1)
-    lock_token: str = Field(..., min_length=1)
+    lock_token: str | None = None
     error_code: str | None = None
     error_message: str | None = None
     active_manifest_index_id: str | None = None
     latest_manifest_index_id: str | None = None
+    file_size_bytes: int | None = Field(default=None, ge=0)
+    page_count: int | None = Field(default=None, ge=0)
+    chunk_count: int | None = Field(default=None, ge=0)
+    embedding_count: int | None = Field(default=None, ge=0)
+    embedding_batch_count: int | None = Field(default=None, ge=0)
+    embedding_batches_completed: int | None = Field(default=None, ge=0)
+    vector_mapping_count: int | None = Field(default=None, ge=0)
+    parser_duration_ms: int | None = Field(default=None, ge=0)
+    embedding_duration_ms: int | None = Field(default=None, ge=0)
+    faiss_duration_ms: int | None = Field(default=None, ge=0)
+    total_duration_ms: int | None = Field(default=None, ge=0)
     started_at: datetime | None = None
     updated_at: datetime | None = None
     completed_at: datetime | None = None

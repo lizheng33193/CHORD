@@ -266,6 +266,28 @@ def test_embedding_batch_service_batches_persisted_chunks(auth_db) -> None:
         assert len(result.records) == 5
 
 
+def test_embedding_batch_service_reports_batch_progress() -> None:
+    from app.risk_knowledge.embedding.batch_service import EmbeddingBatchService
+
+    provider = TrackingBatchEmbeddingProvider()
+    service = EmbeddingBatchService(provider=provider, expected_dimension=2)
+    events: list[tuple[int, int]] = []
+
+    service.embed_inputs(
+        [
+            EmbeddingInput(
+                chunk_id=f"risk_guide_202607_chunk_{index:06d}",
+                content_hash=f"sha256:content:{index}",
+                text=f"风险知识内容 {index}",
+            )
+            for index in range(5)
+        ],
+        progress_callback=lambda completed, total: events.append((completed, total)),
+    )
+
+    assert events == [(0, 3), (1, 3), (1, 3), (2, 3), (2, 3), (3, 3)]
+
+
 def test_openai_compatible_provider_requires_runtime_dependency(monkeypatch) -> None:
     from app.risk_knowledge.embedding import openai_compatible_provider as provider_module
     from app.risk_knowledge.embedding.openai_compatible_provider import OpenAICompatibleEmbeddingProvider

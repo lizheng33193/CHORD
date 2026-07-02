@@ -10,8 +10,15 @@ from app.knowledge_base.models import (
     KnowledgeDocumentModel,
     KnowledgeDocumentVersionModel,
     KnowledgeIngestJobModel,
+    KnowledgeIngestJobRuntimeStateModel,
 )
-from app.knowledge_base.schemas import KnowledgeBase, KnowledgeDocument, KnowledgeDocumentVersion, KnowledgeIngestJob
+from app.knowledge_base.schemas import (
+    KnowledgeBase,
+    KnowledgeDocument,
+    KnowledgeDocumentVersion,
+    KnowledgeIngestJob,
+    KnowledgeIngestJobRuntimeState,
+)
 
 
 class SqlAlchemyKnowledgeBaseRepository:
@@ -228,6 +235,43 @@ class SqlAlchemyKnowledgeIngestJobRepository:
         return [_to_job(item) for item in items]
 
 
+class SqlAlchemyKnowledgeIngestJobRuntimeStateRepository:
+    def __init__(self, db: Session) -> None:
+        self._db = db
+
+    def get(self, job_id: str) -> KnowledgeIngestJobRuntimeState | None:
+        model = self._db.scalar(
+            select(KnowledgeIngestJobRuntimeStateModel).where(KnowledgeIngestJobRuntimeStateModel.job_id == job_id)
+        )
+        return _to_runtime_state(model) if model is not None else None
+
+    def upsert(self, state: KnowledgeIngestJobRuntimeState) -> KnowledgeIngestJobRuntimeState:
+        model = self._db.scalar(
+            select(KnowledgeIngestJobRuntimeStateModel).where(KnowledgeIngestJobRuntimeStateModel.job_id == state.job_id)
+        )
+        if model is None:
+            model = KnowledgeIngestJobRuntimeStateModel(job_id=state.job_id)
+            self._db.add(model)
+
+        model.progress_message = state.progress_message
+        model.progress_completed_steps = state.progress_completed_steps
+        model.progress_total_steps = state.progress_total_steps
+        model.file_size_bytes = state.file_size_bytes
+        model.page_count = state.page_count
+        model.chunk_count = state.chunk_count
+        model.embedding_count = state.embedding_count
+        model.embedding_batch_count = state.embedding_batch_count
+        model.embedding_batches_completed = state.embedding_batches_completed
+        model.vector_mapping_count = state.vector_mapping_count
+        model.parser_duration_ms = state.parser_duration_ms
+        model.embedding_duration_ms = state.embedding_duration_ms
+        model.faiss_duration_ms = state.faiss_duration_ms
+        model.total_duration_ms = state.total_duration_ms
+        self._db.flush()
+        self._db.refresh(model)
+        return _to_runtime_state(model)
+
+
 def _to_document(model: KnowledgeDocumentModel) -> KnowledgeDocument:
     return KnowledgeDocument.model_validate(
         {
@@ -299,5 +343,29 @@ def _to_job(model: KnowledgeIngestJobModel) -> KnowledgeIngestJob:
             "last_heartbeat_at": model.last_heartbeat_at,
             "latest_manifest_index_id": model.latest_manifest_index_id,
             "active_manifest_index_id": model.active_manifest_index_id,
+        }
+    )
+
+
+def _to_runtime_state(model: KnowledgeIngestJobRuntimeStateModel) -> KnowledgeIngestJobRuntimeState:
+    return KnowledgeIngestJobRuntimeState.model_validate(
+        {
+            "job_id": model.job_id,
+            "progress_message": model.progress_message,
+            "progress_completed_steps": model.progress_completed_steps,
+            "progress_total_steps": model.progress_total_steps,
+            "file_size_bytes": model.file_size_bytes,
+            "page_count": model.page_count,
+            "chunk_count": model.chunk_count,
+            "embedding_count": model.embedding_count,
+            "embedding_batch_count": model.embedding_batch_count,
+            "embedding_batches_completed": model.embedding_batches_completed,
+            "vector_mapping_count": model.vector_mapping_count,
+            "parser_duration_ms": model.parser_duration_ms,
+            "embedding_duration_ms": model.embedding_duration_ms,
+            "faiss_duration_ms": model.faiss_duration_ms,
+            "total_duration_ms": model.total_duration_ms,
+            "created_at": model.created_at,
+            "updated_at": model.updated_at,
         }
     )

@@ -17,7 +17,6 @@ from app.knowledge_base.repositories.sqlalchemy import (
     SqlAlchemyKnowledgeIngestJobRepository,
 )
 from app.knowledge_base.schemas import (
-    DocumentStatus,
     DocumentVersionStatus,
     IndexingJobStatus,
     IndexingJobStep,
@@ -28,28 +27,26 @@ from app.knowledge_base.schemas import (
 )
 from app.knowledge_base.services.document_service import DocumentService
 from app.risk_knowledge.embedding.batch_service import EmbeddingBatchService
-from app.risk_knowledge.embedding.errors import EmbeddingDimensionMismatchError, EmbeddingInputError, EmbeddingProviderError
-from app.risk_knowledge.indexing.errors import FaissManifestMismatchError
-from app.risk_knowledge.indexing.faiss_store import build_faiss_fingerprint, FaissIndexStore
+from app.risk_knowledge.indexing.faiss_store import FaissIndexStore, build_faiss_fingerprint
 from app.risk_knowledge.indexing.schemas import FaissIndexManifestDraft
 from app.risk_knowledge.ingestion.schemas import ParsedDocument
 from app.risk_knowledge.metadata.chunk_builder import KnowledgeChunkBuilder
-from app.risk_knowledge.persistence.errors import ChunkContentConflictError
 from app.risk_knowledge.persistence.repositories import (
     SqlAlchemyFaissIndexRepository,
     SqlAlchemyKnowledgeChunkEmbeddingRepository,
     SqlAlchemyKnowledgeChunkRepository,
-    to_manifest_schema,
 )
 from app.risk_knowledge.persistence.service import KnowledgeChunkPersistenceService
-from app.risk_knowledge.runtime.errors import (
-    IndexingArtifactError,
-    IndexingJobNotRetryableError,
-    IndexingLockLostError,
+from app.risk_knowledge.runtime.errors import IndexingJobNotRetryableError
+from app.risk_knowledge.runtime.progress import (
+    DEFAULT_PROGRESS_TOTAL_STEPS,
+    IndexingProgressUpdater,
+    ProgressUpdate,
+    resolve_stage_progress,
 )
 from app.risk_knowledge.runtime.redis_lock import RedisVersionLock
 from app.risk_knowledge.runtime.redis_state import RedisIndexingTaskStateStore
-from app.risk_knowledge.runtime.schemas import IndexingJobRunResult, RedisIndexingJobState
+from app.risk_knowledge.runtime.schemas import IndexingJobRunResult
 
 
 @dataclass(frozen=True)
@@ -79,6 +76,7 @@ class IndexingJobRunner:
         document: KnowledgeDocument,
         version: KnowledgeDocumentVersion,
         job_id: str | None = None,
+        progress_updater: IndexingProgressUpdater | None = None,
     ) -> IndexingJobRunResult:
         return self._run(
             parsed_document=parsed_document,
@@ -89,6 +87,7 @@ class IndexingJobRunner:
             force_rebuild=False,
             failed_job=None,
             job_id=job_id,
+            progress_updater=progress_updater,
         )
 
     def run_retry(
@@ -99,6 +98,7 @@ class IndexingJobRunner:
         version: KnowledgeDocumentVersion,
         failed_job: KnowledgeIngestJob,
         job_id: str | None = None,
+        progress_updater: IndexingProgressUpdater | None = None,
     ) -> IndexingJobRunResult:
         if failed_job.status != IndexingJobStatus.FAILED:
             raise IndexingJobNotRetryableError(f"job is not retryable: {failed_job.job_id}")
@@ -111,6 +111,7 @@ class IndexingJobRunner:
             force_rebuild=False,
             failed_job=failed_job,
             job_id=job_id,
+            progress_updater=progress_updater,
         )
 
     def run_rebuild_from_parsed(
@@ -120,6 +121,7 @@ class IndexingJobRunner:
         document: KnowledgeDocument,
         version: KnowledgeDocumentVersion,
         job_id: str | None = None,
+        progress_updater: IndexingProgressUpdater | None = None,
     ) -> IndexingJobRunResult:
         return self._run(
             parsed_document=parsed_document,
@@ -130,6 +132,7 @@ class IndexingJobRunner:
             force_rebuild=False,
             failed_job=None,
             job_id=job_id,
+            progress_updater=progress_updater,
         )
 
     def run_rebuild_from_persisted_chunks(
@@ -139,6 +142,7 @@ class IndexingJobRunner:
         version: KnowledgeDocumentVersion,
         force: bool = False,
         job_id: str | None = None,
+        progress_updater: IndexingProgressUpdater | None = None,
     ) -> IndexingJobRunResult:
         return self._run(
             parsed_document=None,
@@ -149,6 +153,7 @@ class IndexingJobRunner:
             force_rebuild=force,
             failed_job=None,
             job_id=job_id,
+            progress_updater=progress_updater,
         )
 
     def _run(
@@ -162,79 +167,160 @@ class IndexingJobRunner:
         force_rebuild: bool,
         failed_job: KnowledgeIngestJob | None,
         job_id: str | None,
+        progress_updater: IndexingProgressUpdater | None,
     ) -> IndexingJobRunResult:
         self._validate_version_status(version, trigger)
         attempt = 1 if failed_job is None else failed_job.attempt + 1
         root_job_id = failed_job.root_job_id if failed_job is not None and failed_job.root_job_id else None
         job_id = job_id or build_indexing_job_id()
-        lock_token = self._deps.version_lock.acquire(version.version_id)
-        now = self._now()
-        state = RedisIndexingJobState(
+        job = self._create_job(
             job_id=job_id,
-            kb_id=document.kb_id,
-            doc_id=document.doc_id,
-            version_id=version.version_id,
+            document=document,
+            version=version,
             trigger=trigger,
-            runtime_status="queued",
-            current_step="queued",
             attempt=attempt,
-            max_attempts=settings.risk_knowledge_indexing_max_retries,
-            progress_completed_steps=0,
-            progress_total_steps=7,
-            progress_message="queued",
-            lock_token=lock_token,
-            error_code=None,
-            error_message=None,
-            active_manifest_index_id=version.active_manifest_index_id,
-            latest_manifest_index_id=version.latest_manifest_index_id,
-            started_at=now,
-            updated_at=now,
-            completed_at=None,
-            last_heartbeat_at=now,
+            root_job_id=root_job_id or job_id,
+            retry_of_job_id=failed_job.job_id if failed_job is not None else None,
         )
-        self._deps.redis_state_store.put(state)
+        progress_updater = progress_updater or self._build_progress_updater(
+            job=job,
+            document=document,
+            version=version,
+        )
+        started_at = job.started_at or self._now()
+        lock_token: str | None = None
+        current_step = IndexingJobStep.QUEUED
+        chunk_count = 0
+        embedding_count = 0
+        embedding_batch_count = 0
+        vector_mapping_count = 0
+        embedding_duration_ms: int | None = None
+        faiss_duration_ms: int | None = None
 
         try:
-            job = self._create_job(
-                job_id=job_id,
-                document=document,
-                version=version,
-                trigger=trigger,
-                attempt=attempt,
-                root_job_id=root_job_id or job_id,
-                retry_of_job_id=failed_job.job_id if failed_job is not None else None,
+            lock_token = self._deps.version_lock.acquire(version.version_id)
+            current_step = IndexingJobStep.LOCK_ACQUIRED
+            progress_updater.update(
+                ProgressUpdate(
+                    runtime_status="running",
+                    current_step=current_step.value,
+                    progress_message="lock acquired",
+                    progress_completed_steps=resolve_stage_progress(current_step.value),
+                    progress_total_steps=DEFAULT_PROGRESS_TOTAL_STEPS,
+                    lock_token=lock_token,
+                    file_size_bytes=self._resolve_file_size_bytes(version.file_uri),
+                ),
+                force=True,
             )
-            self._update_state(job_id, runtime_status="running", current_step="lock_acquired", message="lock acquired", lock_token=lock_token, step_number=1)
             self._transition_version_running(version.version_id, trigger, job_id)
             self._deps.version_lock.renew(version.version_id, lock_token)
 
             if reuse_persisted_chunks:
                 chunk_ids = self._list_chunk_ids(version.version_id)
-                self._update_state(job_id, runtime_status="running", current_step="persisting_chunks", message="reusing persisted chunks", lock_token=lock_token, step_number=2)
+                chunk_count = len(chunk_ids)
+                current_step = IndexingJobStep.PERSISTING_CHUNKS
+                progress_updater.update(
+                    ProgressUpdate(
+                        runtime_status="running",
+                        current_step=current_step.value,
+                        progress_message="reusing persisted chunks",
+                        progress_completed_steps=resolve_stage_progress(current_step.value),
+                        progress_total_steps=DEFAULT_PROGRESS_TOTAL_STEPS,
+                        lock_token=lock_token,
+                        chunk_count=chunk_count,
+                    ),
+                    force=True,
+                )
             else:
                 if parsed_document is None:
                     raise ValueError("parsed_document is required for parsed-document indexing flows")
-                self._update_state(job_id, runtime_status="running", current_step="chunking", message="building chunks", lock_token=lock_token, step_number=2)
+                current_step = IndexingJobStep.CHUNKING
+                progress_updater.update(
+                    ProgressUpdate(
+                        runtime_status="running",
+                        current_step=current_step.value,
+                        progress_message="building chunks",
+                        progress_completed_steps=resolve_stage_progress(current_step.value),
+                        progress_total_steps=DEFAULT_PROGRESS_TOTAL_STEPS,
+                        lock_token=lock_token,
+                    ),
+                    force=True,
+                )
                 chunks = self._chunk_builder.build(parsed_document, document, version).chunks
+                chunk_count = len(chunks)
                 self._deps.version_lock.renew(version.version_id, lock_token)
-                self._update_state(job_id, runtime_status="running", current_step="persisting_chunks", message="persisting chunks", lock_token=lock_token, step_number=3)
+                current_step = IndexingJobStep.PERSISTING_CHUNKS
+                progress_updater.update(
+                    ProgressUpdate(
+                        runtime_status="running",
+                        current_step=current_step.value,
+                        progress_message="persisting chunks",
+                        progress_completed_steps=resolve_stage_progress(current_step.value),
+                        progress_total_steps=DEFAULT_PROGRESS_TOTAL_STEPS,
+                        lock_token=lock_token,
+                        chunk_count=chunk_count,
+                    ),
+                    force=True,
+                )
                 with self._deps.session_factory() as db:
                     KnowledgeChunkPersistenceService(db).persist_chunks(version, chunks)
                 chunk_ids = [chunk.chunk_id for chunk in chunks]
 
             self._deps.version_lock.renew(version.version_id, lock_token)
-            self._update_state(job_id, runtime_status="running", current_step="embedding", message="embedding persisted chunks", lock_token=lock_token, step_number=4)
+            current_step = IndexingJobStep.EMBEDDING
+            progress_updater.update(
+                ProgressUpdate(
+                    runtime_status="running",
+                    current_step=current_step.value,
+                    progress_message="embedding persisted chunks",
+                    progress_completed_steps=resolve_stage_progress(current_step.value),
+                    progress_total_steps=DEFAULT_PROGRESS_TOTAL_STEPS,
+                    lock_token=lock_token,
+                    chunk_count=chunk_count,
+                ),
+                force=True,
+            )
+            embedding_started_at = self._now()
             with self._deps.session_factory() as db:
                 embedding_service = EmbeddingBatchService(
                     provider=self._deps.embedding_provider,
                     expected_dimension=version.embedding_dim or settings.risk_knowledge_embedding_dimension,
                     db=db,
                 )
-                embedding_service.embed_persisted_chunks(version_id=version.version_id, chunk_ids=chunk_ids)
+                embedding_service.embed_persisted_chunks(
+                    version_id=version.version_id,
+                    chunk_ids=chunk_ids,
+                    progress_callback=self._build_embedding_progress_callback(
+                        progress_updater=progress_updater,
+                        lock_token=lock_token,
+                        chunk_count=chunk_count,
+                    ),
+                )
                 embedding_repo = SqlAlchemyKnowledgeChunkEmbeddingRepository(db)
                 chunk_repo = SqlAlchemyKnowledgeChunkRepository(db)
                 persisted_embeddings = embedding_repo.list_by_version(version.version_id)
                 persisted_chunks = chunk_repo.list_by_version(version.version_id)
+
+            chunk_count = len(persisted_chunks)
+            embedding_count = len(persisted_embeddings)
+            embedding_batch_count = self._embedding_batch_count(embedding_count)
+            embedding_duration_ms = self._elapsed_ms(embedding_started_at)
+            progress_updater.update(
+                ProgressUpdate(
+                    runtime_status="running",
+                    current_step=IndexingJobStep.EMBEDDING.value,
+                    progress_message="embedding completed",
+                    progress_completed_steps=resolve_stage_progress(IndexingJobStep.EMBEDDING.value),
+                    progress_total_steps=DEFAULT_PROGRESS_TOTAL_STEPS,
+                    lock_token=lock_token,
+                    chunk_count=chunk_count,
+                    embedding_count=embedding_count,
+                    embedding_batch_count=embedding_batch_count,
+                    embedding_batches_completed=embedding_batch_count,
+                    embedding_duration_ms=embedding_duration_ms,
+                ),
+                force=True,
+            )
 
             actual_pairs = [(item.chunk_id, item.content_hash) for item in persisted_embeddings]
             fingerprint = build_faiss_fingerprint(
@@ -256,12 +342,33 @@ class IndexingJobRunner:
                     and existing_manifest.checksum
                 ):
                     active_index_id = existing_manifest.index_id
+                    vector_mapping_count = existing_manifest.record_count
                     self._mark_reused_manifest(
                         job_id=job_id,
                         version_id=version.version_id,
                         active_manifest_index_id=active_index_id,
                     )
-                    self._update_state(job_id, runtime_status="completed", current_step="completed", message="reused active manifest", lock_token=lock_token, step_number=7, completed=True, latest_manifest_index_id=active_index_id, active_manifest_index_id=active_index_id)
+                    progress_updater.update(
+                        ProgressUpdate(
+                            runtime_status="completed",
+                            current_step=IndexingJobStep.COMPLETED.value,
+                            progress_message="reused active manifest",
+                            progress_completed_steps=resolve_stage_progress(IndexingJobStep.COMPLETED.value),
+                            progress_total_steps=DEFAULT_PROGRESS_TOTAL_STEPS,
+                            lock_token=lock_token,
+                            latest_manifest_index_id=active_index_id,
+                            active_manifest_index_id=active_index_id,
+                            chunk_count=chunk_count,
+                            embedding_count=embedding_count,
+                            embedding_batch_count=embedding_batch_count,
+                            embedding_batches_completed=embedding_batch_count,
+                            vector_mapping_count=vector_mapping_count,
+                            embedding_duration_ms=embedding_duration_ms,
+                            total_duration_ms=self._elapsed_ms(started_at),
+                            completed=True,
+                        ),
+                        force=True,
+                    )
                     self._deps.version_lock.release(version.version_id, lock_token)
                     return IndexingJobRunResult(
                         job_id=job_id,
@@ -274,7 +381,24 @@ class IndexingJobRunner:
                     )
 
             self._deps.version_lock.renew(version.version_id, lock_token)
-            self._update_state(job_id, runtime_status="running", current_step="faiss_building", message="building FAISS index", lock_token=lock_token, step_number=5)
+            current_step = IndexingJobStep.FAISS_BUILDING
+            progress_updater.update(
+                ProgressUpdate(
+                    runtime_status="running",
+                    current_step=current_step.value,
+                    progress_message="building FAISS index",
+                    progress_completed_steps=resolve_stage_progress(current_step.value),
+                    progress_total_steps=DEFAULT_PROGRESS_TOTAL_STEPS,
+                    lock_token=lock_token,
+                    chunk_count=chunk_count,
+                    embedding_count=embedding_count,
+                    embedding_batch_count=embedding_batch_count,
+                    embedding_batches_completed=embedding_batch_count,
+                    embedding_duration_ms=embedding_duration_ms,
+                ),
+                force=True,
+            )
+            faiss_started_at = self._now()
             embeddings_for_build = [
                 {
                     "chunk_id": item.chunk_id,
@@ -311,21 +435,81 @@ class IndexingJobRunner:
                 saved = store.save_index(built)
                 saved_manifest = saved.manifest
 
+            vector_mapping_count = len(saved.vector_mappings)
+            faiss_duration_ms = self._elapsed_ms(faiss_started_at)
             self._deps.version_lock.renew(version.version_id, lock_token)
-            self._update_state(job_id, runtime_status="running", current_step="manifest_persisting", message="manifest persisted", lock_token=lock_token, step_number=6, latest_manifest_index_id=saved_manifest.index_id)
+            current_step = IndexingJobStep.MANIFEST_PERSISTING
+            progress_updater.update(
+                ProgressUpdate(
+                    runtime_status="running",
+                    current_step=current_step.value,
+                    progress_message="manifest persisted",
+                    progress_completed_steps=resolve_stage_progress(current_step.value),
+                    progress_total_steps=DEFAULT_PROGRESS_TOTAL_STEPS,
+                    lock_token=lock_token,
+                    latest_manifest_index_id=saved_manifest.index_id,
+                    chunk_count=chunk_count,
+                    embedding_count=embedding_count,
+                    embedding_batch_count=embedding_batch_count,
+                    embedding_batches_completed=embedding_batch_count,
+                    vector_mapping_count=vector_mapping_count,
+                    embedding_duration_ms=embedding_duration_ms,
+                    faiss_duration_ms=faiss_duration_ms,
+                ),
+                force=True,
+            )
 
             if self._lose_lock_before_activation:
                 self._deps.version_lock.release(version.version_id, lock_token)
 
             self._deps.version_lock.renew(version.version_id, lock_token)
-            self._update_state(job_id, runtime_status="running", current_step="activating_manifest", message="activating manifest", lock_token=lock_token, step_number=7, latest_manifest_index_id=saved_manifest.index_id)
+            current_step = IndexingJobStep.ACTIVATING_MANIFEST
+            progress_updater.update(
+                ProgressUpdate(
+                    runtime_status="running",
+                    current_step=current_step.value,
+                    progress_message="activating manifest",
+                    progress_completed_steps=resolve_stage_progress(current_step.value),
+                    progress_total_steps=DEFAULT_PROGRESS_TOTAL_STEPS,
+                    lock_token=lock_token,
+                    latest_manifest_index_id=saved_manifest.index_id,
+                    chunk_count=chunk_count,
+                    embedding_count=embedding_count,
+                    embedding_batch_count=embedding_batch_count,
+                    embedding_batches_completed=embedding_batch_count,
+                    vector_mapping_count=vector_mapping_count,
+                    embedding_duration_ms=embedding_duration_ms,
+                    faiss_duration_ms=faiss_duration_ms,
+                ),
+                force=True,
+            )
             active_manifest_id = self._activate_manifest(
                 job_id=job_id,
-                document=document,
                 version_id=version.version_id,
                 manifest_index_id=saved_manifest.index_id,
             )
-            self._update_state(job_id, runtime_status="completed", current_step="completed", message="completed", lock_token=lock_token, step_number=7, latest_manifest_index_id=active_manifest_id, active_manifest_index_id=active_manifest_id, completed=True)
+            progress_updater.update(
+                ProgressUpdate(
+                    runtime_status="completed",
+                    current_step=IndexingJobStep.COMPLETED.value,
+                    progress_message="manifest activated",
+                    progress_completed_steps=resolve_stage_progress(IndexingJobStep.COMPLETED.value),
+                    progress_total_steps=DEFAULT_PROGRESS_TOTAL_STEPS,
+                    lock_token=lock_token,
+                    latest_manifest_index_id=active_manifest_id,
+                    active_manifest_index_id=active_manifest_id,
+                    chunk_count=chunk_count,
+                    embedding_count=embedding_count,
+                    embedding_batch_count=embedding_batch_count,
+                    embedding_batches_completed=embedding_batch_count,
+                    vector_mapping_count=vector_mapping_count,
+                    embedding_duration_ms=embedding_duration_ms,
+                    faiss_duration_ms=faiss_duration_ms,
+                    total_duration_ms=self._elapsed_ms(started_at),
+                    completed=True,
+                ),
+                force=True,
+            )
             self._deps.version_lock.release(version.version_id, lock_token)
             return IndexingJobRunResult(
                 job_id=job_id,
@@ -337,14 +521,42 @@ class IndexingJobRunner:
                 active_manifest_index_id=active_manifest_id,
             )
         except Exception as exc:
-            self._mark_failed(job_id=job_id, version_id=version.version_id, error_message=str(exc))
+            failure_step = self._resolve_failure_step(progress_updater, current_step)
+            self._mark_failed(
+                job_id=job_id,
+                version_id=version.version_id,
+                error_message=str(exc),
+                current_step=failure_step,
+            )
             try:
-                self._update_state(job_id, runtime_status="failed", current_step="failed", message=str(exc), lock_token=lock_token, step_number=7, error_code=exc.__class__.__name__, completed=True)
+                progress_updater.update(
+                    ProgressUpdate(
+                        runtime_status="failed",
+                        current_step=failure_step.value,
+                        progress_message=f"failed during {failure_step.value}: {exc}",
+                        progress_completed_steps=resolve_stage_progress(failure_step.value),
+                        progress_total_steps=DEFAULT_PROGRESS_TOTAL_STEPS,
+                        lock_token=lock_token,
+                        error_code=exc.__class__.__name__,
+                        error_message=str(exc),
+                        chunk_count=chunk_count or None,
+                        embedding_count=embedding_count or None,
+                        embedding_batch_count=embedding_batch_count or None,
+                        embedding_batches_completed=embedding_batch_count or None,
+                        vector_mapping_count=vector_mapping_count or None,
+                        embedding_duration_ms=embedding_duration_ms,
+                        faiss_duration_ms=faiss_duration_ms,
+                        total_duration_ms=self._elapsed_ms(started_at),
+                        completed=True,
+                    ),
+                    force=True,
+                )
             finally:
-                try:
-                    self._deps.version_lock.release(version.version_id, lock_token)
-                except Exception:
-                    pass
+                if lock_token is not None:
+                    try:
+                        self._deps.version_lock.release(version.version_id, lock_token)
+                    except Exception:
+                        pass
             raise
 
     def _validate_version_status(self, version: KnowledgeDocumentVersion, trigger: IndexingJobTrigger) -> None:
@@ -377,6 +589,7 @@ class IndexingJobRunner:
             existing = repo.get(job_id)
             if existing is not None:
                 return existing
+            now = self._now()
             job = repo.create(
                 KnowledgeIngestJob(
                     job_id=job_id,
@@ -391,9 +604,9 @@ class IndexingJobRunner:
                     max_attempts=settings.risk_knowledge_indexing_max_retries,
                     root_job_id=root_job_id,
                     retry_of_job_id=retry_of_job_id,
-                    started_at=self._now(),
+                    started_at=now,
                     completed_at=None,
-                    last_heartbeat_at=self._now(),
+                    last_heartbeat_at=now,
                     latest_manifest_index_id=None,
                     active_manifest_index_id=None,
                 )
@@ -420,7 +633,7 @@ class IndexingJobRunner:
             repo = SqlAlchemyKnowledgeChunkRepository(db)
             return [item.chunk_id for item in repo.list_by_version(version_id)]
 
-    def _activate_manifest(self, *, job_id: str, document: KnowledgeDocument, version_id: str, manifest_index_id: str) -> str:
+    def _activate_manifest(self, *, job_id: str, version_id: str, manifest_index_id: str) -> str:
         with self._deps.session_factory() as db:
             manifest_repo = SqlAlchemyFaissIndexRepository(db)
             doc_repo = SqlAlchemyKnowledgeDocumentRepository(db)
@@ -450,6 +663,7 @@ class IndexingJobRunner:
                         "status": IndexingJobStatus.COMPLETED,
                         "current_step": IndexingJobStep.COMPLETED,
                         "completed_at": self._now(),
+                        "last_heartbeat_at": self._now(),
                         "latest_manifest_index_id": manifest.index_id,
                         "active_manifest_index_id": manifest.index_id,
                     }
@@ -486,6 +700,7 @@ class IndexingJobRunner:
                         "status": IndexingJobStatus.COMPLETED,
                         "current_step": IndexingJobStep.COMPLETED,
                         "completed_at": self._now(),
+                        "last_heartbeat_at": self._now(),
                         "latest_manifest_index_id": active_manifest_index_id,
                         "active_manifest_index_id": active_manifest_index_id,
                     }
@@ -493,7 +708,14 @@ class IndexingJobRunner:
             )
             db.commit()
 
-    def _mark_failed(self, *, job_id: str, version_id: str, error_message: str) -> None:
+    def _mark_failed(
+        self,
+        *,
+        job_id: str,
+        version_id: str,
+        error_message: str,
+        current_step: IndexingJobStep,
+    ) -> None:
         with self._deps.session_factory() as db:
             doc_repo = SqlAlchemyKnowledgeDocumentRepository(db)
             job_repo = SqlAlchemyKnowledgeIngestJobRepository(db)
@@ -502,54 +724,93 @@ class IndexingJobRunner:
                 doc_repo.update_version(version.model_copy(update={"status": DocumentVersionStatus.FAILED}))
             job = job_repo.get(job_id)
             if job is not None:
+                now = self._now()
                 job_repo.update(
                     job.model_copy(
                         update={
                             "status": IndexingJobStatus.FAILED,
-                            "current_step": IndexingJobStep.FAILED,
+                            "current_step": current_step,
                             "error_message": error_message,
-                            "completed_at": self._now(),
+                            "completed_at": now,
+                            "last_heartbeat_at": now,
                         }
                     )
                 )
             db.commit()
 
-    def _update_state(
+    def _build_progress_updater(
         self,
-        job_id: str,
         *,
-        runtime_status: str,
-        current_step: str,
-        message: str,
-        lock_token: str,
-        step_number: int,
-        error_code: str | None = None,
-        latest_manifest_index_id: str | None = None,
-        active_manifest_index_id: str | None = None,
-        completed: bool = False,
-    ) -> None:
-        state = self._deps.redis_state_store.get(job_id)
-        if state is None:
-            raise IndexingArtifactError(f"redis runtime state missing for job_id={job_id}")
-        now = self._now()
-        self._deps.redis_state_store.put(
-            state.model_copy(
-                update={
-                    "runtime_status": runtime_status,
-                    "current_step": current_step,
-                    "progress_completed_steps": step_number,
-                    "progress_message": message,
-                    "lock_token": lock_token,
-                    "error_code": error_code,
-                    "latest_manifest_index_id": latest_manifest_index_id or state.latest_manifest_index_id,
-                    "active_manifest_index_id": active_manifest_index_id or state.active_manifest_index_id,
-                    "updated_at": now,
-                    "last_heartbeat_at": now,
-                    "completed_at": now if completed else state.completed_at,
-                }
-            )
+        job: KnowledgeIngestJob,
+        document: KnowledgeDocument,
+        version: KnowledgeDocumentVersion,
+    ) -> IndexingProgressUpdater:
+        return IndexingProgressUpdater(
+            job=job,
+            document=document,
+            version=version,
+            redis_state_store=self._deps.redis_state_store,
+            session_factory=self._deps.session_factory,
         )
 
+    def _build_embedding_progress_callback(
+        self,
+        *,
+        progress_updater: IndexingProgressUpdater,
+        lock_token: str,
+        chunk_count: int,
+    ) -> Callable[[int, int], None]:
+        def _callback(completed_batches: int, total_batches: int) -> None:
+            progress_updater.update(
+                ProgressUpdate(
+                    runtime_status="running",
+                    current_step=IndexingJobStep.EMBEDDING.value,
+                    progress_message=f"embedding batch {completed_batches} / {total_batches}",
+                    progress_completed_steps=resolve_stage_progress(IndexingJobStep.EMBEDDING.value),
+                    progress_total_steps=DEFAULT_PROGRESS_TOTAL_STEPS,
+                    lock_token=lock_token,
+                    chunk_count=chunk_count,
+                    embedding_batch_count=total_batches,
+                    embedding_batches_completed=completed_batches,
+                )
+            )
+
+        return _callback
+
+    def _embedding_batch_count(self, item_count: int) -> int:
+        if item_count <= 0:
+            return 0
+        batch_size = getattr(self._deps.embedding_provider, "max_batch_size", None)
+        if batch_size is None or batch_size <= 0:
+            return 1
+        return (item_count + batch_size - 1) // batch_size
+
     @staticmethod
-    def _now():
+    def _resolve_failure_step(
+        progress_updater: IndexingProgressUpdater,
+        fallback_step: IndexingJobStep,
+    ) -> IndexingJobStep:
+        state = progress_updater.get_runtime_state()
+        if state is None:
+            return fallback_step
+        try:
+            return IndexingJobStep(state.current_step)
+        except ValueError:
+            return fallback_step
+
+    @staticmethod
+    def _elapsed_ms(started_at: datetime | None) -> int | None:
+        if started_at is None:
+            return None
+        return max(0, int((datetime.now(UTC).replace(tzinfo=None) - started_at).total_seconds() * 1000))
+
+    @staticmethod
+    def _resolve_file_size_bytes(file_uri: str) -> int | None:
+        try:
+            return Path(file_uri).stat().st_size
+        except OSError:
+            return None
+
+    @staticmethod
+    def _now() -> datetime:
         return datetime.now(UTC).replace(tzinfo=None)
