@@ -5,6 +5,26 @@
 - 整体架构：单体 FastAPI 后端，五层（API → 编排 → Skill 执行 → 数据访问 → 外部服务）
 - 入口文件：`app/main.py`
 
+## 2026-07-03 M2D-15 Final Production Hardening
+
+- review artifact：
+  - `docs/reviews/m2d-15-production-hardening-final-review.md`
+- 当前状态：
+  - `M2D-15 Final Production Hardening` 已在 `codex/m2d-15-production-hardening-final` 完成实现与验证
+  - durable async indexing 已从“enqueue 后直接起 thread”切换为“durable queued job + single-process worker loop”
+  - worker manager 已接入 FastAPI startup / shutdown lifecycle，且支持 `risk_knowledge_indexing_worker_enabled`
+  - durable lease / heartbeat / stale requeue / cooperative cancel / retry / rebuild / cleanup dry-run 已闭环
+  - file/page/chunk/batch/runtime guard 已统一走 `fail_job + ProgressUpdater` 失败路径
+  - admin API 与现有 Knowledge Console 已补齐 retry / rebuild / cancel / guard / stale / lease 最小交互
+  - manifest artifact registry 与 cleanup governance 已补齐 dry-run-first 安全策略
+- 当前保留限制：
+  - 单进程 worker，非分布式多节点
+  - running cancel 仍是 cooperative cancel，不做线程强杀
+  - stale recovery 仍为整 job 重跑，不做断点续跑
+  - cleanup 验收重点仍是 dry-run 安全，不以真实删除覆盖率为主
+  - no SSE / WebSocket
+  - no Celery / RQ / Kafka
+
 ## 2026-07-02 M2D-14C Acceptance & M2D-15A Planning
 
 - 新增 planning artifacts：
@@ -112,7 +132,7 @@
 - Runtime surfaces still not started:
   - no Data Agent RAG mixing has been introduced
   - no ES or SWXY retrieval/runtime coupling has been introduced
-  - no production hardening has been implemented
+  - `M2D-15 Final Production Hardening` now landed on branch; merge pending
 - Subphase status:
   - `M2D-4 vendor import landed; no runtime integration started`
   - `M2D-5 knowledge base module skeleton landed; no ingestion/retrieval runtime started`
@@ -145,23 +165,23 @@
   - runtime baseline remains intentionally uncommitted in v1
   - no backend runtime expansion
   - no standalone admin app
-  - no production worker queue
+  - single-process durable worker queue is now available; no distributed worker queue
   - no SSE / WebSocket
   - no Data Agent RAG mixing
   - no ES / SWXY coupling
   - `debug/retrieve` remains retrieval-only v1
   - `debug/retrieve` does not call `RiskKnowledgeService`
-  - `index` / `rebuild` reuse the current in-process runtime
+  - `index` / `rebuild` now enqueue durable jobs for worker pickup on the hardened path
   - metadata upload persistence remains future API reconciliation
   - small `DOCX` validation passed inside `M2D-14C`
   - small `PDF` validation passed inside `M2D-14C`
   - real large `PDF` validation passed inside `M2D-14C`
   - full repository regression not run for `M2D-14B`
-  - `M2D-15A` implementation landed on branch with targeted validation; production hardening remains separate
-  - production hardening remains not started beyond planning
+  - `M2D-15A` implementation is preserved inside the final hardening branch
+  - `M2D-15 Final Production Hardening` implementation and targeted validation completed on branch
 - Next phase:
-  - `M2D-15A Indexing Job Observability & Runtime State Fidelity`
-  - `M2D-15 Production Hardening` remains not started beyond planning
+  - `M2D` acceptance / merge closure
+  - post-merge hardening patch only if validation finds residual defects
 
 ## 2026-06-30 M3-1 Profile DAG Runtime Skeleton
 

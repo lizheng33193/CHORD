@@ -30,6 +30,7 @@ function KnowledgeVersionJobsPanel({
   onRebuild,
   onActivate,
   onRetryJob,
+  onCancelJob,
   onRefresh,
   loading = false,
   submitting = false,
@@ -234,8 +235,16 @@ function KnowledgeVersionJobsPanel({
                   <div>Started：{formatKnowledgeDate(job.started_at)}</div>
                   <div>Completed：{formatKnowledgeDate(job.completed_at)}</div>
                   <div>Heartbeat：{formatKnowledgeDate(job.last_heartbeat_at)}</div>
+                  <div>Lease Expires：{formatKnowledgeDate(job.lease_expires_at)}</div>
+                  <div>Cancel Requested：{formatKnowledgeDate(job.cancel_requested_at)}</div>
+                  <div>Stale Detected：{formatKnowledgeDate(job.stale_detected_at)}</div>
                   <div>Elapsed：{formatKnowledgeDuration(job.elapsed_seconds)}</div>
                 </div>
+                {job.stale_reason ? (
+                  <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                    Stale Reason：{job.stale_reason}
+                  </div>
+                ) : null}
                 {(job.progress_completed_steps !== null && job.progress_completed_steps !== undefined) || job.embedding_batches_completed ? (
                   <div className="mt-3 grid gap-2 text-xs text-slate-500 md:grid-cols-2">
                     <div>
@@ -247,6 +256,11 @@ function KnowledgeVersionJobsPanel({
                   </div>
                 ) : null}
                 {job.progress_message ? <div className="mt-3 rounded-xl bg-white px-3 py-2 text-xs text-slate-500">{job.progress_message}</div> : null}
+                {job.error_message ? (
+                  <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+                    Guard Failure：{job.error_message}
+                  </div>
+                ) : null}
                 {(job.chunk_count || job.embedding_count || job.vector_mapping_count || job.page_count) ? (
                   <div className="mt-3 grid gap-2 text-xs text-slate-500 md:grid-cols-2">
                     <div>Pages：{job.page_count || '暂无'}</div>
@@ -264,6 +278,26 @@ function KnowledgeVersionJobsPanel({
                     >
                       {RotateCcw ? <RotateCcw className="h-4 w-4" /> : null}
                       Retry Failed Job
+                    </button>
+                    {(job.status === 'queued' || job.status === 'running') ? (
+                      <button
+                        type="button"
+                        onClick={() => onCancelJob && onCancelJob(job.job_id)}
+                        className="inline-flex items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700 hover:bg-amber-100"
+                      >
+                        Cancel Job
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
+                {(job.status === 'queued' || job.status === 'running') && job.status !== 'failed' ? (
+                  <div className="mt-3 flex flex-wrap gap-3">
+                    <button
+                      type="button"
+                      onClick={() => onCancelJob && onCancelJob(job.job_id)}
+                      className="inline-flex items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700 hover:bg-amber-100"
+                    >
+                      Cancel Job
                     </button>
                   </div>
                 ) : null}

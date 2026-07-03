@@ -109,3 +109,156 @@ def test_indexing_job_runner_lost_lock_blocks_manifest_activation(
             document=sample_document,
             version=sample_version,
         )
+
+
+def test_indexing_job_runner_fails_on_chunk_guard_before_embedding(
+    auth_db,
+    fake_redis_client,
+    sample_document,
+    sample_version,
+    sample_parsed_document,
+    tmp_path,
+    monkeypatch,
+) -> None:
+    from app.auth.database import AuthSessionLocal
+    from app.core.config import settings
+    from app.knowledge_base.repositories.sqlalchemy import (
+        SqlAlchemyKnowledgeDocumentRepository,
+        SqlAlchemyKnowledgeIngestJobRepository,
+        SqlAlchemyKnowledgeIngestJobRuntimeStateRepository,
+    )
+    from app.knowledge_base.schemas import IndexingJobStatus
+    from app.risk_knowledge.runtime.orchestrator import IndexingOrchestrator
+
+    monkeypatch.setattr(settings, "risk_knowledge_indexing_max_chunk_count", 1, raising=False)
+
+    with AuthSessionLocal() as db:
+        doc_repo = SqlAlchemyKnowledgeDocumentRepository(db)
+        doc_repo.create_document(sample_document)
+        doc_repo.create_version(sample_version)
+        db.commit()
+
+    orchestrator = IndexingOrchestrator(
+        redis_client=fake_redis_client,
+        embedding_provider=DeterministicTestEmbeddingProvider(),
+        artifact_root=tmp_path,
+    )
+
+    with pytest.raises(Exception):
+        orchestrator.start_initial_index(
+            parsed_document=sample_parsed_document,
+            document=sample_document,
+            version=sample_version,
+            job_id="idxjob_chunk_guard",
+        )
+
+    with AuthSessionLocal() as db:
+        job = SqlAlchemyKnowledgeIngestJobRepository(db).get("idxjob_chunk_guard")
+        runtime = SqlAlchemyKnowledgeIngestJobRuntimeStateRepository(db).get("idxjob_chunk_guard")
+
+        assert job is not None
+        assert job.status == IndexingJobStatus.FAILED
+        assert "chunk" in (job.error_message or "").lower()
+        assert runtime is not None
+        assert "failed during" in (runtime.progress_message or "")
+
+
+def test_indexing_job_runner_fails_on_embedding_batch_guard_before_provider_call(
+    auth_db,
+    fake_redis_client,
+    sample_document,
+    sample_version,
+    sample_parsed_document,
+    tmp_path,
+    monkeypatch,
+) -> None:
+    from app.auth.database import AuthSessionLocal
+    from app.core.config import settings
+    from app.knowledge_base.repositories.sqlalchemy import (
+        SqlAlchemyKnowledgeDocumentRepository,
+        SqlAlchemyKnowledgeIngestJobRepository,
+    )
+    from app.knowledge_base.schemas import IndexingJobStatus
+    from app.risk_knowledge.runtime.orchestrator import IndexingOrchestrator
+
+    calls: list[int] = []
+
+    class CountingProvider(DeterministicTestEmbeddingProvider):
+        max_batch_size = 1
+
+        def embed(self, inputs):
+            calls.append(len(inputs))
+            return super().embed(inputs)
+
+    monkeypatch.setattr(settings, "risk_knowledge_indexing_max_embedding_batches", 1, raising=False)
+
+    with AuthSessionLocal() as db:
+        doc_repo = SqlAlchemyKnowledgeDocumentRepository(db)
+        doc_repo.create_document(sample_document)
+        doc_repo.create_version(sample_version)
+        db.commit()
+
+    orchestrator = IndexingOrchestrator(
+        redis_client=fake_redis_client,
+        embedding_provider=CountingProvider(),
+        artifact_root=tmp_path,
+    )
+
+    with pytest.raises(Exception):
+        orchestrator.start_initial_index(
+            parsed_document=sample_parsed_document,
+            document=sample_document,
+            version=sample_version,
+            job_id="idxjob_batch_guard",
+        )
+
+    with AuthSessionLocal() as db:
+        job = SqlAlchemyKnowledgeIngestJobRepository(db).get("idxjob_batch_guard")
+        assert job is not None
+        assert job.status == IndexingJobStatus.FAILED
+        assert "batch" in (job.error_message or "").lower()
+        assert calls == []
+
+
+def test_indexing_job_runner_fails_on_runtime_guard(
+    auth_db,
+    fake_redis_client,
+    sample_document,
+    sample_version,
+    sample_parsed_document,
+    tmp_path,
+    monkeypatch,
+) -> None:
+    from app.auth.database import AuthSessionLocal
+    from app.core.config import settings
+    from app.knowledge_base.repositories.sqlalchemy import SqlAlchemyKnowledgeDocumentRepository, SqlAlchemyKnowledgeIngestJobRepository
+    from app.knowledge_base.schemas import IndexingJobStatus
+    from app.risk_knowledge.runtime.orchestrator import IndexingOrchestrator
+
+    monkeypatch.setattr(settings, "risk_knowledge_indexing_max_runtime_seconds", 0, raising=False)
+
+    with AuthSessionLocal() as db:
+        doc_repo = SqlAlchemyKnowledgeDocumentRepository(db)
+        doc_repo.create_document(sample_document)
+        doc_repo.create_version(sample_version)
+        db.commit()
+
+    orchestrator = IndexingOrchestrator(
+        redis_client=fake_redis_client,
+        embedding_provider=DeterministicTestEmbeddingProvider(),
+        artifact_root=tmp_path,
+    )
+
+    with pytest.raises(Exception):
+        orchestrator.start_initial_index(
+            parsed_document=sample_parsed_document,
+            document=sample_document,
+            version=sample_version,
+            job_id="idxjob_runtime_guard",
+        )
+
+    with AuthSessionLocal() as db:
+        job = SqlAlchemyKnowledgeIngestJobRepository(db).get("idxjob_runtime_guard")
+        assert job is not None
+        assert job.status == IndexingJobStatus.FAILED
+        assert "runtime" in (job.error_message or "").lower()

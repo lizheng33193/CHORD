@@ -10,11 +10,12 @@ from app.knowledge_base.schemas import IngestJobStatus, IngestStep, IndexingJobT
 from app.knowledge_base.errors import KnowledgeIngestJobNotFoundError
 
 _DEFAULT_STEPS_BY_STATUS = {
+    IngestJobStatus.QUEUED: IngestStep.QUEUED,
     IngestJobStatus.PENDING: IngestStep.QUEUED,
     IngestJobStatus.RUNNING: IngestStep.LOCK_ACQUIRED,
     IngestJobStatus.COMPLETED: IngestStep.COMPLETED,
     IngestJobStatus.FAILED: IngestStep.FAILED,
-    IngestJobStatus.CANCELED: IngestStep.FAILED,
+    IngestJobStatus.CANCELED: IngestStep.CANCELED,
 }
 
 
@@ -41,7 +42,7 @@ class IngestJobService:
                 kb_id=kb_id,
                 doc_id=doc_id,
                 version_id=version_id,
-                status=IngestJobStatus.PENDING,
+                status=IngestJobStatus.QUEUED,
                 current_step=IngestStep.QUEUED,
                 error_message=None,
                 trigger=trigger,

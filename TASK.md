@@ -92,7 +92,7 @@
     - `[x] M2D-14C-2 small PDF validation`
     - `[x] M2D-14C-3 real PDF validation`
     - `[x] M2D-15A Indexing Job Observability & Runtime State Fidelity`
-    - `[ ] M2D-15 Production Hardening`
+    - `[x] M2D-15 Production Hardening`
   - 当前阶段状态：
     - `M2D: implementation in progress`
     - `M2D-4 vendor import landed; no runtime integration started`
@@ -109,8 +109,8 @@
     - `M2D-14C-1 small DOCX validation passed`
     - `M2D-14C-2 small PDF validation passed`
     - `M2D-14C-3 real PDF validation passed`
-    - `M2D-15A Indexing Job Observability & Runtime State Fidelity implemented on branch; targeted validation passed; acceptance pending review`
-    - `407f058` is a validation-driven runtime fix for DashScope embedding batching, not `M2D-15 Production Hardening`
+    - `M2D-15A Indexing Job Observability & Runtime State Fidelity accepted and preserved inside final hardening closure`
+    - `M2D-15 Final Production Hardening` implemented on `codex/m2d-15-production-hardening-final` with targeted validation and runtime smoke
   - acceptance closure：
     - `M2D-11 accepted at stage level after targeted reranker/evidence gate validation; full repository regression and real reranker smoke remain optional/pending validation items.`
     - `M2D-12 accepted at stage level after targeted RiskKnowledgeService, NL Chat seam, and Profile Explanation adapter validation; full repository regression and real LLM answer smoke remain optional/pending validation items.`
@@ -136,8 +136,8 @@
     - small `PDF` validation passed inside `M2D-14C`
     - real large `PDF` validation passed inside `M2D-14C`
     - full repository regression not run for `M2D-14B`
-    - `M2D-15A` implementation landed on branch without worker queue / SSE / retrieval changes
-    - production hardening remains not started beyond planning
+    - single-process durable worker queue / lease / heartbeat / stale recovery / retry / rebuild / cancel / cleanup governance landed
+    - `M2D-15A` observability remains intact after production hardening closure
   - 本轮产出：
     - `app/third_party/swxy_rag`
     - `app/knowledge_base`
@@ -159,6 +159,7 @@
     - `docs/specs/m2d-15a-indexing-observability-spec.md`
     - `docs/plans/m2d-15a-indexing-observability-plan.md`
     - `docs/reviews/m2d-15a-indexing-observability-review.md`
+    - `docs/reviews/m2d-15-production-hardening-final-review.md`
     - vendored SWXY `deepdoc/`, `rag/`, `core/api/utils/file_utils.py`, `conf/mapping.json`
     - renamed vendored entry files `file_parse_core.py` / `retrieval_core.py`
     - `M2D-4` vendor import review
@@ -174,15 +175,15 @@
     - `M2D-14A` knowledge-base admin API spec/review
   - Explicitly not started：
     - Data Agent RAG mixing
-    - production hardening
+    - distributed worker / SSE / WebSocket / NL chat expansion
   - 不变项：
     - 不改现有业务 runtime
     - 不新增 validator
     - 不新增 migration
     - 不重写现有 `M2A/M2B/M2C/M3` closure wording
   - 下一步：
-    - `M2D-15A Indexing Job Observability & Runtime State Fidelity`
-    - `M2D-15 Production Hardening` 保持 not started beyond planning
+    - `M2D` acceptance / merge closure
+    - post-merge hardening patch only if validation exposes residual defects
 
 - [x] M2C：Status Reconciliation — 已完成（2026-06-30）
   - review：

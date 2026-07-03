@@ -112,6 +112,19 @@ async function retryKnowledgeJob(jobId) {
   }, '重试索引任务失败。');
 }
 
+async function cancelKnowledgeJob(jobId) {
+  return await riskKnowledgeJson(`/api/risk-knowledge/admin/indexing-jobs/${encodeURIComponent(jobId)}:cancel`, {
+    method: 'POST'
+  }, '取消索引任务失败。');
+}
+
+async function cleanupKnowledgeArtifacts(payload) {
+  return await riskKnowledgeJson('/api/risk-knowledge/admin/artifacts:cleanup', {
+    method: 'POST',
+    body: JSON.stringify(payload || { dry_run: true })
+  }, '清理索引产物失败。');
+}
+
 async function debugKnowledgeRetrieve(payload) {
   return await riskKnowledgeJson('/api/risk-knowledge/admin/debug/retrieve', {
     method: 'POST',
@@ -136,5 +149,7 @@ window.AppServices.riskKnowledgeAdminApi = {
   listKnowledgeJobs,
   getKnowledgeJob,
   retryKnowledgeJob,
+  cancelKnowledgeJob,
+  cleanupKnowledgeArtifacts,
   debugKnowledgeRetrieve,
 };

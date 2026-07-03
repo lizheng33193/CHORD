@@ -140,8 +140,33 @@ class Settings(BaseModel):
     risk_knowledge_indexing_heartbeat_seconds: int = int(
         os.getenv("RISK_KNOWLEDGE_INDEXING_HEARTBEAT_SECONDS", "30")
     )
+    risk_knowledge_indexing_worker_enabled: bool = os.getenv(
+        "RISK_KNOWLEDGE_INDEXING_WORKER_ENABLED",
+        "1",
+    ).strip().lower() in {"1", "true", "yes", "on"}
+    risk_knowledge_indexing_worker_poll_seconds: float = float(
+        os.getenv("RISK_KNOWLEDGE_INDEXING_WORKER_POLL_SECONDS", "2")
+    )
+    risk_knowledge_indexing_stale_after_seconds: int = int(
+        os.getenv("RISK_KNOWLEDGE_INDEXING_STALE_AFTER_SECONDS", "120")
+    )
     risk_knowledge_indexing_max_retries: int = int(
         os.getenv("RISK_KNOWLEDGE_INDEXING_MAX_RETRIES", "3")
+    )
+    risk_knowledge_indexing_max_file_size_bytes: int = int(
+        os.getenv("RISK_KNOWLEDGE_INDEXING_MAX_FILE_SIZE_BYTES", str(50 * 1024 * 1024))
+    )
+    risk_knowledge_indexing_max_page_count: int = int(
+        os.getenv("RISK_KNOWLEDGE_INDEXING_MAX_PAGE_COUNT", "1000")
+    )
+    risk_knowledge_indexing_max_chunk_count: int = int(
+        os.getenv("RISK_KNOWLEDGE_INDEXING_MAX_CHUNK_COUNT", "5000")
+    )
+    risk_knowledge_indexing_max_embedding_batches: int = int(
+        os.getenv("RISK_KNOWLEDGE_INDEXING_MAX_EMBEDDING_BATCHES", "1000")
+    )
+    risk_knowledge_indexing_max_runtime_seconds: int = int(
+        os.getenv("RISK_KNOWLEDGE_INDEXING_MAX_RUNTIME_SECONDS", "3600")
     )
     risk_knowledge_retrieval_vector_top_k: int = int(
         os.getenv("RISK_KNOWLEDGE_RETRIEVAL_VECTOR_TOP_K", "50")

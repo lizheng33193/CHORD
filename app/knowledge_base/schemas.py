@@ -66,6 +66,7 @@ class ChunkStatus(str, Enum):
 
 
 class IngestJobStatus(str, Enum):
+    QUEUED = "queued"
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
@@ -90,6 +91,7 @@ class IngestStep(str, Enum):
     ACTIVATING_MANIFEST = "activating_manifest"
     COMPLETED = "completed"
     FAILED = "failed"
+    CANCELED = "canceled"
 
 
 IndexingJobStatus = IngestJobStatus
@@ -197,6 +199,27 @@ class KnowledgeIngestJob(_StrictModel):
     last_heartbeat_at: datetime | None = None
     latest_manifest_index_id: str | None = None
     active_manifest_index_id: str | None = None
+
+
+class KnowledgeIngestJobControl(_StrictModel):
+    job_id: str = Field(..., min_length=1)
+    lease_owner: str | None = None
+    lease_expires_at: datetime | None = None
+    cancel_requested_at: datetime | None = None
+    stale_detected_at: datetime | None = None
+    stale_reason: str | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+
+class KnowledgeIngestArtifact(_StrictModel):
+    job_id: str = Field(..., min_length=1)
+    version_id: str = Field(..., min_length=1)
+    artifact_kind: str = Field(..., min_length=1)
+    artifact_path: str = Field(..., min_length=1)
+    is_temporary: bool = False
+    created_at: datetime | None = None
+    cleaned_at: datetime | None = None
 
 
 class KnowledgeIngestJobRuntimeState(_StrictModel):

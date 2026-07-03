@@ -25,3 +25,7 @@ class IndexingJobNotRetryableError(IndexingRuntimeError):
 
 class IndexingArtifactError(IndexingRuntimeError):
     """Raised when FAISS artifacts cannot be safely persisted or validated."""
+
+
+class IndexingGuardrailError(IndexingRuntimeError):
+    """Raised when indexing exceeds configured runtime or cost guardrails."""

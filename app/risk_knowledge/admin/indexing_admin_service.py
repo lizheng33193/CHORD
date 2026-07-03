@@ -16,6 +16,8 @@ from app.knowledge_base.id_factory import build_indexing_job_id
 from app.knowledge_base.models import KnowledgeIngestJobModel
 from app.knowledge_base.repositories.sqlalchemy import (
     SqlAlchemyKnowledgeDocumentRepository,
+    SqlAlchemyKnowledgeIngestArtifactRepository,
+    SqlAlchemyKnowledgeIngestJobControlRepository,
     SqlAlchemyKnowledgeIngestJobRepository,
     SqlAlchemyKnowledgeIngestJobRuntimeStateRepository,
 )
@@ -37,8 +39,11 @@ from app.risk_knowledge.admin.errors import (
     RetryNotAllowedAdminError,
     RunningIndexingJobConflictAdminError,
 )
+from app.risk_knowledge.admin.artifact_cleanup_service import ArtifactCleanupService
 from app.risk_knowledge.admin.schemas import (
+    ArtifactCleanupResponse,
     IndexingJobLaunchResponse,
+    IndexingJobCancelResponse,
     IndexingJobSummaryResponse,
     VersionActivateResponse,
 )
@@ -54,6 +59,8 @@ from app.risk_knowledge.runtime.progress import (
     ProgressUpdate,
     resolve_stage_progress,
 )
+from app.risk_knowledge.runtime.errors import IndexingGuardrailError
+from app.risk_knowledge.runtime.job_control import DurableJobControlService
 from app.risk_knowledge.runtime.redis_state import RedisIndexingTaskStateStore
 
 _JobLauncher = Callable[[Callable[[], None]], None]
@@ -79,6 +86,8 @@ class IndexingAdminService:
         self._db = db
         self._doc_repo = SqlAlchemyKnowledgeDocumentRepository(db)
         self._job_repo = SqlAlchemyKnowledgeIngestJobRepository(db)
+        self._control_repo = SqlAlchemyKnowledgeIngestJobControlRepository(db)
+        self._artifact_repo = SqlAlchemyKnowledgeIngestArtifactRepository(db)
         self._runtime_state_repo = SqlAlchemyKnowledgeIngestJobRuntimeStateRepository(db)
         self._document_service = DocumentService(self._doc_repo)
         self._job_service = IngestJobService(self._job_repo)
@@ -270,15 +279,6 @@ class IndexingAdminService:
             retry_of_job_id=failed_job.job_id if failed_job is not None else None,
         )
         self._db.commit()
-        self._job_launcher(
-            lambda: self._run_job(
-                job_id=job.job_id,
-                document_id=document.doc_id,
-                version_id=version.version_id,
-                trigger=trigger,
-                failed_job_id=failed_job.job_id if failed_job is not None else None,
-            )
-        )
         return IndexingJobLaunchResponse(
             result="accepted",
             job_id=job.job_id,
@@ -289,6 +289,60 @@ class IndexingAdminService:
             active_manifest_index_id=version.active_manifest_index_id,
         )
 
+    def cancel_job(self, job_id: str) -> IndexingJobCancelResponse:
+        job = self._get_job(job_id)
+        now = self._now()
+        if job.status in {IndexingJobStatus.QUEUED, IndexingJobStatus.PENDING}:
+            updated = self._job_service.transition_job(job_id, IndexingJobStatus.CANCELED, current_step=IngestStep.CANCELED)
+            self._control_repo.upsert(
+                self._control_repo.get(job_id) or self._build_empty_control(job_id)
+            )
+            self._db.commit()
+            return IndexingJobCancelResponse(result="canceled", job_id=updated.job_id, status=updated.status.value)
+        if job.status == IndexingJobStatus.RUNNING:
+            current = self._control_repo.get(job_id) or self._build_empty_control(job_id)
+            self._control_repo.upsert(current.model_copy(update={"cancel_requested_at": now}))
+            self._db.commit()
+            return IndexingJobCancelResponse(result="cancel_requested", job_id=job.job_id, status=job.status.value)
+        raise InvalidAdminRequestError(
+            "only queued or running jobs can be canceled",
+            resource_id=job_id,
+            state=job.status.value,
+        )
+
+    def cleanup_artifacts(self, *, dry_run: bool = True, root: str | None = None) -> ArtifactCleanupResponse:
+        return ArtifactCleanupService(self._db).cleanup(dry_run=dry_run, root=root)
+
+    def execute_job(self, job_id: str, *, lease_owner: str | None = None) -> None:
+        job = self._get_job(job_id)
+        control_state = self._control_repo.get(job_id)
+        if control_state is not None and control_state.cancel_requested_at is not None and job.status in {
+            IndexingJobStatus.QUEUED,
+            IndexingJobStatus.PENDING,
+        }:
+            self._job_service.transition_job(job_id, IndexingJobStatus.CANCELED, current_step=IngestStep.CANCELED)
+            self._db.commit()
+            return
+        try:
+            self._run_job(
+                job_id=job.job_id,
+                document_id=job.doc_id,
+                version_id=job.version_id,
+                trigger=job.trigger,
+                failed_job_id=job.retry_of_job_id,
+                lease_owner=lease_owner,
+            )
+        finally:
+            if lease_owner is not None:
+                try:
+                    with self._session_factory() as db:
+                        DurableJobControlService(
+                            db,
+                            lease_seconds=settings.risk_knowledge_indexing_stale_after_seconds,
+                        ).release_job(job.job_id, owner=lease_owner)
+                except Exception:
+                    pass
+
     def _run_job(
         self,
         *,
@@ -297,6 +351,7 @@ class IndexingAdminService:
         version_id: str,
         trigger: IndexingJobTrigger,
         failed_job_id: str | None,
+        lease_owner: str | None = None,
     ) -> None:
         with self._session_factory() as db:
             doc_repo = SqlAlchemyKnowledgeDocumentRepository(db)
@@ -320,11 +375,14 @@ class IndexingAdminService:
                     job=job,
                     document=document,
                     version=version,
+                    lease_owner=lease_owner,
                 )
                 current_step_ref["value"] = (
                     IngestStep.PARSING_PDF if document.source_type.value == "pdf" else IngestStep.PARSING_DOCUMENT
                 )
                 parse_started_at = self._now()
+                file_size_bytes = self._resolve_file_size_bytes(file_path)
+                self._assert_file_size_guard(file_size_bytes, current_step_ref["value"])
                 progress_updater.update(
                     ProgressUpdate(
                         runtime_status="running",
@@ -332,7 +390,7 @@ class IndexingAdminService:
                         progress_message="parsing document",
                         progress_completed_steps=resolve_stage_progress(current_step_ref["value"].value),
                         progress_total_steps=DEFAULT_PROGRESS_TOTAL_STEPS,
-                        file_size_bytes=self._resolve_file_size_bytes(file_path),
+                        file_size_bytes=file_size_bytes,
                     ),
                     force=True,
                 )
@@ -352,7 +410,9 @@ class IndexingAdminService:
                         current_step_ref=current_step_ref,
                     ),
                 )
+                page_count = self._estimate_page_count(parsed)
                 current_step_ref["value"] = IngestStep.CHUNKING
+                self._assert_page_count_guard(page_count, current_step_ref["value"])
                 progress_updater.update(
                     ProgressUpdate(
                         runtime_status="running",
@@ -360,8 +420,8 @@ class IndexingAdminService:
                         progress_message="parser completed; building chunks",
                         progress_completed_steps=resolve_stage_progress(current_step_ref["value"].value),
                         progress_total_steps=DEFAULT_PROGRESS_TOTAL_STEPS,
-                        file_size_bytes=self._resolve_file_size_bytes(file_path),
-                        page_count=self._estimate_page_count(parsed),
+                        file_size_bytes=file_size_bytes,
+                        page_count=page_count,
                         parser_duration_ms=self._elapsed_ms(parse_started_at),
                     ),
                     force=True,
@@ -394,14 +454,24 @@ class IndexingAdminService:
                     )
             except Exception as exc:  # pylint: disable=broad-except
                 try:
+                    if job_repo.get(job_id) is not None:
+                        job_service.fail_job(job_id, str(exc), current_step=current_step_ref["value"])
+                    db.commit()
+                except Exception:
+                    db.rollback()
+
+                try:
                     refreshed_version = doc_repo.get_version(version_id)
-                    if refreshed_version is not None:
+                    if refreshed_version is not None and refreshed_version.status != DocumentVersionStatus.FAILED:
                         doc_repo.update_version(
                             refreshed_version.model_copy(update={"status": DocumentVersionStatus.FAILED})
                         )
-                    if job_repo.get(job_id) is not None:
-                        job_service.fail_job(job_id, str(exc), current_step=current_step_ref["value"])
-                    if progress_updater is not None:
+                    db.commit()
+                except Exception:
+                    db.rollback()
+
+                if progress_updater is not None:
+                    try:
                         progress_updater.update(
                             ProgressUpdate(
                                 runtime_status="failed",
@@ -416,9 +486,8 @@ class IndexingAdminService:
                             ),
                             force=True,
                         )
-                    db.commit()
-                except Exception:
-                    db.rollback()
+                    except Exception:
+                        pass
 
     def _build_orchestrator(self) -> IndexingOrchestrator:
         redis_client = self._get_redis_client()
@@ -462,6 +531,8 @@ class IndexingAdminService:
     def _build_job_summary(self, job) -> IndexingJobSummaryResponse:
         runtime_state, runtime_state_available = self._get_runtime_state(job.job_id)
         durable_runtime_state = self._get_durable_runtime_state(job.job_id)
+        control_state = self._control_repo.get(job.job_id)
+        artifacts = self._artifact_repo.list_by_job(job.job_id)
         progress_state = runtime_state or durable_runtime_state
         started_at = self._first_non_none(
             runtime_state.started_at if runtime_state is not None else None,
@@ -503,6 +574,12 @@ class IndexingAdminService:
             started_at=started_at,
             completed_at=completed_at,
             last_heartbeat_at=last_heartbeat_at,
+            lease_owner=control_state.lease_owner if control_state is not None else None,
+            lease_expires_at=control_state.lease_expires_at if control_state is not None else None,
+            cancel_requested_at=control_state.cancel_requested_at if control_state is not None else None,
+            stale_detected_at=control_state.stale_detected_at if control_state is not None else None,
+            stale_reason=control_state.stale_reason if control_state is not None else None,
+            artifact_count=len(artifacts),
             runtime_state_available=runtime_state_available and runtime_state is not None,
             runtime_status=runtime_state.runtime_status if runtime_state is not None else None,
             runtime_current_step=runtime_state.current_step if runtime_state is not None else None,
@@ -568,9 +645,15 @@ class IndexingAdminService:
     def _find_running_job(self, version_id: str):
         jobs = self._job_repo.list_by_version(version_id)
         for job in jobs:
-            if job.status in {IndexingJobStatus.PENDING, IndexingJobStatus.RUNNING}:
+            if job.status in {IndexingJobStatus.QUEUED, IndexingJobStatus.PENDING, IndexingJobStatus.RUNNING}:
                 return job
         return None
+
+    @staticmethod
+    def _build_empty_control(job_id: str):
+        from app.knowledge_base.schemas import KnowledgeIngestJobControl
+
+        return KnowledgeIngestJobControl(job_id=job_id)
 
     def _has_valid_active_manifest(self, version) -> bool:
         if version.status not in {DocumentVersionStatus.INDEXED, DocumentVersionStatus.ACTIVE}:
@@ -590,13 +673,24 @@ class IndexingAdminService:
             )
         return str(path)
 
-    def _build_progress_updater(self, *, job, document, version) -> IndexingProgressUpdater:
+    def _build_progress_updater(self, *, job, document, version, lease_owner: str | None = None) -> IndexingProgressUpdater:
+        heartbeat_callback = None
+        if lease_owner is not None:
+            def _heartbeat() -> None:
+                with self._session_factory() as db:
+                    DurableJobControlService(
+                        db,
+                        lease_seconds=settings.risk_knowledge_indexing_stale_after_seconds,
+                    ).heartbeat(job.job_id, owner=lease_owner)
+
+            heartbeat_callback = _heartbeat
         return IndexingProgressUpdater(
             job=job,
             document=document,
             version=version,
             redis_state_store=self._build_runtime_state_store(),
             session_factory=self._session_factory,
+            heartbeat_callback=heartbeat_callback,
         )
 
     def _build_parser_progress_callback(
@@ -658,6 +752,28 @@ class IndexingAdminService:
             return Path(file_path).stat().st_size
         except OSError:
             return None
+
+    @staticmethod
+    def _assert_file_size_guard(file_size_bytes: int | None, current_step: IngestStep) -> None:
+        if file_size_bytes is None:
+            return
+        if file_size_bytes <= settings.risk_knowledge_indexing_max_file_size_bytes:
+            return
+        raise IndexingGuardrailError(
+            f"file_size guard exceeded during {current_step.value}: "
+            f"{file_size_bytes} > {settings.risk_knowledge_indexing_max_file_size_bytes}"
+        )
+
+    @staticmethod
+    def _assert_page_count_guard(page_count: int | None, current_step: IngestStep) -> None:
+        if page_count is None:
+            return
+        if page_count <= settings.risk_knowledge_indexing_max_page_count:
+            return
+        raise IndexingGuardrailError(
+            f"page_count guard exceeded during {current_step.value}: "
+            f"{page_count} > {settings.risk_knowledge_indexing_max_page_count}"
+        )
 
     @staticmethod
     def _first_non_none(*values):

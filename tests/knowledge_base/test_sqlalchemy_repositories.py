@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -112,7 +113,7 @@ def test_sqlalchemy_document_version_and_job_repositories_persist_durable_fields
         assert stored_version.latest_manifest_index_id == "idx_risk_guide_202607"
         assert stored_version.last_job_id == "idxjob_root"
         assert len(stored_jobs) == 1
-        assert stored_jobs[0].status == IndexingJobStatus.PENDING
+        assert stored_jobs[0].status == IndexingJobStatus.QUEUED
         assert stored_jobs[0].trigger == IndexingJobTrigger.INITIAL_INDEX
 
 
@@ -208,6 +209,84 @@ def test_sqlalchemy_runtime_state_repository_persists_observability_fields(auth_
         assert fetched.progress_message == "embedding batch 31 / 114"
         assert fetched.page_count == 253
         assert fetched.vector_mapping_count == 1139
+
+
+def test_sqlalchemy_job_control_repository_persists_lease_and_stale_fields(auth_db) -> None:
+    from app.auth.database import AuthSessionLocal
+    from app.knowledge_base.repositories.sqlalchemy import SqlAlchemyKnowledgeIngestJobControlRepository
+    from app.knowledge_base.schemas import KnowledgeIngestJobControl
+
+    lease_expires_at = datetime(2026, 7, 2, 12, 0, 0)
+    cancel_requested_at = datetime(2026, 7, 2, 12, 1, 0)
+    stale_detected_at = datetime(2026, 7, 2, 12, 2, 0)
+
+    with AuthSessionLocal() as db:
+        control_repo = SqlAlchemyKnowledgeIngestJobControlRepository(db)
+        created = control_repo.upsert(
+            KnowledgeIngestJobControl(
+                job_id="idxjob_root",
+                lease_owner="worker-a",
+                lease_expires_at=lease_expires_at,
+                cancel_requested_at=cancel_requested_at,
+                stale_detected_at=stale_detected_at,
+                stale_reason="lease expired",
+            )
+        )
+        db.commit()
+
+        fetched = control_repo.get("idxjob_root")
+
+        assert created.job_id == "idxjob_root"
+        assert fetched is not None
+        assert fetched.lease_owner == "worker-a"
+        assert fetched.lease_expires_at == lease_expires_at
+        assert fetched.cancel_requested_at == cancel_requested_at
+        assert fetched.stale_detected_at == stale_detected_at
+        assert fetched.stale_reason == "lease expired"
+
+
+def test_sqlalchemy_job_artifact_repository_tracks_cleanup_state(auth_db) -> None:
+    from app.auth.database import AuthSessionLocal
+    from app.knowledge_base.repositories.sqlalchemy import SqlAlchemyKnowledgeIngestArtifactRepository
+    from app.knowledge_base.schemas import KnowledgeIngestArtifact
+
+    created_at = datetime.now(UTC).replace(tzinfo=None)
+    cleaned_at = datetime(2026, 7, 2, 12, 30, 0)
+
+    with AuthSessionLocal() as db:
+        artifact_repo = SqlAlchemyKnowledgeIngestArtifactRepository(db)
+        artifact_repo.create(
+            KnowledgeIngestArtifact(
+                job_id="idxjob_root",
+                version_id="risk_guide_202607",
+                artifact_kind="faiss_index",
+                artifact_path="outputs/risk_knowledge/faiss/idxjob_root.faiss",
+                is_temporary=False,
+                created_at=created_at,
+                cleaned_at=None,
+            )
+        )
+        artifact_repo.create(
+            KnowledgeIngestArtifact(
+                job_id="idxjob_root",
+                version_id="risk_guide_202607",
+                artifact_kind="temp_output",
+                artifact_path="outputs/risk_knowledge/tmp/idxjob_root.partial",
+                is_temporary=True,
+                created_at=created_at,
+                cleaned_at=cleaned_at,
+            )
+        )
+        db.commit()
+
+        artifacts = artifact_repo.list_by_job("idxjob_root")
+
+        assert len(artifacts) == 2
+        assert artifacts[0].artifact_kind == "faiss_index"
+        assert artifacts[0].cleaned_at is None
+        assert artifacts[1].artifact_kind == "temp_output"
+        assert artifacts[1].is_temporary is True
+        assert artifacts[1].cleaned_at == cleaned_at
 
 
 def test_sqlalchemy_knowledge_base_repository_persists_kb_records(auth_db) -> None:

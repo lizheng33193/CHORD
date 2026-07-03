@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -14,6 +14,8 @@ def _seed_version(
     latest_manifest_index_id: str | None = None,
     active_manifest_index_id: str | None = None,
     last_job_id: str | None = None,
+    source_type: str = "txt",
+    filename: str = "risk-guide.txt",
 ) -> tuple[str, str]:
     from app.auth.database import AuthSessionLocal
     from app.knowledge_base.repositories.sqlalchemy import (
@@ -32,7 +34,8 @@ def _seed_version(
         SourceType,
     )
 
-    file_path = tmp_path / "risk-guide.txt"
+    resolved_source_type = SourceType(source_type)
+    file_path = tmp_path / filename
     file_path.write_text("risk knowledge body", encoding="utf-8")
 
     with AuthSessionLocal() as db:
@@ -53,8 +56,8 @@ def _seed_version(
                 doc_id="risk_guide",
                 kb_id="risk_domain_knowledge",
                 doc_title="智能风控指南",
-                doc_name="risk-guide.txt",
-                source_type=SourceType.TXT,
+                doc_name=filename,
+                source_type=resolved_source_type,
                 source_uri=str(file_path),
                 current_version_id=current_version_id,
                 status=DocumentStatus.ACTIVE if current_version_id else DocumentStatus.INACTIVE,
@@ -171,7 +174,7 @@ def test_indexing_service_index_returns_new_job_metadata_immediately(auth_db, tm
 
         assert launched.result == "accepted"
         assert launched.job_id is not None
-        assert launched.status == "pending"
+        assert launched.status == "queued"
         stored = service.get_job(launched.job_id)
         assert stored.job_id == launched.job_id
         assert stored.runtime_state_available is False
@@ -182,7 +185,7 @@ def test_indexing_service_index_returns_existing_pending_job(auth_db, tmp_path, 
     from app.risk_knowledge.admin.indexing_admin_service import IndexingAdminService
 
     _seed_version(tmp_path)
-    _seed_job(job_id="idxjob_existing", status="pending")
+    _seed_job(job_id="idxjob_existing", status="queued")
 
     with AuthSessionLocal() as db:
         service = IndexingAdminService(db, redis_client=fake_redis_client, job_launcher=lambda task: None)
@@ -255,12 +258,373 @@ def test_indexing_service_retry_rejects_when_running_job_exists(auth_db, tmp_pat
 
     _seed_version(tmp_path, version_status="failed", last_job_id="idxjob_root")
     _seed_job(job_id="idxjob_root", status="failed")
-    _seed_job(job_id="idxjob_pending", status="pending")
+    _seed_job(job_id="idxjob_pending", status="queued")
 
     with AuthSessionLocal() as db:
         service = IndexingAdminService(db, redis_client=fake_redis_client, job_launcher=lambda task: None)
         with pytest.raises(RunningIndexingJobConflictAdminError):
             service.retry_job("idxjob_root")
+
+
+def test_indexing_service_cancel_queued_job_marks_canceled(auth_db, tmp_path, fake_redis_client) -> None:
+    from app.auth.database import AuthSessionLocal
+    from app.risk_knowledge.admin.indexing_admin_service import IndexingAdminService
+
+    _seed_version(tmp_path, last_job_id="idxjob_existing")
+    _seed_job(job_id="idxjob_existing", status="queued")
+
+    with AuthSessionLocal() as db:
+        service = IndexingAdminService(db, redis_client=fake_redis_client, job_launcher=lambda task: None)
+        result = service.cancel_job("idxjob_existing")
+        summary = service.get_job("idxjob_existing")
+
+        assert result.result == "canceled"
+        assert result.job_id == "idxjob_existing"
+        assert summary.status == "canceled"
+
+
+def test_indexing_service_cancel_running_job_sets_cancel_requested(auth_db, tmp_path, fake_redis_client) -> None:
+    from app.auth.database import AuthSessionLocal
+    from app.knowledge_base.repositories.sqlalchemy import SqlAlchemyKnowledgeIngestJobControlRepository
+    from app.knowledge_base.schemas import KnowledgeIngestJobControl
+    from app.risk_knowledge.admin.indexing_admin_service import IndexingAdminService
+
+    _seed_version(tmp_path, version_status="indexing", last_job_id="idxjob_running")
+    _seed_job(job_id="idxjob_running", status="running")
+
+    with AuthSessionLocal() as db:
+        SqlAlchemyKnowledgeIngestJobControlRepository(db).upsert(
+            KnowledgeIngestJobControl(
+                job_id="idxjob_running",
+                lease_owner="worker-a",
+                lease_expires_at=datetime.now(UTC).replace(tzinfo=None) + timedelta(seconds=30),
+            )
+        )
+        db.commit()
+
+    with AuthSessionLocal() as db:
+        service = IndexingAdminService(db, redis_client=fake_redis_client, job_launcher=lambda task: None)
+        result = service.cancel_job("idxjob_running")
+        summary = service.get_job("idxjob_running")
+
+        assert result.result == "cancel_requested"
+        assert summary.status == "running"
+        assert summary.cancel_requested_at is not None
+
+
+def test_indexing_service_execute_job_fails_on_file_size_guard_before_parser(
+    auth_db,
+    tmp_path,
+    fake_redis_client,
+    monkeypatch,
+) -> None:
+    from app.auth.database import AuthSessionLocal
+    from app.core.config import settings
+    from app.risk_knowledge.admin.indexing_admin_service import IndexingAdminService
+
+    parser_calls: list[str] = []
+
+    class StubParser:
+        def parse(self, *_args, **_kwargs):
+            parser_calls.append("parse")
+            raise AssertionError("parser should not be called when file size guard fails")
+
+    monkeypatch.setattr(settings, "risk_knowledge_indexing_max_file_size_bytes", 1, raising=False)
+
+    _seed_version(tmp_path, filename="oversized.txt")
+
+    with AuthSessionLocal() as db:
+        service = IndexingAdminService(
+            db,
+            parser_adapter=StubParser(),
+            redis_client=fake_redis_client,
+            job_launcher=lambda task: None,
+        )
+        launched = service.start_index("risk_guide_v1")
+
+    with AuthSessionLocal() as db:
+        service = IndexingAdminService(
+            db,
+            parser_adapter=StubParser(),
+            redis_client=fake_redis_client,
+            job_launcher=lambda task: None,
+        )
+        service.execute_job(launched.job_id)
+
+    with AuthSessionLocal() as db:
+        summary = IndexingAdminService(
+            db,
+            parser_adapter=StubParser(),
+            redis_client=fake_redis_client,
+            job_launcher=lambda task: None,
+        ).get_job(launched.job_id)
+
+        assert summary.status == "failed"
+        assert "file" in (summary.error_message or "").lower()
+        assert parser_calls == []
+
+
+def test_indexing_service_execute_job_fails_on_page_count_guard_after_parser(
+    auth_db,
+    tmp_path,
+    fake_redis_client,
+    monkeypatch,
+) -> None:
+    from app.auth.database import AuthSessionLocal
+    from app.core.config import settings
+    from app.knowledge_base.schemas import SourceType
+    from app.risk_knowledge.admin.indexing_admin_service import IndexingAdminService
+    from app.risk_knowledge.ingestion.schemas import ParsedDocument, RawParsedChunk, SourceDocumentRef
+
+    parser_calls: list[str] = []
+
+    class StubParser:
+        def parse(self, *_args, **_kwargs):
+            parser_calls.append("parse")
+            return ParsedDocument(
+                source=SourceDocumentRef(
+                    kb_id="risk_domain_knowledge",
+                    doc_id="risk_guide",
+                    version_id="risk_guide_v1",
+                    file_path=str(tmp_path / "risk-guide.txt"),
+                    doc_name="risk-guide.txt",
+                    source_type=SourceType.TXT,
+                ),
+                parser_name="stub-parser",
+                parser_version="stub-v1",
+                raw_chunks=[
+                    RawParsedChunk(
+                        chunk_order=1,
+                        raw_content="risk knowledge body",
+                        chunk_type="paragraph",
+                        title="title",
+                        section_title="title",
+                        section_path=["guide"],
+                        page_start=1,
+                        page_end=2,
+                        position={"page": 1},
+                        source_metadata={},
+                    )
+                ],
+                document_metadata={"page_count": 2},
+            )
+
+    monkeypatch.setattr(settings, "risk_knowledge_indexing_max_page_count", 1, raising=False)
+
+    _seed_version(tmp_path, source_type="txt", filename="risk-guide.txt")
+
+    with AuthSessionLocal() as db:
+        service = IndexingAdminService(
+            db,
+            parser_adapter=StubParser(),
+            redis_client=fake_redis_client,
+            job_launcher=lambda task: None,
+        )
+        launched = service.start_index("risk_guide_v1")
+
+    with AuthSessionLocal() as db:
+        service = IndexingAdminService(
+            db,
+            parser_adapter=StubParser(),
+            redis_client=fake_redis_client,
+            job_launcher=lambda task: None,
+        )
+        service.execute_job(launched.job_id)
+
+    with AuthSessionLocal() as db:
+        summary = IndexingAdminService(
+            db,
+            parser_adapter=StubParser(),
+            redis_client=fake_redis_client,
+            job_launcher=lambda task: None,
+        ).get_job(launched.job_id)
+
+        assert summary.status == "failed"
+        assert "page" in (summary.error_message or "").lower()
+        assert parser_calls == ["parse"]
+
+
+def test_indexing_service_retry_failed_job_executes_successfully(auth_db, tmp_path, fake_redis_client, monkeypatch) -> None:
+    from app.auth.database import AuthSessionLocal
+    from app.core.config import settings
+    from app.knowledge_base.schemas import SourceType
+    from app.risk_knowledge.admin.indexing_admin_service import IndexingAdminService
+    from app.risk_knowledge.ingestion.schemas import ParsedDocument, RawParsedChunk, SourceDocumentRef
+
+    class DeterministicTestEmbeddingProvider:
+        provider_name = "deterministic_test"
+        max_batch_size = 16
+
+        def embed(self, inputs):
+            from app.risk_knowledge.embedding.schemas import EmbeddingVectorResult
+
+            return [
+                EmbeddingVectorResult(
+                    chunk_id=item.chunk_id,
+                    content_hash=item.content_hash,
+                    provider=self.provider_name,
+                    model="deterministic-v1",
+                    dimension=2,
+                    vector=[1.0, 2.0],
+                    vector_checksum="sha256:vector",
+                )
+                for item in inputs
+            ]
+
+    class FailingParser:
+        def parse(self, *_args, **_kwargs):
+            raise ValueError("parser boom")
+
+    class StubParser:
+        def parse(self, ctx, *_args, **_kwargs):
+            return ParsedDocument(
+                source=SourceDocumentRef(
+                    kb_id=ctx.kb_id,
+                    doc_id=ctx.doc_id,
+                    version_id=ctx.version_id,
+                    file_path=ctx.file_path,
+                    doc_name=ctx.doc_name,
+                    source_type=SourceType.PDF,
+                ),
+                parser_name="stub-parser",
+                parser_version="stub-v1",
+                raw_chunks=[
+                    RawParsedChunk(
+                        chunk_order=1,
+                        raw_content="risk retry body",
+                        chunk_type="paragraph",
+                        title="title",
+                        section_title="title",
+                        section_path=["guide"],
+                        page_start=1,
+                        page_end=1,
+                        position={"page": 1},
+                        source_metadata={},
+                    )
+                ],
+                document_metadata={"page_count": 1},
+            )
+
+    monkeypatch.setattr(settings, "risk_knowledge_faiss_artifact_dir", str(tmp_path / "faiss"), raising=False)
+
+    _seed_version(tmp_path, source_type="pdf", filename="retry.pdf")
+
+    with AuthSessionLocal() as db:
+        failing_service = IndexingAdminService(
+            db,
+            parser_adapter=FailingParser(),
+            redis_client=fake_redis_client,
+            embedding_provider=DeterministicTestEmbeddingProvider(),
+            job_launcher=lambda task: None,
+        )
+        failed_launch = failing_service.start_index("risk_guide_v1")
+
+    with AuthSessionLocal() as db:
+        IndexingAdminService(
+            db,
+            parser_adapter=FailingParser(),
+            redis_client=fake_redis_client,
+            embedding_provider=DeterministicTestEmbeddingProvider(),
+            job_launcher=lambda task: None,
+        ).execute_job(failed_launch.job_id)
+
+    with AuthSessionLocal() as db:
+        retry_service = IndexingAdminService(
+            db,
+            parser_adapter=StubParser(),
+            redis_client=fake_redis_client,
+            embedding_provider=DeterministicTestEmbeddingProvider(),
+            job_launcher=lambda task: None,
+        )
+        retry_launch = retry_service.retry_job(failed_launch.job_id)
+        retry_service.execute_job(retry_launch.job_id)
+        retry_summary = retry_service.get_job(retry_launch.job_id)
+
+    assert retry_summary.status == "completed"
+    assert retry_summary.retry_of_job_id == failed_launch.job_id
+    assert retry_summary.active_manifest_index_id is not None
+
+
+def test_indexing_service_rebuild_executes_and_creates_new_manifest(auth_db, tmp_path, fake_redis_client, monkeypatch) -> None:
+    from app.auth.database import AuthSessionLocal
+    from app.core.config import settings
+    from app.knowledge_base.schemas import SourceType
+    from app.risk_knowledge.admin.indexing_admin_service import IndexingAdminService
+    from app.risk_knowledge.ingestion.schemas import ParsedDocument, RawParsedChunk, SourceDocumentRef
+
+    class DeterministicTestEmbeddingProvider:
+        provider_name = "deterministic_test"
+        max_batch_size = 16
+
+        def embed(self, inputs):
+            from app.risk_knowledge.embedding.schemas import EmbeddingVectorResult
+
+            return [
+                EmbeddingVectorResult(
+                    chunk_id=item.chunk_id,
+                    content_hash=item.content_hash,
+                    provider=self.provider_name,
+                    model="deterministic-v1",
+                    dimension=2,
+                    vector=[1.0, 2.0],
+                    vector_checksum="sha256:vector",
+                )
+                for item in inputs
+            ]
+
+    class StubParser:
+        def parse(self, ctx, *_args, **_kwargs):
+            return ParsedDocument(
+                source=SourceDocumentRef(
+                    kb_id=ctx.kb_id,
+                    doc_id=ctx.doc_id,
+                    version_id=ctx.version_id,
+                    file_path=ctx.file_path,
+                    doc_name=ctx.doc_name,
+                    source_type=SourceType.PDF,
+                ),
+                parser_name="stub-parser",
+                parser_version="stub-v1",
+                raw_chunks=[
+                    RawParsedChunk(
+                        chunk_order=1,
+                        raw_content="risk rebuild body",
+                        chunk_type="paragraph",
+                        title="title",
+                        section_title="title",
+                        section_path=["guide"],
+                        page_start=1,
+                        page_end=1,
+                        position={"page": 1},
+                        source_metadata={},
+                    )
+                ],
+                document_metadata={"page_count": 1},
+            )
+
+    monkeypatch.setattr(settings, "risk_knowledge_faiss_artifact_dir", str(tmp_path / "faiss"), raising=False)
+
+    _seed_version(tmp_path, source_type="pdf", filename="rebuild.pdf")
+
+    with AuthSessionLocal() as db:
+        service = IndexingAdminService(
+            db,
+            parser_adapter=StubParser(),
+            redis_client=fake_redis_client,
+            embedding_provider=DeterministicTestEmbeddingProvider(),
+            job_launcher=lambda task: None,
+        )
+        first_launch = service.start_index("risk_guide_v1")
+        service.execute_job(first_launch.job_id)
+        first_summary = service.get_job(first_launch.job_id)
+        rebuild_launch = service.start_rebuild("risk_guide_v1")
+        service.execute_job(rebuild_launch.job_id)
+        rebuild_summary = service.get_job(rebuild_launch.job_id)
+
+    assert first_summary.status == "completed"
+    assert rebuild_summary.status == "completed"
+    assert rebuild_summary.active_manifest_index_id is not None
+    assert rebuild_summary.active_manifest_index_id != first_summary.active_manifest_index_id
 
 
 def test_indexing_service_job_summary_survives_missing_redis_state(auth_db, tmp_path) -> None:

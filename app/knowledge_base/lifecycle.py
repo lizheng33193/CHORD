@@ -11,6 +11,7 @@ PROCESSING_VERSION_STATUSES = {
 }
 
 PROCESSING_JOB_STATUSES = {
+    IngestJobStatus.QUEUED,
     IngestJobStatus.PENDING,
     IngestJobStatus.RUNNING,
 }
@@ -27,6 +28,7 @@ _VERSION_TRANSITIONS: dict[DocumentVersionStatus, set[DocumentVersionStatus]] = 
 }
 
 _JOB_TRANSITIONS: dict[IngestJobStatus, set[IngestJobStatus]] = {
+    IngestJobStatus.QUEUED: {IngestJobStatus.RUNNING, IngestJobStatus.CANCELED, IngestJobStatus.FAILED},
     IngestJobStatus.PENDING: {IngestJobStatus.RUNNING, IngestJobStatus.CANCELED, IngestJobStatus.FAILED},
     IngestJobStatus.RUNNING: {IngestJobStatus.COMPLETED, IngestJobStatus.FAILED, IngestJobStatus.CANCELED},
     IngestJobStatus.COMPLETED: set(),

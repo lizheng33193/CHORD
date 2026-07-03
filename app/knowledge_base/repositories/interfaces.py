@@ -8,7 +8,9 @@ from app.knowledge_base.schemas import (
     KnowledgeBase,
     KnowledgeDocument,
     KnowledgeDocumentVersion,
+    KnowledgeIngestArtifact,
     KnowledgeIngestJob,
+    KnowledgeIngestJobControl,
     KnowledgeIngestJobRuntimeState,
 )
 
@@ -41,3 +43,13 @@ class KnowledgeIngestJobRepository(Protocol):
 class KnowledgeIngestJobRuntimeStateRepository(Protocol):
     def get(self, job_id: str) -> KnowledgeIngestJobRuntimeState | None: ...
     def upsert(self, state: KnowledgeIngestJobRuntimeState) -> KnowledgeIngestJobRuntimeState: ...
+
+
+class KnowledgeIngestJobControlRepository(Protocol):
+    def get(self, job_id: str) -> KnowledgeIngestJobControl | None: ...
+    def upsert(self, state: KnowledgeIngestJobControl) -> KnowledgeIngestJobControl: ...
+
+
+class KnowledgeIngestArtifactRepository(Protocol):
+    def create(self, artifact: KnowledgeIngestArtifact) -> KnowledgeIngestArtifact: ...
+    def list_by_job(self, job_id: str) -> list[KnowledgeIngestArtifact]: ...
