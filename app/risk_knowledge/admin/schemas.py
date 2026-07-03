@@ -124,6 +124,12 @@ class IndexingJobSummaryResponse(_StrictModel):
     started_at: datetime | None = None
     completed_at: datetime | None = None
     last_heartbeat_at: datetime | None = None
+    lease_owner: str | None = None
+    lease_expires_at: datetime | None = None
+    cancel_requested_at: datetime | None = None
+    stale_detected_at: datetime | None = None
+    stale_reason: str | None = None
+    artifact_count: int | None = None
     runtime_state_available: bool
     runtime_status: str | None = None
     runtime_current_step: str | None = None
@@ -157,6 +163,29 @@ class IndexingJobLaunchResponse(_StrictModel):
     trigger: str | None = None
     latest_manifest_index_id: str | None = None
     active_manifest_index_id: str | None = None
+
+
+class IndexingJobCancelResponse(_StrictModel):
+    result: Literal["canceled", "cancel_requested"]
+    job_id: str
+    status: str
+
+
+class ArtifactCleanupEntry(_StrictModel):
+    path: str
+    reason: str
+
+
+class ArtifactCleanupResponse(_StrictModel):
+    dry_run: bool
+    candidates: list[ArtifactCleanupEntry] = Field(default_factory=list)
+    deleted: list[ArtifactCleanupEntry] = Field(default_factory=list)
+    protected: list[ArtifactCleanupEntry] = Field(default_factory=list)
+
+
+class ArtifactCleanupRequest(_StrictModel):
+    dry_run: bool = True
+    root: str | None = None
 
 
 class DebugRetrieveRequest(_StrictModel):

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -78,6 +79,7 @@ class IndexingProgressUpdater:
         redis_state_store,
         session_factory,
         durable_flush_interval_seconds: float = 3.0,
+        heartbeat_callback: Callable[[], None] | None = None,
     ) -> None:
         self._job = job
         self._document = document
@@ -86,6 +88,7 @@ class IndexingProgressUpdater:
         self._session_factory = session_factory
         self._durable_flush_interval = timedelta(seconds=durable_flush_interval_seconds)
         self._last_durable_flush_at: datetime | None = None
+        self._heartbeat_callback = heartbeat_callback
 
     def get_runtime_state(self) -> RedisIndexingJobState | None:
         try:
@@ -99,6 +102,11 @@ class IndexingProgressUpdater:
         if force or self._should_flush_durable(now):
             self._write_durable(update, now)
             self._last_durable_flush_at = now
+        if self._heartbeat_callback is not None:
+            try:
+                self._heartbeat_callback()
+            except Exception:
+                pass
 
     def _write_redis(self, update: ProgressUpdate, now: datetime) -> None:
         existing = self.get_runtime_state()

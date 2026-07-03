@@ -14,6 +14,7 @@ from app.core.config import settings
 from app.knowledge_base.id_factory import build_faiss_index_id, build_indexing_job_id
 from app.knowledge_base.repositories.sqlalchemy import (
     SqlAlchemyKnowledgeDocumentRepository,
+    SqlAlchemyKnowledgeIngestArtifactRepository,
     SqlAlchemyKnowledgeIngestJobRepository,
 )
 from app.knowledge_base.schemas import (
@@ -23,12 +24,13 @@ from app.knowledge_base.schemas import (
     IndexingJobTrigger,
     KnowledgeDocument,
     KnowledgeDocumentVersion,
+    KnowledgeIngestArtifact,
     KnowledgeIngestJob,
 )
 from app.knowledge_base.services.document_service import DocumentService
 from app.risk_knowledge.embedding.batch_service import EmbeddingBatchService
 from app.risk_knowledge.indexing.faiss_store import FaissIndexStore, build_faiss_fingerprint
-from app.risk_knowledge.indexing.schemas import FaissIndexManifestDraft
+from app.risk_knowledge.indexing.schemas import FaissIndexManifest, FaissIndexManifestDraft
 from app.risk_knowledge.ingestion.schemas import ParsedDocument
 from app.risk_knowledge.metadata.chunk_builder import KnowledgeChunkBuilder
 from app.risk_knowledge.persistence.repositories import (
@@ -38,6 +40,7 @@ from app.risk_knowledge.persistence.repositories import (
 )
 from app.risk_knowledge.persistence.service import KnowledgeChunkPersistenceService
 from app.risk_knowledge.runtime.errors import IndexingJobNotRetryableError
+from app.risk_knowledge.runtime.errors import IndexingGuardrailError
 from app.risk_knowledge.runtime.progress import (
     DEFAULT_PROGRESS_TOTAL_STEPS,
     IndexingProgressUpdater,
@@ -129,7 +132,7 @@ class IndexingJobRunner:
             version=version,
             trigger=IndexingJobTrigger.REBUILD_FROM_PARSED,
             reuse_persisted_chunks=False,
-            force_rebuild=False,
+            force_rebuild=True,
             failed_job=None,
             job_id=job_id,
             progress_updater=progress_updater,
@@ -200,6 +203,7 @@ class IndexingJobRunner:
         try:
             lock_token = self._deps.version_lock.acquire(version.version_id)
             current_step = IndexingJobStep.LOCK_ACQUIRED
+            self._assert_runtime_limit(started_at, current_step)
             progress_updater.update(
                 ProgressUpdate(
                     runtime_status="running",
@@ -218,6 +222,7 @@ class IndexingJobRunner:
             if reuse_persisted_chunks:
                 chunk_ids = self._list_chunk_ids(version.version_id)
                 chunk_count = len(chunk_ids)
+                self._assert_chunk_count_limit(chunk_count, IndexingJobStep.PERSISTING_CHUNKS)
                 current_step = IndexingJobStep.PERSISTING_CHUNKS
                 progress_updater.update(
                     ProgressUpdate(
@@ -246,8 +251,12 @@ class IndexingJobRunner:
                     ),
                     force=True,
                 )
-                chunks = self._chunk_builder.build(parsed_document, document, version).chunks
+                chunk_builder_version = version
+                if version.status != DocumentVersionStatus.PARSED:
+                    chunk_builder_version = version.model_copy(update={"status": DocumentVersionStatus.PARSED})
+                chunks = self._chunk_builder.build(parsed_document, document, chunk_builder_version).chunks
                 chunk_count = len(chunks)
+                self._assert_chunk_count_limit(chunk_count, IndexingJobStep.CHUNKING)
                 self._deps.version_lock.renew(version.version_id, lock_token)
                 current_step = IndexingJobStep.PERSISTING_CHUNKS
                 progress_updater.update(
@@ -268,6 +277,11 @@ class IndexingJobRunner:
 
             self._deps.version_lock.renew(version.version_id, lock_token)
             current_step = IndexingJobStep.EMBEDDING
+            self._assert_runtime_limit(started_at, current_step)
+            self._assert_embedding_batch_count_limit(
+                self._embedding_batch_count(chunk_count),
+                current_step,
+            )
             progress_updater.update(
                 ProgressUpdate(
                     runtime_status="running",
@@ -348,6 +362,11 @@ class IndexingJobRunner:
                         version_id=version.version_id,
                         active_manifest_index_id=active_index_id,
                     )
+                    self._record_manifest_artifacts(
+                        job_id=job_id,
+                        version_id=version.version_id,
+                        manifest=existing_manifest,
+                    )
                     progress_updater.update(
                         ProgressUpdate(
                             runtime_status="completed",
@@ -382,6 +401,7 @@ class IndexingJobRunner:
 
             self._deps.version_lock.renew(version.version_id, lock_token)
             current_step = IndexingJobStep.FAISS_BUILDING
+            self._assert_runtime_limit(started_at, current_step)
             progress_updater.update(
                 ProgressUpdate(
                     runtime_status="running",
@@ -434,6 +454,11 @@ class IndexingJobRunner:
                 )
                 saved = store.save_index(built)
                 saved_manifest = saved.manifest
+            self._record_manifest_artifacts(
+                job_id=job_id,
+                version_id=version.version_id,
+                manifest=saved_manifest,
+            )
 
             vector_mapping_count = len(saved.vector_mappings)
             faiss_duration_ms = self._elapsed_ms(faiss_started_at)
@@ -561,6 +586,11 @@ class IndexingJobRunner:
 
     def _validate_version_status(self, version: KnowledgeDocumentVersion, trigger: IndexingJobTrigger) -> None:
         allowed = {DocumentVersionStatus.PARSED}
+        if trigger == IndexingJobTrigger.RETRY:
+            allowed = {
+                DocumentVersionStatus.PARSED,
+                DocumentVersionStatus.FAILED,
+            }
         if trigger in {IndexingJobTrigger.REBUILD_FROM_PARSED, IndexingJobTrigger.REBUILD_FROM_PERSISTED_CHUNKS}:
             allowed = {
                 DocumentVersionStatus.PARSED,
@@ -596,7 +626,7 @@ class IndexingJobRunner:
                     kb_id=document.kb_id,
                     doc_id=document.doc_id,
                     version_id=version.version_id,
-                    status=IndexingJobStatus.PENDING,
+                    status=IndexingJobStatus.QUEUED,
                     current_step=IndexingJobStep.QUEUED,
                     error_message=None,
                     trigger=trigger,
@@ -738,6 +768,37 @@ class IndexingJobRunner:
                 )
             db.commit()
 
+    def _record_manifest_artifacts(
+        self,
+        *,
+        job_id: str,
+        version_id: str,
+        manifest: FaissIndexManifest,
+    ) -> None:
+        artifact_specs = (
+            ("faiss_index", manifest.artifact_path),
+            ("faiss_mapping", manifest.mapping_path),
+        )
+        with self._deps.session_factory() as db:
+            repo = SqlAlchemyKnowledgeIngestArtifactRepository(db)
+            existing = {
+                (artifact.artifact_kind, artifact.artifact_path)
+                for artifact in repo.list_by_job(job_id)
+            }
+            for artifact_kind, artifact_path in artifact_specs:
+                if not artifact_path or (artifact_kind, artifact_path) in existing:
+                    continue
+                repo.create(
+                    KnowledgeIngestArtifact(
+                        job_id=job_id,
+                        version_id=version_id,
+                        artifact_kind=artifact_kind,
+                        artifact_path=artifact_path,
+                        is_temporary=False,
+                    )
+                )
+            db.commit()
+
     def _build_progress_updater(
         self,
         *,
@@ -784,6 +845,36 @@ class IndexingJobRunner:
         if batch_size is None or batch_size <= 0:
             return 1
         return (item_count + batch_size - 1) // batch_size
+
+    @staticmethod
+    def _assert_chunk_count_limit(chunk_count: int, current_step: IndexingJobStep) -> None:
+        if chunk_count <= settings.risk_knowledge_indexing_max_chunk_count:
+            return
+        raise IndexingGuardrailError(
+            f"chunk_count guard exceeded during {current_step.value}: "
+            f"{chunk_count} > {settings.risk_knowledge_indexing_max_chunk_count}"
+        )
+
+    @staticmethod
+    def _assert_embedding_batch_count_limit(batch_count: int, current_step: IndexingJobStep) -> None:
+        if batch_count <= settings.risk_knowledge_indexing_max_embedding_batches:
+            return
+        raise IndexingGuardrailError(
+            f"embedding_batch_count guard exceeded during {current_step.value}: "
+            f"{batch_count} > {settings.risk_knowledge_indexing_max_embedding_batches}"
+        )
+
+    @staticmethod
+    def _assert_runtime_limit(started_at: datetime | None, current_step: IndexingJobStep) -> None:
+        if started_at is None:
+            return
+        elapsed_seconds = (datetime.now(UTC).replace(tzinfo=None) - started_at).total_seconds()
+        if elapsed_seconds < settings.risk_knowledge_indexing_max_runtime_seconds:
+            return
+        raise IndexingGuardrailError(
+            f"runtime guard exceeded during {current_step.value}: "
+            f"{int(elapsed_seconds)} >= {settings.risk_knowledge_indexing_max_runtime_seconds}"
+        )
 
     @staticmethod
     def _resolve_failure_step(

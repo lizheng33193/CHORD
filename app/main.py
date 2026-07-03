@@ -18,10 +18,43 @@ from app.api.risk_knowledge_admin import router as risk_knowledge_admin_router
 from app.api.trace import router as trace_router
 from app.core.config import settings
 from app.core.data_acquisition_capability import get_data_acquisition_capability
+from app.auth.database import AuthSessionLocal
+from app.risk_knowledge.admin.indexing_admin_service import IndexingAdminService
+from app.risk_knowledge.runtime.worker import build_default_worker_manager
 from app.ui.build_frontend import BUILT_FRONTEND_HTML, build_frontend_html
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 LOGGER = logging.getLogger(__name__)
+_risk_knowledge_worker_manager = None
+
+
+def _execute_risk_knowledge_job(job_id: str, lease_owner: str) -> None:
+    with AuthSessionLocal() as db:
+        IndexingAdminService(db).execute_job(job_id, lease_owner=lease_owner)
+
+
+def _build_risk_knowledge_worker_manager():
+    return build_default_worker_manager(
+        session_factory=AuthSessionLocal,
+        executor=_execute_risk_knowledge_job,
+    )
+
+
+def _start_risk_knowledge_worker_manager() -> None:
+    global _risk_knowledge_worker_manager
+    if not settings.risk_knowledge_indexing_worker_enabled:
+        return
+    if _risk_knowledge_worker_manager is None:
+        _risk_knowledge_worker_manager = _build_risk_knowledge_worker_manager()
+        _risk_knowledge_worker_manager.start()
+
+
+def _stop_risk_knowledge_worker_manager() -> None:
+    global _risk_knowledge_worker_manager
+    if _risk_knowledge_worker_manager is None:
+        return
+    _risk_knowledge_worker_manager.stop()
+    _risk_knowledge_worker_manager = None
 
 
 # Create the FastAPI application with basic project metadata.
@@ -46,6 +79,12 @@ async def _validate_llm_routes_on_startup() -> None:
         if settings.auth_seed_on_startup:
             with AuthSessionLocal() as db:
                 seed_auth_data(db)
+    _start_risk_knowledge_worker_manager()
+
+
+@app.on_event("shutdown")
+async def _shutdown_background_workers() -> None:
+    _stop_risk_knowledge_worker_manager()
 
 
 @app.exception_handler(RequestValidationError)

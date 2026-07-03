@@ -52,6 +52,7 @@ def test_knowledge_console_contains_confirmation_and_polling_guards() -> None:
     assert "window.confirm" in console_src
     assert "rebuild" in console_src
     assert "retry" in console_src
+    assert "cancel" in console_src
     assert "activate" in console_src
     assert "document.visibilityState === 'visible'" in console_src
     assert "activeTab === 'knowledge'" in console_src
@@ -62,3 +63,9 @@ def test_knowledge_console_contains_confirmation_and_polling_guards() -> None:
     assert "progress_completed_steps" in version_src
     assert "embedding_batches_completed" in version_src
     assert "vector_mapping_count" in version_src
+    assert "lease_expires_at" in version_src
+    assert "cancel_requested_at" in version_src
+    assert "stale_detected_at" in version_src
+    assert "Retry Failed Job" in version_src
+    assert "Cancel Job" in version_src
+    assert "Guard Failure" in version_src or "error_message" in version_src

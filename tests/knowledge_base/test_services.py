@@ -202,7 +202,7 @@ def test_transition_version_updates_status_without_touching_document_pointer() -
     assert document.current_version_id is None
 
 
-def test_create_job_starts_pending() -> None:
+def test_create_job_starts_queued() -> None:
     service = IngestJobService(InMemoryKnowledgeIngestJobRepository())
 
     job = service.create_job(
@@ -212,7 +212,7 @@ def test_create_job_starts_pending() -> None:
         job_id="job_1",
     )
 
-    assert job.status == IngestJobStatus.PENDING
+    assert job.status == IngestJobStatus.QUEUED
     assert job.current_step == IngestStep.QUEUED
 
 

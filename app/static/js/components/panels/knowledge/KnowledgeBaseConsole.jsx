@@ -377,6 +377,19 @@ function KnowledgeBaseConsole({ activeTab, currentUser = null }) {
     }
   }
 
+  async function handleCancelJob(jobId) {
+    if (!jobId) return;
+    if (!window.confirm('确认 cancel 这个 queued/running job 吗？running job 会进入 cooperative cancel requested 状态。')) return;
+    setError('version', '');
+    try {
+      const response = await knowledgeAdminApi.cancelKnowledgeJob(jobId);
+      setMessage('version', `Cancel result: ${response.result}`);
+      await handleRefreshVersionJobs();
+    } catch (error) {
+      setError('version', (error && error.message) || '取消任务失败。');
+    }
+  }
+
   async function handleRefreshVersionJobs() {
     setMessage('version', '');
     if (selectedVersionId) return await loadVersionContext(selectedVersionId);
@@ -509,6 +522,7 @@ function KnowledgeBaseConsole({ activeTab, currentUser = null }) {
           onRebuild={handleRebuild}
           onActivate={handleActivate}
           onRetryJob={handleRetryJob}
+          onCancelJob={handleCancelJob}
           onRefresh={handleRefreshVersionJobs}
           loading={loading.versions || loading.jobs}
           submitting={submitting.upload}

@@ -12,11 +12,14 @@ from app.risk_knowledge.admin.errors import KnowledgeBaseAdminError
 from app.risk_knowledge.admin.indexing_admin_service import IndexingAdminService
 from app.risk_knowledge.admin.retrieval_debug_service import RetrievalDebugService
 from app.risk_knowledge.admin.schemas import (
+    ArtifactCleanupRequest,
+    ArtifactCleanupResponse,
     DebugRetrieveRequest,
     DebugRetrieveResponse,
     DocumentCreateRequest,
     DocumentListResponse,
     DocumentSummaryResponse,
+    IndexingJobCancelResponse,
     IndexingJobLaunchResponse,
     IndexingJobListResponse,
     IndexingJobSummaryResponse,
@@ -259,6 +262,30 @@ def retry_indexing_job(
 ) -> IndexingJobLaunchResponse:
     try:
         return _indexing_service(db).retry_job(job_id)
+    except KnowledgeBaseAdminError as exc:
+        _raise_admin_error(exc)
+
+
+@router.post("/indexing-jobs/{job_id}:cancel", response_model=IndexingJobCancelResponse)
+def cancel_indexing_job(
+    job_id: str,
+    db: Session = Depends(get_db),
+    _ctx: UserContext = Depends(require_permission("project:manage")),
+) -> IndexingJobCancelResponse:
+    try:
+        return _indexing_service(db).cancel_job(job_id)
+    except KnowledgeBaseAdminError as exc:
+        _raise_admin_error(exc)
+
+
+@router.post("/artifacts:cleanup", response_model=ArtifactCleanupResponse)
+def cleanup_artifacts(
+    body: ArtifactCleanupRequest,
+    db: Session = Depends(get_db),
+    _ctx: UserContext = Depends(require_permission("project:manage")),
+) -> ArtifactCleanupResponse:
+    try:
+        return _indexing_service(db).cleanup_artifacts(dry_run=body.dry_run, root=body.root)
     except KnowledgeBaseAdminError as exc:
         _raise_admin_error(exc)
 

@@ -282,6 +282,9 @@ def test_debug_retrieve_route_returns_retrieval_only_payload(admin_client, monke
 def test_indexing_admin_routes_cover_rebuild_activate_and_retry(admin_client, monkeypatch) -> None:
     from app.api import risk_knowledge_admin
     from app.risk_knowledge.admin.schemas import (
+        ArtifactCleanupResponse,
+        ArtifactCleanupEntry,
+        IndexingJobCancelResponse,
         IndexingJobLaunchResponse,
         VersionActivateResponse,
     )
@@ -316,10 +319,28 @@ def test_indexing_admin_routes_cover_rebuild_activate_and_retry(admin_client, mo
                 result="accepted",
                 job_id="idxjob_retry",
                 version_id="ver_1",
-                status="pending",
+                status="queued",
                 trigger="retry",
                 latest_manifest_index_id=None,
                 active_manifest_index_id=None,
+            )
+
+        def cancel_job(self, job_id: str) -> IndexingJobCancelResponse:
+            assert job_id == "idxjob_running"
+            return IndexingJobCancelResponse(
+                result="cancel_requested",
+                job_id=job_id,
+                status="running",
+            )
+
+        def cleanup_artifacts(self, *, dry_run: bool = True, root: str | None = None) -> ArtifactCleanupResponse:
+            assert dry_run is True
+            assert root is None
+            return ArtifactCleanupResponse(
+                dry_run=True,
+                candidates=[ArtifactCleanupEntry(path="outputs/risk_knowledge/faiss/idx_old.faiss", reason="inactive_manifest")],
+                deleted=[],
+                protected=[ArtifactCleanupEntry(path="outputs/risk_knowledge/faiss/idx_active.faiss", reason="active_manifest")],
             )
 
     monkeypatch.setattr(risk_knowledge_admin, "_indexing_service", lambda _db: StubIndexingService())
@@ -338,3 +359,11 @@ def test_indexing_admin_routes_cover_rebuild_activate_and_retry(admin_client, mo
     retry = admin_client.post("/api/risk-knowledge/admin/indexing-jobs/idxjob_failed:retry")
     assert retry.status_code == 200
     assert retry.json()["job_id"] == "idxjob_retry"
+
+    cancel = admin_client.post("/api/risk-knowledge/admin/indexing-jobs/idxjob_running:cancel")
+    assert cancel.status_code == 200
+    assert cancel.json()["result"] == "cancel_requested"
+
+    cleanup = admin_client.post("/api/risk-knowledge/admin/artifacts:cleanup", json={"dry_run": True})
+    assert cleanup.status_code == 200
+    assert cleanup.json()["candidates"][0]["reason"] == "inactive_manifest"

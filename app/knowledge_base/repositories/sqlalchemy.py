@@ -9,14 +9,18 @@ from app.knowledge_base.models import (
     KnowledgeBaseModel,
     KnowledgeDocumentModel,
     KnowledgeDocumentVersionModel,
+    KnowledgeIngestArtifactModel,
     KnowledgeIngestJobModel,
+    KnowledgeIngestJobControlModel,
     KnowledgeIngestJobRuntimeStateModel,
 )
 from app.knowledge_base.schemas import (
     KnowledgeBase,
     KnowledgeDocument,
     KnowledgeDocumentVersion,
+    KnowledgeIngestArtifact,
     KnowledgeIngestJob,
+    KnowledgeIngestJobControl,
     KnowledgeIngestJobRuntimeState,
 )
 
@@ -234,6 +238,66 @@ class SqlAlchemyKnowledgeIngestJobRepository:
         ).all()
         return [_to_job(item) for item in items]
 
+    def list_by_statuses(self, statuses: list[str]) -> list[KnowledgeIngestJob]:
+        items = self._db.scalars(
+            select(KnowledgeIngestJobModel)
+            .where(KnowledgeIngestJobModel.status.in_(statuses))
+            .order_by(KnowledgeIngestJobModel.created_at.asc(), KnowledgeIngestJobModel.job_id.asc())
+        ).all()
+        return [_to_job(item) for item in items]
+
+
+class SqlAlchemyKnowledgeIngestJobControlRepository:
+    def __init__(self, db: Session) -> None:
+        self._db = db
+
+    def get(self, job_id: str) -> KnowledgeIngestJobControl | None:
+        model = self._db.scalar(select(KnowledgeIngestJobControlModel).where(KnowledgeIngestJobControlModel.job_id == job_id))
+        return _to_job_control(model) if model is not None else None
+
+    def upsert(self, state: KnowledgeIngestJobControl) -> KnowledgeIngestJobControl:
+        model = self._db.scalar(select(KnowledgeIngestJobControlModel).where(KnowledgeIngestJobControlModel.job_id == state.job_id))
+        if model is None:
+            model = KnowledgeIngestJobControlModel(job_id=state.job_id)
+            self._db.add(model)
+
+        model.lease_owner = state.lease_owner
+        model.lease_expires_at = state.lease_expires_at
+        model.cancel_requested_at = state.cancel_requested_at
+        model.stale_detected_at = state.stale_detected_at
+        model.stale_reason = state.stale_reason
+        self._db.flush()
+        self._db.refresh(model)
+        return _to_job_control(model)
+
+
+class SqlAlchemyKnowledgeIngestArtifactRepository:
+    def __init__(self, db: Session) -> None:
+        self._db = db
+
+    def create(self, artifact: KnowledgeIngestArtifact) -> KnowledgeIngestArtifact:
+        model = KnowledgeIngestArtifactModel(
+            job_id=artifact.job_id,
+            version_id=artifact.version_id,
+            artifact_kind=artifact.artifact_kind,
+            artifact_path=artifact.artifact_path,
+            is_temporary=artifact.is_temporary,
+            created_at=artifact.created_at,
+            cleaned_at=artifact.cleaned_at,
+        )
+        self._db.add(model)
+        self._db.flush()
+        self._db.refresh(model)
+        return _to_job_artifact(model)
+
+    def list_by_job(self, job_id: str) -> list[KnowledgeIngestArtifact]:
+        items = self._db.scalars(
+            select(KnowledgeIngestArtifactModel)
+            .where(KnowledgeIngestArtifactModel.job_id == job_id)
+            .order_by(KnowledgeIngestArtifactModel.created_at.asc(), KnowledgeIngestArtifactModel.id.asc())
+        ).all()
+        return [_to_job_artifact(item) for item in items]
+
 
 class SqlAlchemyKnowledgeIngestJobRuntimeStateRepository:
     def __init__(self, db: Session) -> None:
@@ -324,13 +388,16 @@ def _to_version(model: KnowledgeDocumentVersionModel) -> KnowledgeDocumentVersio
 
 
 def _to_job(model: KnowledgeIngestJobModel) -> KnowledgeIngestJob:
+    status = model.status
+    if status == "pending":
+        status = "queued"
     return KnowledgeIngestJob.model_validate(
         {
             "job_id": model.job_id,
             "kb_id": model.kb_id,
             "doc_id": model.doc_id,
             "version_id": model.version_id,
-            "status": model.status,
+            "status": status,
             "current_step": model.current_step,
             "error_message": model.error_message,
             "trigger": model.trigger,
@@ -343,6 +410,35 @@ def _to_job(model: KnowledgeIngestJobModel) -> KnowledgeIngestJob:
             "last_heartbeat_at": model.last_heartbeat_at,
             "latest_manifest_index_id": model.latest_manifest_index_id,
             "active_manifest_index_id": model.active_manifest_index_id,
+        }
+    )
+
+
+def _to_job_control(model: KnowledgeIngestJobControlModel) -> KnowledgeIngestJobControl:
+    return KnowledgeIngestJobControl.model_validate(
+        {
+            "job_id": model.job_id,
+            "lease_owner": model.lease_owner,
+            "lease_expires_at": model.lease_expires_at,
+            "cancel_requested_at": model.cancel_requested_at,
+            "stale_detected_at": model.stale_detected_at,
+            "stale_reason": model.stale_reason,
+            "created_at": model.created_at,
+            "updated_at": model.updated_at,
+        }
+    )
+
+
+def _to_job_artifact(model: KnowledgeIngestArtifactModel) -> KnowledgeIngestArtifact:
+    return KnowledgeIngestArtifact.model_validate(
+        {
+            "job_id": model.job_id,
+            "version_id": model.version_id,
+            "artifact_kind": model.artifact_kind,
+            "artifact_path": model.artifact_path,
+            "is_temporary": model.is_temporary,
+            "created_at": model.created_at,
+            "cleaned_at": model.cleaned_at,
         }
     )
 

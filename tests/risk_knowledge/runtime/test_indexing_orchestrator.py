@@ -93,7 +93,10 @@ def test_indexing_orchestrator_reuses_manifest_when_fingerprint_unchanged(
     tmp_path,
 ) -> None:
     from app.auth.database import AuthSessionLocal
-    from app.knowledge_base.repositories.sqlalchemy import SqlAlchemyKnowledgeDocumentRepository
+    from app.knowledge_base.repositories.sqlalchemy import (
+        SqlAlchemyKnowledgeDocumentRepository,
+        SqlAlchemyKnowledgeIngestArtifactRepository,
+    )
     from app.risk_knowledge.runtime.orchestrator import IndexingOrchestrator
 
     with AuthSessionLocal() as db:
@@ -119,3 +122,50 @@ def test_indexing_orchestrator_reuses_manifest_when_fingerprint_unchanged(
     )
 
     assert first.active_manifest_index_id == second.active_manifest_index_id
+
+    with AuthSessionLocal() as db:
+        artifact_repo = SqlAlchemyKnowledgeIngestArtifactRepository(db)
+        first_artifacts = artifact_repo.list_by_job(first.job_id)
+        second_artifacts = artifact_repo.list_by_job(second.job_id)
+
+    assert len(first_artifacts) == 2
+    assert {artifact.artifact_kind for artifact in first_artifacts} == {"faiss_index", "faiss_mapping"}
+    assert len(second_artifacts) == 2
+
+
+def test_indexing_orchestrator_rebuild_from_parsed_creates_new_manifest(
+    auth_db,
+    fake_redis_client,
+    sample_document,
+    sample_version,
+    sample_parsed_document,
+    tmp_path,
+) -> None:
+    from app.auth.database import AuthSessionLocal
+    from app.knowledge_base.repositories.sqlalchemy import SqlAlchemyKnowledgeDocumentRepository
+    from app.risk_knowledge.runtime.orchestrator import IndexingOrchestrator
+
+    with AuthSessionLocal() as db:
+        doc_repo = SqlAlchemyKnowledgeDocumentRepository(db)
+        doc_repo.create_document(sample_document)
+        doc_repo.create_version(sample_version)
+        db.commit()
+
+    orchestrator = IndexingOrchestrator(
+        redis_client=fake_redis_client,
+        embedding_provider=DeterministicTestEmbeddingProvider(),
+        artifact_root=tmp_path,
+    )
+    first = orchestrator.start_initial_index(
+        parsed_document=sample_parsed_document,
+        document=sample_document,
+        version=sample_version,
+    )
+    rebuild = orchestrator.start_rebuild_from_parsed(
+        parsed_document=sample_parsed_document,
+        document=sample_document,
+        version=sample_version,
+    )
+
+    assert rebuild.job_id != first.job_id
+    assert rebuild.active_manifest_index_id != first.active_manifest_index_id
