@@ -38,6 +38,10 @@ from app.data_agent.sql_plan import (
     build_structured_sql_plan,
     validate_structured_sql_plan,
 )
+from app.data_agent.semantic_validation import (
+    SqlSemanticValidationRequest,
+    validate_sql_semantics,
+)
 from app.data_agent.repository import DataAgentRepository
 from app.data_agent.safety import resolve_country_names, run_sql_safety_gate
 from app.data_agent.plan_review import review_sql_against_intent_plan
@@ -369,6 +373,25 @@ def _review_sql_candidate(
     output_bucket: str | None,
 ) -> dict[str, Any]:
     safety_result = run_sql_safety_gate(sql_text, sql_kind, target_country)
+    if safety_result.get("status") == "review_only":
+        safety_result["semantic_validation"] = {
+            "validation_status": "warning",
+            "violations": [],
+            "requires_human_review": True,
+        }
+        return safety_result
+    semantic_validation = validate_sql_semantics(
+        SqlSemanticValidationRequest(
+            query=natural_language_request,
+            sql=safety_result["normalized_sql"],
+            structured_sql_plan=dict((retrieval_snapshot or {}).get("structured_sql_plan") or {}),
+            business_context={
+                "run_type": run_type,
+                "output_bucket": output_bucket,
+            },
+            expected_country=target_country,
+        )
+    )
     safety_result = _append_unsupported_field_warnings(
         safety_result=safety_result,
         sql_text=sql_text,
@@ -381,6 +404,12 @@ def _review_sql_candidate(
         run_type=run_type,
         output_bucket=output_bucket,
     )
+    safety_result["semantic_validation"] = semantic_validation.model_dump(mode="json")
+    if semantic_validation.validation_status == "blocked":
+        safety_result["status"] = "blocked"
+        safety_result["blocked_reasons"] = list(safety_result.get("blocked_reasons") or []) + [
+            violation.message for violation in semantic_validation.violations if violation.blocking
+        ]
     return safety_result
 
 
@@ -1077,7 +1106,15 @@ class DataAgentService:
         run = self._get_scoped_run(ctx, run_id)
         current = self.repo.get_sql_version(run.current_sql_version_id)
         previous_hash = run.approved_sql_hash
-        safety_result = run_sql_safety_gate(body.sql_text, run.sql_kind or "query_only", run.country)
+        safety_result = _review_sql_candidate(
+            sql_text=body.sql_text,
+            sql_kind=run.sql_kind or "query_only",
+            target_country=run.country,
+            retrieval_snapshot=(current.retrieval_snapshot_json if current is not None else {}),
+            natural_language_request=run.natural_language_request,
+            run_type=run.run_type,
+            output_bucket=run.output_bucket,
+        )
         version = self.repo.add_sql_version(
             run_id=run.run_id,
             version_no=self.repo.next_version_no(run.run_id),

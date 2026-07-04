@@ -88,11 +88,16 @@
 
 - planning artifact:
   - `docs/plans/pre-m3-eval-semantic-release-gate-plan.md`
+- runtime contract artifact:
+  - `docs/specs/pre-m3-eval-semantic-release-gate-contract.md`
+- runbook artifact:
+  - `docs/runbooks/pre-m3-release-gate-runbook.md`
 - planning review artifact:
   - `docs/reviews/pre-m3-eval-semantic-release-gate-acceptance-review.md`
 - current state:
-  - `PR-C Eval Regression + M2C Essential Semantic Validator + Release Gate planned; implementation not started`
-  - `PR-C1` started only after the PR-B docs-only follow-up was reconciled onto `main`
+  - `PR-C Eval Regression + M2C Essential Semantic Validator + Release Gate implementation in progress`
+  - `PR-C1` planning merged via `PR #57`
+  - `PR-C2` started from latest `main` on `codex/pre-m3-eval-semantic-release-runtime`
   - `PR-A` remains frozen as `implemented; pending final acceptance`
   - `PR-B` remains `implemented; pending final acceptance`
 - intended outcome:
@@ -102,8 +107,16 @@
 - selected approach:
   - reuse existing harness seams rather than introduce a new top-level eval platform
   - extend `app/risk_knowledge/evaluation/` for Risk QA regression
-  - plan `app/data_agent/semantic_validation/` for deterministic SQL semantic validation
-  - plan `app/release/` with formal entrypoint `python -m app.release.pre_m3_gate`
+  - implement `app/data_agent/semantic_validation/` for deterministic SQL semantic validation
+  - implement `app/release/` with formal entrypoint `python -m app.release.pre_m3_gate`
+- current runtime branch focus:
+  - the runtime branch now includes:
+    - PR-C contract spec and release / rollback runbook
+    - additive PR-C regression fields and context-isolation metrics in `app/risk_knowledge/evaluation/`
+    - deterministic SQL semantic validation under `app/data_agent/semantic_validation/`
+    - semantic-validation integration into Data Agent SQL review flow
+    - initial Pre-M3 release gate package under `app/release/`
+    - targeted tests under `tests/risk_knowledge/evaluation/`, `tests/data_agent/`, and `tests/release/`
 - planned runtime constraints:
   - no PR-A Risk QA rewrite
   - no PR-B worker rewrite
@@ -115,8 +128,7 @@
   - no Data Agent rewrite
   - release gate aggregates check results and does not replace `pytest`
   - semantic validator is deterministic, structured, and must not bypass existing HITL
-- required next step before PR-C2 runtime code changes:
-  - add or update `docs/specs/pre-m3-eval-semantic-release-gate-contract.md`
+  - blocked SQL must not become executable or approvable
 
 ## 2026-07-02 M2D-14C Acceptance & M2D-15A Planning
 
