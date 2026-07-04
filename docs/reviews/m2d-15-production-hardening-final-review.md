@@ -1,5 +1,16 @@
 # M2D-15 Production Hardening Final Review
 
+## Historical Positioning
+
+- this document is a historical stage review for `M2D-15 Final Production Hardening` only
+- it records what landed in that slice and what remained out of scope at that time
+- it must not be read as evidence that the later `M2D / Pre-M3` system-level final acceptance is complete
+- later `PR-A / PR-B / PR-C` runtime gates plus the `codex/pre-m3-final-acceptance-closure` branch define the current system-level acceptance truth
+- current system-level truth is:
+  - core runtime hardening landed
+  - final acceptance remains blocked by full-repository regression failures
+  - Pre-M3 gates are not ready for M3 entry
+
 ## Scope
 
 - 完成 durable async indexing execution：
