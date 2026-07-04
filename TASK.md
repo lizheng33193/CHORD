@@ -124,13 +124,13 @@
     - runtime baseline remains intentionally uncommitted in v1
     - no backend runtime expansion
     - no standalone admin app
-    - no production worker queue
+    - no external Celery/RQ/Kafka or external production queue
     - no SSE / WebSocket
     - no Data Agent RAG mixing
     - no ES / SWXY coupling
     - `debug/retrieve` remains retrieval-only v1
     - `debug/retrieve` does not call `RiskKnowledgeService`
-    - `index` / `rebuild` reuse the current in-process runtime
+    - `index` / `rebuild` now use the implemented durable async path: queued -> worker claim -> lease/heartbeat -> execute
     - metadata upload persistence remains future API reconciliation
     - small `DOCX` validation passed inside `M2D-14C`
     - small `PDF` validation passed inside `M2D-14C`

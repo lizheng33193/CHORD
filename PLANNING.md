@@ -27,6 +27,10 @@
 
 ## 2026-07-02 M2D-14C Acceptance & M2D-15A Planning
 
+- historical note:
+  - this section is a historical pre-final-hardening snapshot from `2026-07-02`
+  - current `M2D-15 Final Production Hardening` state is defined by the `2026-07-03` section above
+
 - 新增 planning artifacts：
   - `docs/specs/m2d-15a-indexing-observability-spec.md`
   - `docs/plans/m2d-15a-indexing-observability-plan.md`
@@ -45,7 +49,7 @@
   - long-running indexing jobs progress correctly in OCR / layout / embedding / FAISS runtime
   - external polling still stays too long at coarse `queued/running`
 - `M2D-15A Indexing Job Observability & Runtime State Fidelity` 当前状态：
-  - implementation landed on current branch; targeted validation passed
+  - historical pre-final snapshot: implementation landed on current branch; targeted validation passed
   - shared `ProgressUpdater` now spans parser-stage admin execution and runner-stage indexing execution
   - admin API job summary now merges Redis live state with durable runtime sidecar state
   - existing Knowledge Jobs panel is minimally upgraded for stage progress, embedding batches, and runtime metrics
@@ -53,9 +57,9 @@
   - durable progress writes are throttled
   - stage progress and embedding sub-progress are explicitly separated
   - failure semantics preserve the real failing stage
-- `M2D-15 Production Hardening` 当前状态：
-  - not started beyond planning
-  - no worker queue
+- `M2D-15 Production Hardening` historical pre-final-hardening snapshot：
+  - before `M2D-15 Final`, production hardening had not started beyond planning
+  - before `M2D-15 Final`, there was no worker queue
   - no SSE / WebSocket
   - no retrieval / rerank / answer expansion
   - no `M2D-15D` console redesign started
@@ -148,7 +152,7 @@
   - `M2D-14C-1 small DOCX validation passed`
   - `M2D-14C-2 small PDF validation passed`
   - `M2D-14C-3 real PDF validation passed`
-  - `M2D-15A Indexing Job Observability & Runtime State Fidelity implemented on branch; acceptance pending review`
+  - `M2D-15A Indexing Job Observability & Runtime State Fidelity` was accepted and is preserved inside the final hardening branch
   - `407f058` is a validation-driven runtime fix for DashScope embedding batching, not `M2D-15 Production Hardening`
 - Acceptance posture:
   - `M2D-10 accepted at stage level after targeted retrieval foundation validation`
