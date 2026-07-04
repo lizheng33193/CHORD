@@ -52,6 +52,10 @@
     - `[x]` add insufficient-evidence pre-generation stop
     - `[x]` persist additive artifact metadata and trace metadata
     - `[x]` prove Data Agent non-regression
+  - final acceptance closure status:
+    - `pytest -q` executed on `codex/pre-m3-final-acceptance-closure`
+    - result: `110 failed, 1462 passed, 11 skipped, 33 warnings`
+    - status remains `implemented; pending final acceptance`
 
 - [x] PR-B｜Indexing Worker + Job Observability Gate — implemented; pending final acceptance（2026-07-04）
   - docs:
@@ -89,6 +93,7 @@
     - route registration confirmed for admin compatibility plus `/api/risk-knowledge/indexing/*`, `/api/risk-knowledge/manifests/*`, and `/api/risk-knowledge/workers/*`
     - runtime defaults confirmed: `RISK_KNOWLEDGE_WORKER_MODE=external`, `RISK_KNOWLEDGE_IN_PROCESS_WORKER_FALLBACK_ENABLED=false`
     - schema evolution risk remains part of final acceptance because no repo-managed migration files were added in this PR
+    - full-repository final acceptance attempt result: `110 failed, 1462 passed, 11 skipped, 33 warnings`
     - `[ ]` final acceptance
 
 - [x] PR-C｜Eval Regression + M2C Essential Semantic Validator + Release Gate — implemented; pending final acceptance（2026-07-04）
@@ -100,6 +105,7 @@
   - baseline:
     - PR-C1 planning merged via `PR #57`
     - PR-C2 runtime merged via `PR #58 feat: add pre-m3 eval semantic release gate`
+    - acceptance hardening merged via `PR #59 fix: harden pre-m3 release gate acceptance`
     - `PR-A` remains frozen as `implemented; pending final acceptance`
     - `PR-B` remains `implemented; pending final acceptance`
   - planning decisions:
@@ -127,8 +133,22 @@
       - `production_release --strict` -> `BLOCKED` with exit `1`
     - PR-B non-regression verification: `7 passed, 6 warnings`
     - additional checks: `python -m compileall -q app tests` passed; `git diff --check` passed
-    - full repository regression not run
+    - full-repository final acceptance attempt result: `110 failed, 1462 passed, 11 skipped, 33 warnings`
+    - release-gate default runner still reports `full repository regression not run`; production profile remains blocked
     - `[ ]` final acceptance
+
+- [ ] Pre-M3 Final Acceptance Closure — blocked（2026-07-04）
+  - branch:
+    - `codex/pre-m3-final-acceptance-closure`
+  - verification:
+    - `pytest -q` -> `110 failed, 1462 passed, 11 skipped, 33 warnings`
+    - `python -m compileall -q app tests` -> passed
+    - `git diff --check` -> passed
+    - `python -m app.release.pre_m3_gate --profile pr_acceptance --output-json /tmp/pre_m3_gate_pr_acceptance.json` -> `WARN`
+    - `python -m app.release.pre_m3_gate --profile production_release --strict --output-json /tmp/pre_m3_gate_production_release.json` -> `BLOCKED`
+  - closure result:
+    - PR-A / PR-B / PR-C remain `implemented; pending final acceptance`
+    - Pre-M3 gates are not ready for M3 entry
 
 - [ ] M2D｜Risk Domain Knowledge RAG & Knowledge Base Module — implementation in progress（2026-07-01）
   - review / spec / plan：
