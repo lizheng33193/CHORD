@@ -56,7 +56,7 @@
 - planning review artifact:
   - `docs/reviews/pre-m3-indexing-worker-gate-acceptance-review.md`
 - current state:
-  - `PR-B Indexing Worker + Job Observability Gate implementation in progress`
+  - `PR-B Indexing Worker + Job Observability Gate implemented; pending final acceptance`
   - `PR-A` is frozen as `implemented; pending final acceptance`
   - planning landed on `main` via `PR #55`, merge commit `193e80c69c337c26e0059206fa3d1720d177817c`
 - intended outcome:
@@ -65,12 +65,17 @@
   - preserve admin compatibility while delivering production-oriented indexing, manifest, and worker visibility facades
 - runtime branch focus:
   - existing runtime truth remains the current `main` implementation with durable job state, retry / rebuild, heartbeat, and stale recovery
-  - current runtime branch adds:
+  - current runtime branch now includes:
     - production indexing job facade
     - production worker health facade
     - manifest activation / rollback facade
     - idempotency-key persistence for production job submission
     - external-worker-first startup gate with explicit in-process fallback helper
+    - targeted runtime tests for worker, job API, manifest rollback, stale recovery, and idempotency
+  - targeted verification passed on the runtime branch; full repository regression was not run
+  - route registration confirms both admin compatibility paths and the new `/api/risk-knowledge/indexing/*`, `/api/risk-knowledge/manifests/*`, and `/api/risk-knowledge/workers/*` facades
+  - default runtime posture is `RISK_KNOWLEDGE_WORKER_MODE=external` with `RISK_KNOWLEDGE_IN_PROCESS_WORKER_FALLBACK_ENABLED=false`
+  - no repo-managed migration files were added in this PR; durable schema evolution remains part of final deployment acceptance
   - `codex/pre-m3-risk-qa-production-gate` is closed for further runtime or docs evolution
   - no SSE / WebSocket
   - no full observability dashboard

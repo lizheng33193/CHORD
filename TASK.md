@@ -53,7 +53,7 @@
     - `[x]` persist additive artifact metadata and trace metadata
     - `[x]` prove Data Agent non-regression
 
-- [ ] PR-B｜Indexing Worker + Job Observability Gate — implementation in progress（2026-07-04）
+- [x] PR-B｜Indexing Worker + Job Observability Gate — implemented; pending final acceptance（2026-07-04）
   - docs:
     - `docs/plans/pre-m3-indexing-worker-gate-plan.md`
     - `docs/reviews/pre-m3-indexing-worker-gate-acceptance-review.md`
@@ -81,6 +81,14 @@
     - `[x]` external-worker-first in-process fallback gate added
     - `[x]` targeted PR-B runtime tests added
     - `[x]` targeted runtime and compatibility verification passing
+    - `[x]` branch pushed and ready for runtime PR creation
+  - current acceptance posture:
+    - status: `implemented; pending final acceptance`
+    - targeted verification: `68 passed, 6 warnings`
+    - additional checks: `python -m compileall -q app tests` passed; `git diff --check` passed
+    - route registration confirmed for admin compatibility plus `/api/risk-knowledge/indexing/*`, `/api/risk-knowledge/manifests/*`, and `/api/risk-knowledge/workers/*`
+    - runtime defaults confirmed: `RISK_KNOWLEDGE_WORKER_MODE=external`, `RISK_KNOWLEDGE_IN_PROCESS_WORKER_FALLBACK_ENABLED=false`
+    - schema evolution risk remains part of final acceptance because no repo-managed migration files were added in this PR
     - `[ ]` final acceptance
 
 - [ ] M2D｜Risk Domain Knowledge RAG & Knowledge Base Module — implementation in progress（2026-07-01）
