@@ -132,13 +132,38 @@ Executed verification:
 - `git diff --check`
   - result: passed
 
+## Final Acceptance Closure Attempt
+
+Executed on `2026-07-04` from `codex/pre-m3-final-acceptance-closure`:
+
+- `pytest -q`
+  - result: `110 failed, 1462 passed, 11 skipped, 33 warnings`
+- `python -m compileall -q app tests`
+  - result: passed
+- `git diff --check`
+  - result: passed
+
+Representative failing areas in the full-repository run included:
+
+- `data_acquisition_agent/tests/test_api.py`
+- `data_acquisition_agent/tests/test_api_v2.py`
+- `data_acquisition_agent/tests/test_e2e_mock_executor.py`
+- `tests/test_analyze_module_endpoint.py`
+- `tests/test_orchestrator_chat_routes.py`
+
+Acceptance outcome:
+
+- PR-A remains `implemented; pending final acceptance`
+- Pre-M3 acceptance is not closed
+- Pre-M3 gates are not yet ready for M3 entry
+
 ## Known Limitations
 
 - public route names remain `risk_knowledge_*` for compatibility; no naming migration is included in PR-A
 - answer generation remains deterministic-first; no real LLM answer provider rollout is added here
 - retrieval candidate normalization is still built on top of the current M2D retrieval/evidence stack rather than a new standalone retriever service
 - warnings from third-party dependencies remain outside the scope of this PR
-- full repository regression was not run
+- full repository regression was run during final acceptance closure and failed
 
 ## Next Phase Dependencies
 

@@ -38,7 +38,9 @@
   - `PR-A Risk QA + Context Isolation + Evidence/Citation Production Gate implemented; pending final acceptance`
   - GitHub runtime merge landed on `2026-07-04` via `PR #53 feat: add risk qa production gate`
   - post-merge narrative reconciliation now lives on `codex/pre-m3-risk-qa-production-gate`
-  - targeted PR-A verification passed; full repository regression was not run
+  - targeted PR-A verification passed
+  - final acceptance closure attempt on `2026-07-04` ran `pytest -q` for the full repository and it failed with `110 failed, 1462 passed, 11 skipped, 33 warnings`
+  - Pre-M3 final acceptance therefore remains open and PR-A must stay `implemented; pending final acceptance`
 - intended outcome:
   - keep `risk_knowledge_answer` as the public route
   - keep `RiskKnowledgeService` as the public facade
@@ -59,6 +61,8 @@
   - `PR-B Indexing Worker + Job Observability Gate implemented; pending final acceptance`
   - `PR-A` is frozen as `implemented; pending final acceptance`
   - planning landed on `main` via `PR #55`, merge commit `193e80c69c337c26e0059206fa3d1720d177817c`
+  - final acceptance closure attempt on `2026-07-04` ran `pytest -q` for the full repository and it failed with `110 failed, 1462 passed, 11 skipped, 33 warnings`
+  - Pre-M3 final acceptance therefore remains open and PR-B must stay `implemented; pending final acceptance`
 - intended outcome:
   - promote the current single-process durable indexing runtime toward an external-worker-first production architecture
   - strengthen job observability, manifest safety boundaries, activation guardrails, and rollback policy
@@ -98,6 +102,7 @@
   - `PR-C Eval Regression + M2C Essential Semantic Validator + Release Gate implemented; pending final acceptance`
   - `PR-C1` planning merged via `PR #57`
   - `PR-C2` runtime merged via `PR #58 feat: add pre-m3 eval semantic release gate`
+  - acceptance hardening merged via `PR #59 fix: harden pre-m3 release gate acceptance`
   - `PR-A` remains frozen as `implemented; pending final acceptance`
   - `PR-B` remains `implemented; pending final acceptance`
 - intended outcome:
@@ -121,7 +126,9 @@
     - `93 passed, 6 warnings` for PR-C targeted runtime coverage
     - release-gate CLI smoke confirming `WARN` for `pr_acceptance` and `BLOCKED` for `production_release`
     - `7 passed, 6 warnings` for targeted PR-B non-regression coverage
-  - full repository regression has not run, so final acceptance remains pending
+  - final acceptance closure attempt on `2026-07-04` ran `pytest -q` for the full repository and it failed with `110 failed, 1462 passed, 11 skipped, 33 warnings`
+  - current release-gate CLI default runner still reports `full repository regression not run`; production profile remains `BLOCKED`
+  - final acceptance remains pending and Pre-M3 gates are not yet ready for M3 entry
 - planned runtime constraints:
   - no PR-A Risk QA rewrite
   - no PR-B worker rewrite

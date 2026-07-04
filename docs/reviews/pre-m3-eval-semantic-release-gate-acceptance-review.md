@@ -48,6 +48,24 @@
   - `python -m compileall -q app tests`
   - `git diff --check`
 
+## 5A. Final Acceptance Closure Attempt
+
+- executed on `2026-07-04` from `codex/pre-m3-final-acceptance-closure`
+- full-repository regression:
+  - `pytest -q`
+  - result: `110 failed, 1462 passed, 11 skipped, 33 warnings`
+- representative failing areas included:
+  - `data_acquisition_agent/tests/test_api.py`
+  - `data_acquisition_agent/tests/test_api_v2.py`
+  - `data_acquisition_agent/tests/test_e2e_mock_executor.py`
+  - `tests/test_analyze_module_endpoint.py`
+  - `tests/test_orchestrator_chat_routes.py`
+  - `tests/risk_knowledge/reranking/test_dashscope_provider.py`
+  - `tests/risk_knowledge/runtime/test_worker_lifecycle.py`
+- acceptance outcome:
+  - PR-C remains `implemented; pending final acceptance`
+  - Pre-M3 gates are not ready for M3 entry
+
 ## 6. Production Risk Checks
 
 - semantic validation is deterministic and structured; it is not prompt-only and not LLM self-judgment
@@ -61,13 +79,14 @@
 
 ## 7. Known Limitations
 
-- full repository regression has not run
+- full repository regression was run during final acceptance closure and failed
 - final production release acceptance remains pending
 - the current semantic validator is a deterministic v1 slice; deeper catalog-aware or policy-catalog validation remains future enhancement
 - the runbook records operator procedures and rollback expectations but does not automate deployment orchestration by itself
+- the current release-gate CLI default runner is still report-driven and reports `full repository regression not run` unless real regression results are wired into its check inputs
 
 ## 8. Next Step
 
-- review the merged PR-C runtime slice on `main`
-- run broader repository regression before final production release acceptance
-- close final acceptance after deployment-oriented checks and release evidence are complete
+- resolve the repository-level regression failures
+- wire final regression evidence into the production release decision path if a stricter end-to-end release-gate contract is required
+- retry final acceptance closure only after the broader repository regression baseline is green

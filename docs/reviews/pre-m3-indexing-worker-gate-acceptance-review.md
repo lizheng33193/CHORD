@@ -61,7 +61,7 @@
 - additional verification:
   - `python -m compileall -q app tests`
   - `git diff --check`
-- runtime verification remains targeted only; full repository regression has not run
+- runtime verification remains targeted only for the runtime branch snapshot; later full-repository final acceptance closure did run and failed
 
 ## Production Risk Checks
 
@@ -83,12 +83,29 @@
 ## Known Limitations
 
 - runtime implementation is complete on the branch but not yet finally accepted
-- full repository regression not run
+- final acceptance closure later ran `pytest -q` and failed with `110 failed, 1462 passed, 11 skipped, 33 warnings`
 - worker presence / observability remains polling-oriented; no SSE / WebSocket work is introduced here
 - polling remains the planned observability baseline; no SSE / WebSocket work is introduced here
 - migration/deployment acceptance remains pending because the PR adds durable schema usage without introducing repo-managed migration files
 
+## Final Acceptance Closure Attempt
+
+Executed on `2026-07-04` from `codex/pre-m3-final-acceptance-closure`:
+
+- `pytest -q`
+  - result: `110 failed, 1462 passed, 11 skipped, 33 warnings`
+- `python -m compileall -q app tests`
+  - result: passed
+- `git diff --check`
+  - result: passed
+
+Acceptance outcome:
+
+- PR-B remains `implemented; pending final acceptance`
+- Pre-M3 acceptance is not closed
+- Pre-M3 gates are not yet ready for M3 entry
+
 ## Next Step
 
-- create the PR-B runtime PR from `codex/pre-m3-indexing-worker-runtime`
-- complete final acceptance review, including schema/deployment acceptance, before merge
+- resolve full-repository regression failures before attempting final acceptance closure again
+- complete schema/deployment acceptance after the repository-level regression baseline is green
