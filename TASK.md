@@ -140,6 +140,10 @@
 - [ ] Pre-M3 Final Acceptance Closure — blocked（2026-07-04）
   - branch:
     - `codex/pre-m3-final-acceptance-closure`
+  - current reading:
+    - M2D / Pre-M3 system-level hardening main runtime slices are implemented
+    - PR-A / PR-B / PR-C all remain `implemented; pending final acceptance`
+    - do not describe the current state as `completed`, `production accepted`, or `ready for M3 entry`
   - verification:
     - `pytest -q` -> `110 failed, 1462 passed, 11 skipped, 33 warnings`
     - `python -m compileall -q app tests` -> passed
@@ -149,8 +153,12 @@
   - closure result:
     - PR-A / PR-B / PR-C remain `implemented; pending final acceptance`
     - Pre-M3 gates are not ready for M3 entry
+    - production release remains blocked
+  - next required step:
+    - Pre-M3 full-regression triage and acceptance repair
+    - do not start new M3 runtime work from this state
 
-- [ ] M2D｜Risk Domain Knowledge RAG & Knowledge Base Module — implementation in progress（2026-07-01）
+- [ ] M2D｜Risk Domain Knowledge RAG & Knowledge Base Module — major runtime landed; system-level final acceptance blocked（2026-07-04）
   - review / spec / plan：
     - `docs/reviews/m2d-current-state-and-scope-review.md`
     - `docs/reviews/m2d-existing-rag-integration-review.md`
@@ -209,7 +217,10 @@
     - `[x] M2D-15A Indexing Job Observability & Runtime State Fidelity`
     - `[x] M2D-15 Production Hardening`
   - 当前阶段状态：
-    - `M2D: implementation in progress`
+    - `M2D: major runtime landed; system-level final acceptance blocked`
+    - `M2D / Pre-M3 system-level hardening main runtime slices are implemented across historical M2D plus PR-A / PR-B / PR-C`
+    - `M2D` is not production accepted
+    - Pre-M3 gates are not ready for M3 entry
     - `M2D-4 vendor import landed; no runtime integration started`
     - `M2D-5 knowledge base module skeleton landed; no ingestion/retrieval runtime started`
     - `M2D-6 SWXY ingestion adapter landed; no embedding/retrieval/ES runtime started`
@@ -254,6 +265,7 @@
     - single-process durable worker queue / lease / heartbeat / stale recovery / retry / rebuild / cancel / cleanup governance landed
     - `M2D-15A` observability remains intact after production hardening closure
     - this M2D acceptance narrative excludes the later `PR-A` Risk QA runtime expansion
+    - later Pre-M3 final acceptance closure ran full repository regression and failed, so the system-level acceptance state remains blocked
   - 本轮产出：
     - `app/third_party/swxy_rag`
     - `app/knowledge_base`
