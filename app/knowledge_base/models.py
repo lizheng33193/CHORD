@@ -102,6 +102,7 @@ class KnowledgeIngestJobModel(Base):
     kb_id: Mapped[str] = mapped_column(String(128), nullable=False)
     doc_id: Mapped[str] = mapped_column(String(128), nullable=False)
     version_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    idempotency_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
     status: Mapped[str] = mapped_column(String(32), nullable=False)
     current_step: Mapped[str] = mapped_column(String(64), nullable=False)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)

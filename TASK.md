@@ -53,12 +53,13 @@
     - `[x]` persist additive artifact metadata and trace metadata
     - `[x]` prove Data Agent non-regression
 
-- [ ] PR-B｜Indexing Worker + Job Observability Gate — planned; implementation not started（2026-07-04）
+- [ ] PR-B｜Indexing Worker + Job Observability Gate — implementation in progress（2026-07-04）
   - docs:
     - `docs/plans/pre-m3-indexing-worker-gate-plan.md`
     - `docs/reviews/pre-m3-indexing-worker-gate-acceptance-review.md`
   - baseline:
-    - `main@aab6e83`
+    - planning landed on `main` via `PR #55`
+    - merge commit `193e80c69c337c26e0059206fa3d1720d177817c`
     - `PR-A` frozen as `implemented; pending final acceptance`
   - planning decisions:
     - `[x]` docs-only planning scope defined
@@ -70,13 +71,16 @@
     - `[x]` idempotency and document-version lock policy planned
     - `[x]` manifest commit guard, activation, rollback, and audit policy planned
     - `[x]` runtime PR test plan listed
-  - implementation not started:
-    - `[ ]` runtime implementation
-    - `[ ]` worker entrypoint
-    - `[ ]` job API
-    - `[ ]` manifest API
-    - `[ ]` worker health API
-    - `[ ]` runtime tests
+  - runtime progress:
+    - `[x]` runtime implementation branch started from latest `main`
+    - `[x]` production indexing facade routes added
+    - `[x]` production manifest facade routes added
+    - `[x]` production worker health route added
+    - `[x]` idempotency-key persistence added to durable ingest jobs
+    - `[x]` manifest rollback service path added
+    - `[x]` external-worker-first in-process fallback gate added
+    - `[x]` targeted PR-B runtime tests added
+    - `[x]` targeted runtime and compatibility verification passing
     - `[ ]` final acceptance
 
 - [ ] M2D｜Risk Domain Knowledge RAG & Knowledge Base Module — implementation in progress（2026-07-01）

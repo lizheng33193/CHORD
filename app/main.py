@@ -15,12 +15,15 @@ from app.api.analyze_stream import router as analyze_stream_router
 from app.auth.errors import AuthenticationError, AuthorizationError
 from app.auth.router import router as auth_router
 from app.api.risk_knowledge_admin import router as risk_knowledge_admin_router
+from app.api.risk_knowledge_indexing import router as risk_knowledge_indexing_router
+from app.api.risk_knowledge_manifests import router as risk_knowledge_manifests_router
+from app.api.risk_knowledge_workers import router as risk_knowledge_workers_router
 from app.api.trace import router as trace_router
 from app.core.config import settings
 from app.core.data_acquisition_capability import get_data_acquisition_capability
 from app.auth.database import AuthSessionLocal
 from app.risk_knowledge.admin.indexing_admin_service import IndexingAdminService
-from app.risk_knowledge.runtime.worker import build_default_worker_manager
+from app.risk_knowledge.runtime.worker import build_default_worker_manager, should_start_in_process_worker
 from app.ui.build_frontend import BUILT_FRONTEND_HTML, build_frontend_html
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -43,6 +46,11 @@ def _build_risk_knowledge_worker_manager():
 def _start_risk_knowledge_worker_manager() -> None:
     global _risk_knowledge_worker_manager
     if not settings.risk_knowledge_indexing_worker_enabled:
+        return
+    if not should_start_in_process_worker(
+        worker_mode=settings.risk_knowledge_worker_mode,
+        fallback_enabled=settings.risk_knowledge_in_process_worker_fallback_enabled,
+    ):
         return
     if _risk_knowledge_worker_manager is None:
         _risk_knowledge_worker_manager = _build_risk_knowledge_worker_manager()
@@ -137,6 +145,9 @@ app.include_router(analyze_module_router, prefix="/api", tags=["analyze"])
 app.include_router(analyze_stream_router, prefix="/api", tags=["analyze"])
 app.include_router(auth_router)
 app.include_router(risk_knowledge_admin_router)
+app.include_router(risk_knowledge_indexing_router)
+app.include_router(risk_knowledge_manifests_router)
+app.include_router(risk_knowledge_workers_router)
 app.include_router(trace_router)
 from app.data_agent.api import router as data_agent_router
 from app.data_knowledge.api import router as data_knowledge_router

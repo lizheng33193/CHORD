@@ -140,10 +140,21 @@ class Settings(BaseModel):
     risk_knowledge_indexing_heartbeat_seconds: int = int(
         os.getenv("RISK_KNOWLEDGE_INDEXING_HEARTBEAT_SECONDS", "30")
     )
+    risk_knowledge_worker_mode: str = os.getenv(
+        "RISK_KNOWLEDGE_WORKER_MODE",
+        "external",
+    ).strip().lower() or "external"
+    risk_knowledge_in_process_worker_fallback_enabled: bool = os.getenv(
+        "RISK_KNOWLEDGE_IN_PROCESS_WORKER_FALLBACK_ENABLED",
+        "0",
+    ).strip().lower() in {"1", "true", "yes", "on"}
     risk_knowledge_indexing_worker_enabled: bool = os.getenv(
         "RISK_KNOWLEDGE_INDEXING_WORKER_ENABLED",
         "1",
     ).strip().lower() in {"1", "true", "yes", "on"}
+    risk_knowledge_worker_presence_ttl_seconds: int = int(
+        os.getenv("RISK_KNOWLEDGE_WORKER_PRESENCE_TTL_SECONDS", "120")
+    )
     risk_knowledge_indexing_worker_poll_seconds: float = float(
         os.getenv("RISK_KNOWLEDGE_INDEXING_WORKER_POLL_SECONDS", "2")
     )

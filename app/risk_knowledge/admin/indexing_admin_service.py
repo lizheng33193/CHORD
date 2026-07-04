@@ -100,7 +100,26 @@ class IndexingAdminService:
         self._orchestrator_factory = orchestrator_factory
 
     def start_index(self, version_id: str) -> IndexingJobLaunchResponse:
+        return self.start_index_with_options(version_id, idempotency_key=None)
+
+    def start_index_with_options(self, version_id: str, *, idempotency_key: str | None) -> IndexingJobLaunchResponse:
         document, version = self._load_document_and_version(version_id)
+        if idempotency_key:
+            existing_idempotent = self._job_repo.find_by_idempotency_key(
+                version_id=version.version_id,
+                trigger=IndexingJobTrigger.INITIAL_INDEX.value,
+                idempotency_key=idempotency_key,
+            )
+            if existing_idempotent is not None:
+                return IndexingJobLaunchResponse(
+                    result="existing_job",
+                    job_id=existing_idempotent.job_id,
+                    version_id=version.version_id,
+                    status=existing_idempotent.status.value,
+                    trigger=existing_idempotent.trigger.value,
+                    latest_manifest_index_id=existing_idempotent.latest_manifest_index_id or version.latest_manifest_index_id,
+                    active_manifest_index_id=existing_idempotent.active_manifest_index_id or version.active_manifest_index_id,
+                )
         existing_job = self._find_running_job(version.version_id)
         if existing_job is not None:
             return IndexingJobLaunchResponse(
@@ -127,10 +146,30 @@ class IndexingAdminService:
             version_id=version.version_id,
             trigger=IndexingJobTrigger.INITIAL_INDEX,
             failed_job_id=None,
+            idempotency_key=idempotency_key,
         )
 
     def start_rebuild(self, version_id: str) -> IndexingJobLaunchResponse:
+        return self.start_rebuild_with_options(version_id, idempotency_key=None)
+
+    def start_rebuild_with_options(self, version_id: str, *, idempotency_key: str | None) -> IndexingJobLaunchResponse:
         document, version = self._load_document_and_version(version_id)
+        if idempotency_key:
+            existing_idempotent = self._job_repo.find_by_idempotency_key(
+                version_id=version.version_id,
+                trigger=IndexingJobTrigger.REBUILD_FROM_PARSED.value,
+                idempotency_key=idempotency_key,
+            )
+            if existing_idempotent is not None:
+                return IndexingJobLaunchResponse(
+                    result="existing_job",
+                    job_id=existing_idempotent.job_id,
+                    version_id=version.version_id,
+                    status=existing_idempotent.status.value,
+                    trigger=existing_idempotent.trigger.value,
+                    latest_manifest_index_id=existing_idempotent.latest_manifest_index_id or version.latest_manifest_index_id,
+                    active_manifest_index_id=existing_idempotent.active_manifest_index_id or version.active_manifest_index_id,
+                )
         existing_job = self._find_running_job(version.version_id)
         if existing_job is not None:
             raise RunningIndexingJobConflictAdminError(
@@ -143,10 +182,30 @@ class IndexingAdminService:
             version_id=version.version_id,
             trigger=IndexingJobTrigger.REBUILD_FROM_PARSED,
             failed_job_id=None,
+            idempotency_key=idempotency_key,
         )
 
     def retry_job(self, job_id: str) -> IndexingJobLaunchResponse:
+        return self.retry_job_with_options(job_id, idempotency_key=None)
+
+    def retry_job_with_options(self, job_id: str, *, idempotency_key: str | None) -> IndexingJobLaunchResponse:
         failed_job = self._get_job(job_id)
+        if idempotency_key:
+            existing_idempotent = self._job_repo.find_by_idempotency_key(
+                version_id=failed_job.version_id,
+                trigger=IndexingJobTrigger.RETRY.value,
+                idempotency_key=idempotency_key,
+            )
+            if existing_idempotent is not None:
+                return IndexingJobLaunchResponse(
+                    result="existing_job",
+                    job_id=existing_idempotent.job_id,
+                    version_id=failed_job.version_id,
+                    status=existing_idempotent.status.value,
+                    trigger=existing_idempotent.trigger.value,
+                    latest_manifest_index_id=existing_idempotent.latest_manifest_index_id or failed_job.latest_manifest_index_id,
+                    active_manifest_index_id=existing_idempotent.active_manifest_index_id or failed_job.active_manifest_index_id,
+                )
         if failed_job.status != IndexingJobStatus.FAILED:
             raise RetryNotAllowedAdminError(
                 "retry only supports failed durable jobs on the current baseline",
@@ -165,6 +224,7 @@ class IndexingAdminService:
             version_id=failed_job.version_id,
             trigger=IndexingJobTrigger.RETRY,
             failed_job_id=failed_job.job_id,
+            idempotency_key=idempotency_key,
         )
 
     def activate_version(self, version_id: str, *, manifest_index_id: str | None = None) -> VersionActivateResponse:
@@ -261,6 +321,7 @@ class IndexingAdminService:
         version_id: str,
         trigger: IndexingJobTrigger,
         failed_job_id: str | None,
+        idempotency_key: str | None,
     ) -> IndexingJobLaunchResponse:
         document = self._require_document(document_id)
         version = self._require_version(version_id)
@@ -272,6 +333,7 @@ class IndexingAdminService:
             doc_id=document.doc_id,
             version_id=version.version_id,
             job_id=job_id,
+            idempotency_key=idempotency_key,
             trigger=trigger,
             attempt=attempt,
             max_attempts=settings.risk_knowledge_indexing_max_retries,

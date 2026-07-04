@@ -186,6 +186,7 @@ class SqlAlchemyKnowledgeIngestJobRepository:
             kb_id=job.kb_id,
             doc_id=job.doc_id,
             version_id=job.version_id,
+            idempotency_key=job.idempotency_key,
             status=job.status.value,
             current_step=job.current_step.value,
             error_message=job.error_message,
@@ -213,6 +214,7 @@ class SqlAlchemyKnowledgeIngestJobRepository:
         model = self._db.scalar(select(KnowledgeIngestJobModel).where(KnowledgeIngestJobModel.job_id == job.job_id))
         if model is None:
             raise ValueError(f"ingest job not found: {job.job_id}")
+        model.idempotency_key = job.idempotency_key
         model.status = job.status.value
         model.current_step = job.current_step.value
         model.error_message = job.error_message
@@ -237,6 +239,16 @@ class SqlAlchemyKnowledgeIngestJobRepository:
             .order_by(KnowledgeIngestJobModel.attempt.desc(), KnowledgeIngestJobModel.created_at.desc())
         ).all()
         return [_to_job(item) for item in items]
+
+    def find_by_idempotency_key(self, *, version_id: str, trigger: str, idempotency_key: str) -> KnowledgeIngestJob | None:
+        model = self._db.scalar(
+            select(KnowledgeIngestJobModel)
+            .where(KnowledgeIngestJobModel.version_id == version_id)
+            .where(KnowledgeIngestJobModel.trigger == trigger)
+            .where(KnowledgeIngestJobModel.idempotency_key == idempotency_key)
+            .order_by(KnowledgeIngestJobModel.created_at.desc(), KnowledgeIngestJobModel.job_id.desc())
+        )
+        return _to_job(model) if model is not None else None
 
     def list_by_statuses(self, statuses: list[str]) -> list[KnowledgeIngestJob]:
         items = self._db.scalars(
@@ -397,6 +409,7 @@ def _to_job(model: KnowledgeIngestJobModel) -> KnowledgeIngestJob:
             "kb_id": model.kb_id,
             "doc_id": model.doc_id,
             "version_id": model.version_id,
+            "idempotency_key": model.idempotency_key,
             "status": status,
             "current_step": model.current_step,
             "error_message": model.error_message,
