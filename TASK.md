@@ -91,6 +91,33 @@
     - schema evolution risk remains part of final acceptance because no repo-managed migration files were added in this PR
     - `[ ]` final acceptance
 
+- [ ] PR-C｜Eval Regression + M2C Essential Semantic Validator + Release Gate — planned; implementation not started（2026-07-04）
+  - docs:
+    - `docs/plans/pre-m3-eval-semantic-release-gate-plan.md`
+    - `docs/reviews/pre-m3-eval-semantic-release-gate-acceptance-review.md`
+  - baseline:
+    - PR-C1 started only after the PR-B docs-only follow-up was reconciled onto `main`
+    - `PR-A` remains frozen as `implemented; pending final acceptance`
+    - `PR-B` remains `implemented; pending final acceptance`
+  - planning decisions:
+    - `[x]` docs-only planning scope defined
+    - `[x]` Risk QA regression boundary selected under `app/risk_knowledge/evaluation/`
+    - `[x]` SQL semantic validator boundary selected under `app/data_agent/semantic_validation/`
+    - `[x]` release gate entrypoint selected as `python -m app.release.pre_m3_gate`
+    - `[x]` release gate status policy planned
+    - `[x]` runtime spec requirement documented
+    - `[x]` runtime test scenarios planned
+  - remaining runtime work:
+    - `[ ]` dedicated runtime contract spec
+    - `[ ]` Risk QA golden-set runner
+    - `[ ]` context-isolation regression
+    - `[ ]` citation-grounding regression
+    - `[ ]` M2C SQL semantic validator
+    - `[ ]` release gate module
+    - `[ ]` release / rollback runbook
+    - `[ ]` runtime tests
+    - `[ ]` final acceptance
+
 - [ ] M2D｜Risk Domain Knowledge RAG & Knowledge Base Module — implementation in progress（2026-07-01）
   - review / spec / plan：
     - `docs/reviews/m2d-current-state-and-scope-review.md`
