@@ -40,6 +40,9 @@
     - `docs/specs/risk-qa-production-gate-contract.md`
     - `docs/plans/pre-m3-risk-qa-production-gate-plan.md`
     - `docs/reviews/pre-m3-risk-qa-production-gate-acceptance-review.md`
+  - branch boundary:
+    - `PR-A` runtime delivery is isolated on `codex/pre-m3-risk-qa-production-gate`
+    - it must not be reviewed under the old `M2D-15 docs-only reconciliation` narrative
   - target outcomes:
     - `[x]` keep `risk_knowledge_answer` public route compatibility
     - `[x]` keep `RiskKnowledgeService` as facade only
@@ -123,8 +126,8 @@
     - `M2D-14C-1 small DOCX validation passed`
     - `M2D-14C-2 small PDF validation passed`
     - `M2D-14C-3 real PDF validation passed`
-    - `M2D-15A Indexing Job Observability & Runtime State Fidelity accepted and preserved inside final hardening closure`
-    - `M2D-15 Final Production Hardening` implemented on `codex/m2d-15-production-hardening-final` with targeted validation and runtime smoke
+    - `M2D-15A Indexing Job Observability & Runtime State Fidelity accepted inside the historical final-hardening snapshot`
+    - `M2D-15 Final Production Hardening` remains a historical M2D closure note and does not define the `PR-A` runtime branch
   - acceptance closure：
     - `M2D-11 accepted at stage level after targeted reranker/evidence gate validation; full repository regression and real reranker smoke remain optional/pending validation items.`
     - `M2D-12 accepted at stage level after targeted RiskKnowledgeService, NL Chat seam, and Profile Explanation adapter validation; full repository regression and real LLM answer smoke remain optional/pending validation items.`
@@ -152,6 +155,7 @@
     - full repository regression not run for `M2D-14B`
     - single-process durable worker queue / lease / heartbeat / stale recovery / retry / rebuild / cancel / cleanup governance landed
     - `M2D-15A` observability remains intact after production hardening closure
+    - this M2D acceptance narrative excludes the later `PR-A` Risk QA runtime expansion
   - 本轮产出：
     - `app/third_party/swxy_rag`
     - `app/knowledge_base`

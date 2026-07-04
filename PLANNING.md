@@ -5,12 +5,13 @@
 - 整体架构：单体 FastAPI 后端，五层（API → 编排 → Skill 执行 → 数据访问 → 外部服务）
 - 入口文件：`app/main.py`
 
-## 2026-07-03 M2D-15 Final Production Hardening
+## 2026-07-03 M2D-15 Final Production Hardening（Historical Snapshot）
 
 - review artifact：
   - `docs/reviews/m2d-15-production-hardening-final-review.md`
 - 当前状态：
-  - `M2D-15 Final Production Hardening` 已在 `codex/m2d-15-production-hardening-final` 完成实现与验证
+  - 本节记录的是 `2026-07-03` 的 `M2D-15 Final Production Hardening` 历史快照
+  - `codex/m2d-15-production-hardening-final` 不再作为 `PR-A` runtime 交付口径
   - durable async indexing 已从“enqueue 后直接起 thread”切换为“durable queued job + single-process worker loop”
   - worker manager 已接入 FastAPI startup / shutdown lifecycle，且支持 `risk_knowledge_indexing_worker_enabled`
   - durable lease / heartbeat / stale requeue / cooperative cancel / retry / rebuild / cleanup dry-run 已闭环
@@ -35,6 +36,8 @@
   - `docs/reviews/pre-m3-risk-qa-production-gate-acceptance-review.md`
 - current state:
   - `PR-A Risk QA + Context Isolation + Evidence/Citation Production Gate implemented; pending final acceptance`
+  - runtime branch boundary corrected: `PR-A` now lives on `codex/pre-m3-risk-qa-production-gate`
+  - targeted PR-A verification passed; full repository regression was not run
 - intended outcome:
   - keep `risk_knowledge_answer` as the public route
   - keep `RiskKnowledgeService` as the public facade
@@ -45,7 +48,8 @@
 
 - historical note:
   - this section is a historical pre-final-hardening snapshot from `2026-07-02`
-  - current `M2D-15 Final Production Hardening` state is defined by the `2026-07-03` section above
+  - current `M2D-15 Final Production Hardening` historical state is defined by the `2026-07-03` section above
+  - current `PR-A` runtime state is defined by the `2026-07-04` section above
 
 - 新增 planning artifacts：
   - `docs/specs/m2d-15a-indexing-observability-spec.md`
@@ -152,7 +156,7 @@
 - Runtime surfaces still not started:
   - no Data Agent RAG mixing has been introduced
   - no ES or SWXY retrieval/runtime coupling has been introduced
-  - `M2D-15 Final Production Hardening` now landed on branch; merge pending
+  - later `PR-A` runtime work is tracked separately on `codex/pre-m3-risk-qa-production-gate`
 - Subphase status:
   - `M2D-4 vendor import landed; no runtime integration started`
   - `M2D-5 knowledge base module skeleton landed; no ingestion/retrieval runtime started`
@@ -168,7 +172,7 @@
   - `M2D-14C-1 small DOCX validation passed`
   - `M2D-14C-2 small PDF validation passed`
   - `M2D-14C-3 real PDF validation passed`
-  - `M2D-15A Indexing Job Observability & Runtime State Fidelity` was accepted and is preserved inside the final hardening branch
+  - `M2D-15A Indexing Job Observability & Runtime State Fidelity` was accepted inside the historical final-hardening snapshot
   - `407f058` is a validation-driven runtime fix for DashScope embedding batching, not `M2D-15 Production Hardening`
 - Acceptance posture:
   - `M2D-10 accepted at stage level after targeted retrieval foundation validation`
@@ -197,8 +201,8 @@
   - small `PDF` validation passed inside `M2D-14C`
   - real large `PDF` validation passed inside `M2D-14C`
   - full repository regression not run for `M2D-14B`
-  - `M2D-15A` implementation is preserved inside the final hardening branch
-  - `M2D-15 Final Production Hardening` implementation and targeted validation completed on branch
+  - `M2D-15A` implementation is preserved inside the historical final-hardening snapshot
+  - this acceptance posture does not include `PR-A` runtime expansion, which is tracked separately as a pre-M3 runtime PR
 - Next phase:
   - `M2D` acceptance / merge closure
   - post-merge hardening patch only if validation finds residual defects
