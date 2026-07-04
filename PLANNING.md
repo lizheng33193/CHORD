@@ -84,6 +84,40 @@
   - no Data Agent HITL changes
   - no M2C validator work
 
+## 2026-07-04 PR-C Eval Regression + M2C Essential Semantic Validator + Release Gate
+
+- planning artifact:
+  - `docs/plans/pre-m3-eval-semantic-release-gate-plan.md`
+- planning review artifact:
+  - `docs/reviews/pre-m3-eval-semantic-release-gate-acceptance-review.md`
+- current state:
+  - `PR-C Eval Regression + M2C Essential Semantic Validator + Release Gate planned; implementation not started`
+  - `PR-C1` started only after the PR-B docs-only follow-up was reconciled onto `main`
+  - `PR-A` remains frozen as `implemented; pending final acceptance`
+  - `PR-B` remains `implemented; pending final acceptance`
+- intended outcome:
+  - add repeatable Risk QA regression evidence before M3
+  - add deterministic SQL semantic validation as an explicit Data Agent runtime gate
+  - add a Pre-M3 release gate that aggregates readiness checks into a structured decision
+- selected approach:
+  - reuse existing harness seams rather than introduce a new top-level eval platform
+  - extend `app/risk_knowledge/evaluation/` for Risk QA regression
+  - plan `app/data_agent/semantic_validation/` for deterministic SQL semantic validation
+  - plan `app/release/` with formal entrypoint `python -m app.release.pre_m3_gate`
+- planned runtime constraints:
+  - no PR-A Risk QA rewrite
+  - no PR-B worker rewrite
+  - no M3 DAG runtime work
+  - no LangGraph migration
+  - no full Memory Platform
+  - no SSE / WebSocket
+  - no dashboard rewrite
+  - no Data Agent rewrite
+  - release gate aggregates check results and does not replace `pytest`
+  - semantic validator is deterministic, structured, and must not bypass existing HITL
+- required next step before PR-C2 runtime code changes:
+  - add or update `docs/specs/pre-m3-eval-semantic-release-gate-contract.md`
+
 ## 2026-07-02 M2D-14C Acceptance & M2D-15A Planning
 
 - historical note:
