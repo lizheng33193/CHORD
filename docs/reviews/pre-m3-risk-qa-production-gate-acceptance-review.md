@@ -1,5 +1,42 @@
 # Pre-M3 Risk QA Production Gate Acceptance Review
 
+## Acceptance Decision
+
+PR-A is implemented and ready for final review.
+
+The implementation preserves the existing `risk_knowledge_answer` public path and `RiskKnowledgeService` facade while adding internal Risk QA pipeline modules for context isolation, evidence selection, sufficiency checking, answer generation, and citation validation.
+
+The new gates are fail-closed:
+
+- insufficient evidence returns a safe refusal before grounded answer generation
+- invalid citations prevent grounded answers from being returned
+- non-risk-domain sources are blocked from authoritative Risk QA citations
+
+Targeted verification passed:
+
+- 19 PR-A and non-regression tests passed
+- `compileall` passed
+- `git diff --check` passed
+
+Known limitation:
+
+- full repository regression was not run
+- PR-B worker/observability, PR-C eval/semantic validator, and full M3 Profile Skill DAG remain out of scope
+
+## Branch Boundary
+
+GitHub verification shows the following merge history:
+
+- `PR #51 feat: complete m2d15 production hardening` merged on `2026-07-04` and did not include the PR-A `qa/context/evidence` runtime files
+- `PR #52 docs: reconcile m2d15 final status` merged on `2026-07-04` as docs-only reconciliation
+- `PR #53 feat: add risk qa production gate` merged on `2026-07-04` and is the runtime landing point for PR-A
+
+The current branch:
+
+- `codex/pre-m3-risk-qa-production-gate`
+
+is a post-merge docs and acceptance narrative reconciliation branch. PR-A must not be reviewed under the old `M2D-15 docs-only reconciliation` narrative.
+
 ## Implementation Summary
 
 PR-A upgrades the existing `risk_knowledge_answer` route into a production-gated Risk QA flow while keeping public entrypoints stable.
@@ -92,6 +129,8 @@ Executed verification:
   - result: `19 passed`
 - `python -m compileall -q app tests`
   - result: passed
+- `git diff --check`
+  - result: passed
 
 ## Known Limitations
 
@@ -99,6 +138,7 @@ Executed verification:
 - answer generation remains deterministic-first; no real LLM answer provider rollout is added here
 - retrieval candidate normalization is still built on top of the current M2D retrieval/evidence stack rather than a new standalone retriever service
 - warnings from third-party dependencies remain outside the scope of this PR
+- full repository regression was not run
 
 ## Next Phase Dependencies
 
