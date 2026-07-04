@@ -56,17 +56,21 @@
 - planning review artifact:
   - `docs/reviews/pre-m3-indexing-worker-gate-acceptance-review.md`
 - current state:
-  - `PR-B Indexing Worker + Job Observability Gate planned; implementation not started`
+  - `PR-B Indexing Worker + Job Observability Gate implementation in progress`
   - `PR-A` is frozen as `implemented; pending final acceptance`
-  - `main` baseline for PR-B planning is merge commit `aab6e83`
+  - planning landed on `main` via `PR #55`, merge commit `193e80c69c337c26e0059206fa3d1720d177817c`
 - intended outcome:
   - promote the current single-process durable indexing runtime toward an external-worker-first production architecture
   - strengthen job observability, manifest safety boundaries, activation guardrails, and rollback policy
-  - preserve admin compatibility while planning production-oriented indexing, manifest, and worker visibility facades
-- planning boundary:
-  - this PR-B phase is docs-only
-  - runtime implementation, worker modules, route changes, tests, migrations, and production behavior changes have not started
+  - preserve admin compatibility while delivering production-oriented indexing, manifest, and worker visibility facades
+- runtime branch focus:
   - existing runtime truth remains the current `main` implementation with durable job state, retry / rebuild, heartbeat, and stale recovery
+  - current runtime branch adds:
+    - production indexing job facade
+    - production worker health facade
+    - manifest activation / rollback facade
+    - idempotency-key persistence for production job submission
+    - external-worker-first startup gate with explicit in-process fallback helper
   - `codex/pre-m3-risk-qa-production-gate` is closed for further runtime or docs evolution
   - no SSE / WebSocket
   - no full observability dashboard

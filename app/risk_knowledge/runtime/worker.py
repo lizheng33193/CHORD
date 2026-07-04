@@ -16,6 +16,11 @@ from app.knowledge_base.schemas import IndexingJobStatus
 from app.risk_knowledge.runtime.job_control import DurableJobControlService
 
 
+def should_start_in_process_worker(*, worker_mode: str, fallback_enabled: bool) -> bool:
+    normalized = (worker_mode or "").strip().lower()
+    return normalized == "in_process" or fallback_enabled
+
+
 class IndexingWorkerLoop:
     def __init__(
         self,

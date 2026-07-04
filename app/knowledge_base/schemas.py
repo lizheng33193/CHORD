@@ -186,6 +186,7 @@ class KnowledgeIngestJob(_StrictModel):
     kb_id: str = Field(..., min_length=1)
     doc_id: str = Field(..., min_length=1)
     version_id: str = Field(..., min_length=1)
+    idempotency_key: str | None = None
     status: IngestJobStatus
     current_step: IngestStep
     error_message: str | None = None
