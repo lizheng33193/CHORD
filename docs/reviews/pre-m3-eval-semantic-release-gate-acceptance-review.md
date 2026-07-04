@@ -1,65 +1,73 @@
-# Pre-M3 PR-C Eval Regression + M2C Essential Semantic Validator + Release Gate Planning Review
+# Pre-M3 PR-C Eval Regression + M2C Essential Semantic Validator + Release Gate Review
 
 ## 1. Review Scope
 
-- docs-only planning review
-- no runtime implementation review is included in this document
+- runtime acceptance hardening snapshot after the merged PR-C2 runtime slice
+- this review records implementation readiness and targeted verification evidence
+- final production release acceptance remains out of scope until broader regression and deployment evidence are complete
 
 ## 2. Baseline
 
-- latest `main` after the PR-B docs-only follow-up was reconciled onto `main`
-- `PR-B` runtime landed via `PR #56`
-- `PR-B` docs-only follow-up landed onto `main` via commit `09ce55b`
+- latest `main` after the PR-C2 runtime merge via `PR #58`
+- merge commit: `323711e03577c979736b3fcb4c71842ccbe78e88`
 - `PR-A` remains frozen as `implemented; pending final acceptance`
-- `PR-B` remains `implemented; pending final acceptance`
+- `PR-B` remains frozen as `implemented; pending final acceptance`
 
 ## 3. Planning Decision
 
 - `PR-C Eval Regression + M2C Essential Semantic Validator + Release Gate planned; implementation not started`
-- this PR records the planning boundary for the final Pre-M3 production gate
+- `PR-C1` planning landed via `PR #57`
+- the planning boundary remains additive reuse of existing harness seams rather than a new top-level eval platform
 
-## 4. Selected Approach
+## 4. Runtime Implementation Status
 
-- additive reuse of existing harness seams was selected
-- Risk QA regression extends `app/risk_knowledge/evaluation/`
-- SQL semantic validator is planned under `app/data_agent/semantic_validation/`
-- release gate is planned under `app/release/`
-- formal release-gate entrypoint is:
-  - `python -m app.release.pre_m3_gate`
+- `PR-C Eval Regression + M2C Essential Semantic Validator + Release Gate implemented; pending final acceptance`
+- merged runtime slice includes:
+  - Risk QA regression extensions under `app/risk_knowledge/evaluation/`
+  - deterministic SQL semantic validation under `app/data_agent/semantic_validation/`
+  - Data Agent SQL review integration that preserves existing HITL approval boundaries
+  - release gate package under `app/release/`
+  - formal release-gate entrypoint `python -m app.release.pre_m3_gate`
+  - contract spec, runbook, and targeted tests
 
-## 5. Runtime Implementation Status
+## 5. Runtime Verification
 
-- not started
-- this PR must not implement release gate runtime, semantic validator runtime, runbook, tests, or contract code
+- targeted runtime verification executed:
+  - `pytest tests/risk_knowledge/evaluation tests/risk_knowledge/test_citation_validation.py tests/risk_knowledge/test_context_builder_isolation.py tests/risk_knowledge/service/test_risk_knowledge_service.py tests/data_agent/test_api.py tests/data_agent/test_safety.py tests/data_agent/test_plan_review.py tests/data_agent/test_sql_plan.py tests/data_agent/test_semantic_validation.py tests/release/test_pre_m3_gate.py -q`
+- targeted runtime result:
+  - `93 passed, 6 warnings`
+- release gate CLI smoke executed:
+  - `python -m app.release.pre_m3_gate --profile pr_acceptance --output-json /tmp/pre_m3_gate_pr_acceptance.json`
+  - result: exit `0`, release-gate status `WARN`
+  - `python -m app.release.pre_m3_gate --profile production_release --strict --output-json /tmp/pre_m3_gate_production_release.json`
+  - result: exit `1`, release-gate status `BLOCKED`
+- PR-B non-regression verification executed:
+  - `pytest tests/risk_knowledge/test_indexing_worker.py tests/risk_knowledge/test_indexing_job_api.py tests/risk_knowledge/test_manifest_activation_rollback.py tests/risk_knowledge/test_stale_job_detection.py tests/risk_knowledge/test_indexing_job_idempotency.py -q`
+  - result: `7 passed, 6 warnings`
+- additional verification:
+  - `python -m compileall -q app tests`
+  - `git diff --check`
 
-## 6. Runtime Verification
+## 6. Production Risk Checks
 
-- not executed because this PR is docs-only
+- semantic validation is deterministic and structured; it is not prompt-only and not LLM self-judgment
+- semantic validation prefers `structured_sql_plan` when available and uses raw SQL only as fallback context
+- blocked SQL is surfaced as non-approvable and does not bypass the existing HITL execution boundary
+- `build_table_script` remains `review_only`; semantic validation does not expand execution permission
+- release gate aggregates structured check results and does not replace `pytest` as the source of test-execution truth
+- full repository regression not run is currently:
+  - `WARN` for `pr_acceptance`
+  - `BLOCKED` for `production_release`
 
-## 7. Planning Verification
+## 7. Known Limitations
 
-- `git diff --check`
+- full repository regression has not run
+- final production release acceptance remains pending
+- the current semantic validator is a deterministic v1 slice; deeper catalog-aware or policy-catalog validation remains future enhancement
+- the runbook records operator procedures and rollback expectations but does not automate deployment orchestration by itself
 
-## 8. Required Runtime Spec
+## 8. Next Step
 
-- PR-C2 must add or update a dedicated contract spec before code changes:
-  - `docs/specs/pre-m3-eval-semantic-release-gate-contract.md`
-- the runtime spec must lock:
-  - Risk QA eval case schema
-  - SQL semantic validation result contract
-  - release gate report contract
-  - release gate status semantics
-  - Data Agent integration boundary
-
-## 9. Known Limitations
-
-- no `app/`, `tests/`, `scripts/`, `migrations/`, or `docs/runbooks/` changes are allowed in this PR
-- no runtime behavior is changed in this PR
-- full repository regression was not run for this docs-only planning PR
-- runtime implementation, runtime tests, and runbook authoring remain future PR-C2 work
-
-## 10. Next Step
-
-- merge PR-C1 planning
-- start `PR-C2` runtime implementation from latest `main`
-- add or update the dedicated PR-C2 contract spec before code changes
+- review the merged PR-C runtime slice on `main`
+- run broader repository regression before final production release acceptance
+- close final acceptance after deployment-oriented checks and release evidence are complete
