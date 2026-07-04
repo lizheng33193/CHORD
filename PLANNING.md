@@ -36,13 +36,18 @@
   - `docs/reviews/pre-m3-risk-qa-production-gate-acceptance-review.md`
 - current state:
   - `PR-A Risk QA + Context Isolation + Evidence/Citation Production Gate implemented; pending final acceptance`
-  - runtime branch boundary corrected: `PR-A` now lives on `codex/pre-m3-risk-qa-production-gate`
+  - GitHub runtime merge landed on `2026-07-04` via `PR #53 feat: add risk qa production gate`
+  - post-merge narrative reconciliation now lives on `codex/pre-m3-risk-qa-production-gate`
   - targeted PR-A verification passed; full repository regression was not run
 - intended outcome:
   - keep `risk_knowledge_answer` as the public route
   - keep `RiskKnowledgeService` as the public facade
   - add internal QA pipeline, context isolation, fail-closed citation validation, and insufficient-evidence refusal
   - preserve Data Agent / Data Knowledge public contracts without mixing Data/Risk RAG responsibilities
+ - GitHub boundary facts:
+   - `PR #51 feat: complete m2d15 production hardening` merged on `2026-07-04` and did not carry the PR-A `qa/context/evidence` runtime diff
+   - `PR #52 docs: reconcile m2d15 final status` merged on `2026-07-04` as docs-only reconciliation
+   - `PR #53 feat: add risk qa production gate` merged on `2026-07-04` and is the GitHub runtime landing point for PR-A
 
 ## 2026-07-02 M2D-14C Acceptance & M2D-15A Planning
 

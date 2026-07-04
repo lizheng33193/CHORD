@@ -25,11 +25,17 @@ Known limitation:
 
 ## Branch Boundary
 
-This acceptance review applies to the dedicated `PR-A` runtime branch:
+GitHub verification shows the following merge history:
+
+- `PR #51 feat: complete m2d15 production hardening` merged on `2026-07-04` and did not include the PR-A `qa/context/evidence` runtime files
+- `PR #52 docs: reconcile m2d15 final status` merged on `2026-07-04` as docs-only reconciliation
+- `PR #53 feat: add risk qa production gate` merged on `2026-07-04` and is the runtime landing point for PR-A
+
+The current branch:
 
 - `codex/pre-m3-risk-qa-production-gate`
 
-It must not be reviewed under the old `M2D-15 docs-only reconciliation` narrative.
+is a post-merge docs and acceptance narrative reconciliation branch. PR-A must not be reviewed under the old `M2D-15 docs-only reconciliation` narrative.
 
 ## Implementation Summary
 

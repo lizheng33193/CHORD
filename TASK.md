@@ -40,8 +40,9 @@
     - `docs/specs/risk-qa-production-gate-contract.md`
     - `docs/plans/pre-m3-risk-qa-production-gate-plan.md`
     - `docs/reviews/pre-m3-risk-qa-production-gate-acceptance-review.md`
-  - branch boundary:
-    - `PR-A` runtime delivery is isolated on `codex/pre-m3-risk-qa-production-gate`
+  - GitHub boundary:
+    - `PR #53 feat: add risk qa production gate` is the runtime merge for `PR-A`
+    - `codex/pre-m3-risk-qa-production-gate` is the post-merge docs / acceptance narrative reconciliation branch
     - it must not be reviewed under the old `M2D-15 docs-only reconciliation` narrative
   - target outcomes:
     - `[x]` keep `risk_knowledge_answer` public route compatibility
