@@ -42,6 +42,14 @@ class GoldenEvaluationCase(_StrictModel):
     expected_answer_points: list[str] = Field(default_factory=list)
     expected_citation_refs: list[ExpectedCitationRef] = Field(default_factory=list)
     expected_refusal_reason: str | None = None
+    expected_route: str | None = None
+    expected_grounding_status: Literal["grounded", "partial", "insufficient_evidence"] | None = None
+    expected_refusal: bool | None = None
+    required_evidence_keywords: list[str] = Field(default_factory=list)
+    forbidden_source_types: list[str] = Field(default_factory=list)
+    min_citation_count: int = Field(default=0, ge=0)
+    must_include_warning_codes: list[str] = Field(default_factory=list)
+    notes: str | None = None
     tags: list[str] = Field(default_factory=list)
     difficulty: Literal["easy", "medium", "hard"] = "medium"
 
@@ -139,7 +147,9 @@ class GoldenEvaluationSummary(_StrictModel):
     false_answer_rate: float = 0.0
     false_refusal_rate: float = 0.0
     citation_correctness: float = 0.0
+    citation_validity_rate: float = 0.0
     answer_point_recall: float = 0.0
+    context_isolation_pass_rate: float = 0.0
 
 
 class RegressionThresholds(_StrictModel):

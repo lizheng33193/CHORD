@@ -91,12 +91,15 @@
     - schema evolution risk remains part of final acceptance because no repo-managed migration files were added in this PR
     - `[ ]` final acceptance
 
-- [ ] PR-C｜Eval Regression + M2C Essential Semantic Validator + Release Gate — planned; implementation not started（2026-07-04）
+- [ ] PR-C｜Eval Regression + M2C Essential Semantic Validator + Release Gate — implementation in progress（2026-07-04）
   - docs:
     - `docs/plans/pre-m3-eval-semantic-release-gate-plan.md`
     - `docs/reviews/pre-m3-eval-semantic-release-gate-acceptance-review.md`
+    - `docs/specs/pre-m3-eval-semantic-release-gate-contract.md`
+    - `docs/runbooks/pre-m3-release-gate-runbook.md`
   - baseline:
-    - PR-C1 started only after the PR-B docs-only follow-up was reconciled onto `main`
+    - PR-C1 planning merged via `PR #57`
+    - PR-C2 started from latest `main` on `codex/pre-m3-eval-semantic-release-runtime`
     - `PR-A` remains frozen as `implemented; pending final acceptance`
     - `PR-B` remains `implemented; pending final acceptance`
   - planning decisions:
@@ -105,17 +108,17 @@
     - `[x]` SQL semantic validator boundary selected under `app/data_agent/semantic_validation/`
     - `[x]` release gate entrypoint selected as `python -m app.release.pre_m3_gate`
     - `[x]` release gate status policy planned
-    - `[x]` runtime spec requirement documented
+    - `[x]` dedicated runtime contract spec started before code changes
     - `[x]` runtime test scenarios planned
   - remaining runtime work:
-    - `[ ]` dedicated runtime contract spec
-    - `[ ]` Risk QA golden-set runner
-    - `[ ]` context-isolation regression
-    - `[ ]` citation-grounding regression
-    - `[ ]` M2C SQL semantic validator
-    - `[ ]` release gate module
-    - `[ ]` release / rollback runbook
-    - `[ ]` runtime tests
+    - `[x]` dedicated runtime contract spec
+    - `[x]` Risk QA regression contract extension
+    - `[x]` context-isolation regression metrics
+    - `[x]` citation / route / grounding regression checks
+    - `[x]` M2C SQL semantic validator
+    - `[x]` release gate module
+    - `[x]` release / rollback runbook
+    - `[x]` targeted runtime tests
     - `[ ]` final acceptance
 
 - [ ] M2D｜Risk Domain Knowledge RAG & Knowledge Base Module — implementation in progress（2026-07-01）

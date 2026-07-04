@@ -112,8 +112,9 @@ def _evaluate_case(case: GoldenEvaluationCase, trace: RiskKnowledgeAnswerTrace) 
         should_answer=trace.answer.should_answer,
     )
     answer_metrics = calculate_answer_metrics(case, trace.answer)
+    pr_c_diagnostics = _build_pr_c_diagnostics(case, trace.answer)
 
-    passed = _determine_case_pass(case, trace.answer, gate_metrics, citation_metrics, answer_metrics)
+    passed = _determine_case_pass(case, trace.answer, gate_metrics, citation_metrics, answer_metrics, pr_c_diagnostics)
     return GoldenCaseResult(
         case_id=case.case_id,
         query=case.query,
@@ -130,24 +131,28 @@ def _evaluate_case(case: GoldenEvaluationCase, trace: RiskKnowledgeAnswerTrace) 
             "retrieval_candidate_count": len(trace.build_trace.retrieval_result.candidates),
             "selected_count": len(trace.build_trace.bundle.selected_evidence),
             "answer_type": trace.answer.answer_type,
+            **pr_c_diagnostics,
         },
     )
 
 
-def _determine_case_pass(case, answer, gate_metrics, citation_metrics, answer_metrics) -> bool | None:
+def _determine_case_pass(case, answer, gate_metrics, citation_metrics, answer_metrics, diagnostics) -> bool | None:
     if case.expected_behavior == "ambiguous":
         return None
+    extra_checks = _pr_c_extra_checks_pass(diagnostics)
     if case.expected_behavior == "refuse":
         return (
             answer.should_answer is False
             and gate_metrics.gate_correct
             and citation_metrics.invalid_citation_count == 0
+            and extra_checks
         )
     return (
         answer.should_answer is True
         and gate_metrics.gate_correct
         and citation_metrics.citation_correct
         and (answer_metrics.expected_points_total == 0 or answer_metrics.matched_points > 0)
+        and extra_checks
     )
 
 
@@ -178,13 +183,74 @@ def _summarize_results(case_results: list[GoldenCaseResult]) -> GoldenEvaluation
         false_answer_rate=_avg(1.0 if case.actual_should_answer else 0.0 for case in refusal_scored),
         false_refusal_rate=_avg(0.0 if case.actual_should_answer else 1.0 for case in answer_scored),
         citation_correctness=_avg(1.0 if case.citation_metrics.citation_correct else 0.0 for case in answer_scored),
+        citation_validity_rate=_avg(1.0 if case.citation_metrics.citation_correct else 0.0 for case in answer_scored),
         answer_point_recall=_avg(case.answer_metrics.answer_point_recall for case in answer_scored),
+        context_isolation_pass_rate=_avg(
+            1.0
+            if int((case.diagnostics or {}).get("forbidden_source_violation_count", 0)) == 0
+            else 0.0
+            for case in scored_cases
+        ),
     )
 
 
 def _avg(values) -> float:
     items = list(values)
     return 0.0 if not items else sum(items) / len(items)
+
+
+def _build_pr_c_diagnostics(case: GoldenEvaluationCase, answer: RiskKnowledgeAnswer) -> dict[str, object]:
+    route_matches = case.expected_route is None or answer.type == case.expected_route
+    grounding_status_matches = (
+        case.expected_grounding_status is None or answer.grounding_status == case.expected_grounding_status
+    )
+    expected_refusal_matches = (
+        case.expected_refusal is None or (not answer.should_answer) == bool(case.expected_refusal)
+    )
+
+    evidence_texts = [item.evidence_text for item in answer.evidence_trace]
+    if not evidence_texts:
+        evidence_texts = [item.text for item in answer.evidence_bundle.selected_evidence]
+    evidence_blob = "\n".join(text.lower() for text in evidence_texts)
+    missing_required_evidence_keywords = [
+        keyword
+        for keyword in case.required_evidence_keywords
+        if str(keyword or "").strip() and str(keyword).lower() not in evidence_blob
+    ]
+
+    forbidden_source_violation_count = sum(
+        1
+        for item in answer.evidence_trace
+        if item.source_type in set(case.forbidden_source_types)
+    )
+    missing_warning_codes = [
+        code
+        for code in case.must_include_warning_codes
+        if code not in {warning.code for warning in answer.warnings}
+    ]
+    min_citation_count_satisfied = len(answer.citations) >= case.min_citation_count
+
+    return {
+        "route_matches": route_matches,
+        "grounding_status_matches": grounding_status_matches,
+        "expected_refusal_matches": expected_refusal_matches,
+        "missing_required_evidence_keywords": missing_required_evidence_keywords,
+        "forbidden_source_violation_count": forbidden_source_violation_count,
+        "missing_warning_codes": missing_warning_codes,
+        "min_citation_count_satisfied": min_citation_count_satisfied,
+    }
+
+
+def _pr_c_extra_checks_pass(diagnostics: dict[str, object]) -> bool:
+    return bool(
+        diagnostics.get("route_matches", True)
+        and diagnostics.get("grounding_status_matches", True)
+        and diagnostics.get("expected_refusal_matches", True)
+        and diagnostics.get("min_citation_count_satisfied", True)
+        and not diagnostics.get("missing_required_evidence_keywords")
+        and not diagnostics.get("missing_warning_codes")
+        and int(diagnostics.get("forbidden_source_violation_count", 0)) == 0
+    )
 
 
 def _build_fixture_trace(case: GoldenEvaluationCase) -> RiskKnowledgeAnswerTrace:
