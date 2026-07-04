@@ -95,9 +95,9 @@
 - planning review artifact:
   - `docs/reviews/pre-m3-eval-semantic-release-gate-acceptance-review.md`
 - current state:
-  - `PR-C Eval Regression + M2C Essential Semantic Validator + Release Gate implementation in progress`
+  - `PR-C Eval Regression + M2C Essential Semantic Validator + Release Gate implemented; pending final acceptance`
   - `PR-C1` planning merged via `PR #57`
-  - `PR-C2` started from latest `main` on `codex/pre-m3-eval-semantic-release-runtime`
+  - `PR-C2` runtime merged via `PR #58 feat: add pre-m3 eval semantic release gate`
   - `PR-A` remains frozen as `implemented; pending final acceptance`
   - `PR-B` remains `implemented; pending final acceptance`
 - intended outcome:
@@ -110,13 +110,18 @@
   - implement `app/data_agent/semantic_validation/` for deterministic SQL semantic validation
   - implement `app/release/` with formal entrypoint `python -m app.release.pre_m3_gate`
 - current runtime branch focus:
-  - the runtime branch now includes:
+  - the merged runtime slice now includes:
     - PR-C contract spec and release / rollback runbook
     - additive PR-C regression fields and context-isolation metrics in `app/risk_knowledge/evaluation/`
     - deterministic SQL semantic validation under `app/data_agent/semantic_validation/`
     - semantic-validation integration into Data Agent SQL review flow
     - initial Pre-M3 release gate package under `app/release/`
     - targeted tests under `tests/risk_knowledge/evaluation/`, `tests/data_agent/`, and `tests/release/`
+  - targeted verification passed with:
+    - `93 passed, 6 warnings` for PR-C targeted runtime coverage
+    - release-gate CLI smoke confirming `WARN` for `pr_acceptance` and `BLOCKED` for `production_release`
+    - `7 passed, 6 warnings` for targeted PR-B non-regression coverage
+  - full repository regression has not run, so final acceptance remains pending
 - planned runtime constraints:
   - no PR-A Risk QA rewrite
   - no PR-B worker rewrite

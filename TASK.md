@@ -91,7 +91,7 @@
     - schema evolution risk remains part of final acceptance because no repo-managed migration files were added in this PR
     - `[ ]` final acceptance
 
-- [ ] PR-C｜Eval Regression + M2C Essential Semantic Validator + Release Gate — implementation in progress（2026-07-04）
+- [x] PR-C｜Eval Regression + M2C Essential Semantic Validator + Release Gate — implemented; pending final acceptance（2026-07-04）
   - docs:
     - `docs/plans/pre-m3-eval-semantic-release-gate-plan.md`
     - `docs/reviews/pre-m3-eval-semantic-release-gate-acceptance-review.md`
@@ -99,7 +99,7 @@
     - `docs/runbooks/pre-m3-release-gate-runbook.md`
   - baseline:
     - PR-C1 planning merged via `PR #57`
-    - PR-C2 started from latest `main` on `codex/pre-m3-eval-semantic-release-runtime`
+    - PR-C2 runtime merged via `PR #58 feat: add pre-m3 eval semantic release gate`
     - `PR-A` remains frozen as `implemented; pending final acceptance`
     - `PR-B` remains `implemented; pending final acceptance`
   - planning decisions:
@@ -119,6 +119,15 @@
     - `[x]` release gate module
     - `[x]` release / rollback runbook
     - `[x]` targeted runtime tests
+  - current acceptance posture:
+    - status: `implemented; pending final acceptance`
+    - targeted verification: `93 passed, 6 warnings`
+    - release gate CLI smoke:
+      - `pr_acceptance` -> `WARN` with exit `0`
+      - `production_release --strict` -> `BLOCKED` with exit `1`
+    - PR-B non-regression verification: `7 passed, 6 warnings`
+    - additional checks: `python -m compileall -q app tests` passed; `git diff --check` passed
+    - full repository regression not run
     - `[ ]` final acceptance
 
 - [ ] M2D｜Risk Domain Knowledge RAG & Knowledge Base Module — implementation in progress（2026-07-01）
