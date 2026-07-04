@@ -5,6 +5,25 @@
 - 整体架构：单体 FastAPI 后端，五层（API → 编排 → Skill 执行 → 数据访问 → 外部服务）
 - 入口文件：`app/main.py`
 
+## 2026-07-04 Pre-M3 / M2D System-Level Acceptance Snapshot
+
+- status summary:
+  - `M2D / Pre-M3 system-level hardening main runtime slices have landed across historical M2D plus PR-A / PR-B / PR-C`
+  - `PR-A / PR-B / PR-C` all remain `implemented; pending final acceptance`
+  - the `codex/pre-m3-final-acceptance-closure` branch ran `pytest -q` and got `110 failed, 1462 passed, 11 skipped, 33 warnings`
+  - Pre-M3 final acceptance is therefore blocked
+  - Pre-M3 gates are not ready for M3 runtime entry
+  - production release remains blocked
+- wording guardrail:
+  - do not describe the current state as `M2D system-level complete`
+  - do not describe the current state as `production accepted`
+  - do not describe the current state as `ready for M3 entry`
+- correct current reading:
+  - core runtime hardening has been implemented
+  - targeted verification has passed for the dedicated PR-A / PR-B / PR-C slices
+  - full-system final acceptance has not passed yet
+  - the next required step is full-regression triage and acceptance repair, not new M3 runtime work
+
 ## 2026-07-03 M2D-15 Final Production Hardening（Historical Snapshot）
 
 - review artifact：
@@ -217,7 +236,10 @@
   - `docs/reviews/m2d-14c-small-docx-validation-review.md`
   - `docs/reviews/m2d-14c-small-pdf-validation-review.md`
 - 当前阶段状态：
-  - `M2D: implementation in progress`
+  - `M2D: major runtime landed; system-level final acceptance blocked`
+  - `M2D / Pre-M3 system-level hardening main runtime slices are implemented across historical M2D plus PR-A / PR-B / PR-C`
+  - `M2D` is not production accepted
+  - Pre-M3 gates are not ready for M3 entry
 - Purpose:
   - `M2D` introduces a separate Risk Domain Knowledge RAG for evidence-grounded natural conversation and profile explanation.
   - It is not part of Data Agent Knowledge RAG and does not serve SQL generation, schema grounding, SQL example retrieval, Data Agent table selection, or SQL validator logic.
@@ -301,6 +323,7 @@
   - full repository regression not run for `M2D-14B`
   - `M2D-15A` implementation is preserved inside the historical final-hardening snapshot
   - this acceptance posture does not include `PR-A` runtime expansion, which is tracked separately as a pre-M3 runtime PR
+  - later Pre-M3 final acceptance closure ran full repository regression and failed, so this M2D posture must not be read as system-level final acceptance
 - Next phase:
   - `M2D` acceptance / merge closure
   - post-merge hardening patch only if validation finds residual defects
