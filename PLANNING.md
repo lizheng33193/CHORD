@@ -49,6 +49,32 @@
    - `PR #52 docs: reconcile m2d15 final status` merged on `2026-07-04` as docs-only reconciliation
    - `PR #53 feat: add risk qa production gate` merged on `2026-07-04` and is the GitHub runtime landing point for PR-A
 
+## 2026-07-04 PR-B Indexing Worker + Job Observability Gate
+
+- planning artifact:
+  - `docs/plans/pre-m3-indexing-worker-gate-plan.md`
+- planning review artifact:
+  - `docs/reviews/pre-m3-indexing-worker-gate-acceptance-review.md`
+- current state:
+  - `PR-B Indexing Worker + Job Observability Gate planned; implementation not started`
+  - `PR-A` is frozen as `implemented; pending final acceptance`
+  - `main` baseline for PR-B planning is merge commit `aab6e83`
+- intended outcome:
+  - promote the current single-process durable indexing runtime toward an external-worker-first production architecture
+  - strengthen job observability, manifest safety boundaries, activation guardrails, and rollback policy
+  - preserve admin compatibility while planning production-oriented indexing, manifest, and worker visibility facades
+- planning boundary:
+  - this PR-B phase is docs-only
+  - runtime implementation, worker modules, route changes, tests, migrations, and production behavior changes have not started
+  - existing runtime truth remains the current `main` implementation with durable job state, retry / rebuild, heartbeat, and stale recovery
+  - `codex/pre-m3-risk-qa-production-gate` is closed for further runtime or docs evolution
+  - no SSE / WebSocket
+  - no full observability dashboard
+  - no M3 DAG runtime work
+  - no PR-A reopening
+  - no Data Agent HITL changes
+  - no M2C validator work
+
 ## 2026-07-02 M2D-14C Acceptance & M2D-15A Planning
 
 - historical note:

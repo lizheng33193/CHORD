@@ -53,6 +53,32 @@
     - `[x]` persist additive artifact metadata and trace metadata
     - `[x]` prove Data Agent non-regression
 
+- [ ] PR-B｜Indexing Worker + Job Observability Gate — planned; implementation not started（2026-07-04）
+  - docs:
+    - `docs/plans/pre-m3-indexing-worker-gate-plan.md`
+    - `docs/reviews/pre-m3-indexing-worker-gate-acceptance-review.md`
+  - baseline:
+    - `main@aab6e83`
+    - `PR-A` frozen as `implemented; pending final acceptance`
+  - planning decisions:
+    - `[x]` docs-only planning scope defined
+    - `[x]` Compat Layer API strategy selected
+    - `[x]` External + Fallback worker deployment strategy selected
+    - `[x]` MySQL / Redis state ownership documented
+    - `[x]` queue namespace and job schema planned
+    - `[x]` job lifecycle, worker lifecycle, lease / heartbeat, and stale recovery planned
+    - `[x]` idempotency and document-version lock policy planned
+    - `[x]` manifest commit guard, activation, rollback, and audit policy planned
+    - `[x]` runtime PR test plan listed
+  - implementation not started:
+    - `[ ]` runtime implementation
+    - `[ ]` worker entrypoint
+    - `[ ]` job API
+    - `[ ]` manifest API
+    - `[ ]` worker health API
+    - `[ ]` runtime tests
+    - `[ ]` final acceptance
+
 - [ ] M2D｜Risk Domain Knowledge RAG & Knowledge Base Module — implementation in progress（2026-07-01）
   - review / spec / plan：
     - `docs/reviews/m2d-current-state-and-scope-review.md`
