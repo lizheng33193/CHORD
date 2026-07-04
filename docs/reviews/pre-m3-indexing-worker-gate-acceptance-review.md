@@ -2,13 +2,13 @@
 
 ## Review Scope
 
-- planning acceptance baseline plus runtime pre-PR acceptance snapshot
-- runtime implementation is complete on the dedicated PR-B runtime branch and is pending final acceptance
+- planning acceptance baseline plus runtime branch evidence, followed by final acceptance repair closure
+- runtime implementation is complete on the dedicated PR-B runtime branch and is now accepted for Pre-M3 scope
 
 ## Baseline
 
 - `main@aab6e83`
-- `PR-A` is frozen as `implemented; pending final acceptance`
+- `PR-A` is frozen as `accepted for Pre-M3 scope`
 - `codex/pre-m3-risk-qa-production-gate` is closed for further runtime or docs evolution
 
 ## Planning Decision
@@ -40,7 +40,7 @@
 
 ## Runtime Implementation Status
 
-- `PR-B Indexing Worker + Job Observability Gate implemented; pending final acceptance`
+- `PR-B Indexing Worker + Job Observability Gate accepted for Pre-M3 scope`
 - runtime branch currently adds:
   - production indexing job facade routes
   - production manifest activate / rollback facade routes
@@ -82,8 +82,8 @@
 
 ## Known Limitations
 
-- runtime implementation is complete on the branch but not yet finally accepted
-- final acceptance closure later ran `pytest -q` and failed with `110 failed, 1462 passed, 11 skipped, 33 warnings`
+- runtime implementation is complete on the branch and historical targeted evidence remains part of the record
+- the first final acceptance closure attempt ran `pytest -q` and failed with `110 failed, 1462 passed, 11 skipped, 33 warnings`
 - worker presence / observability remains polling-oriented; no SSE / WebSocket work is introduced here
 - polling remains the planned observability baseline; no SSE / WebSocket work is introduced here
 - migration/deployment acceptance remains pending because the PR adds durable schema usage without introducing repo-managed migration files
@@ -101,9 +101,28 @@ Executed on `2026-07-04` from `codex/pre-m3-final-acceptance-closure`:
 
 Acceptance outcome:
 
-- PR-B remains `implemented; pending final acceptance`
-- Pre-M3 acceptance is not closed
-- Pre-M3 gates are not yet ready for M3 entry
+- PR-B remained `implemented; pending final acceptance`
+- Pre-M3 acceptance was not closed
+- Pre-M3 gates were not yet ready for M3 entry
+
+## Final Acceptance Repair Closure
+
+Executed later on `2026-07-04` from `codex/pre-m3-regression-triage`:
+
+- `pytest -q`
+  - result: `1575 passed, 11 skipped, 33 warnings`
+- `python -m compileall -q app tests data_acquisition_agent conftest.py`
+  - result: passed
+- `git diff --check`
+  - result: passed
+- `python -m app.release.pre_m3_gate --profile production_release --strict --full-regression-status passed --output-json /tmp/pre_m3_gate_production_release_passed.json`
+  - result: `PASS`
+
+Final outcome:
+
+- PR-B is accepted for Pre-M3 scope
+- Pre-M3 final acceptance is closed
+- Pre-M3 gates are ready for M3 entry
 
 ## Next Step
 

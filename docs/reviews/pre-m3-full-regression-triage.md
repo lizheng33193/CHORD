@@ -7,7 +7,7 @@
 - do not add new PR-A / PR-B / PR-C features
 - focus on acceptance-repair blockers only
 
-## Authoritative Full-Run Result
+## Initial Authoritative Full-Run Result
 
 - command:
   - `pytest -q`
@@ -126,7 +126,7 @@
 3. then rerun targeted groups to see which failures remain real runtime regressions
 4. only after that, triage the local-data / fixture-dependent profile failures
 
-## Current Acceptance Impact
+## Initial Acceptance Impact
 
 - PR-A / PR-B / PR-C remain `implemented; pending final acceptance`
 - Pre-M3 final acceptance remains blocked
@@ -162,3 +162,51 @@
   - the first-pass P0/P1 auth-baseline and environment-sensitive blockers are materially reduced
   - full-repository regression has not yet been re-run after these repairs
   - P2 fixture/data-availability failures still need separate triage
+
+## Acceptance Repair Completion
+
+- additional repairs completed:
+  - deterministic test-local fixture seeding for `app_profile`, `behavior_profile`, and `credit_profile` regression suites
+  - `data_prep` sample-regression hardening so clean clones no longer depend on untracked local data
+  - SWXY chunker dependency test hardening so missing optional `tika` reports `SwxyParserUnavailableError` instead of a false environment-specific failure
+  - release-gate CLI support for `--full-regression-status not_run|passed|failed`
+  - release-gate JSON report now records `full_regression_status`
+- targeted verification after the acceptance-repair slice:
+  - `pytest tests/release/test_pre_m3_gate.py tests/test_app_profile_phase1.py tests/test_behavior_profile_phase18.py tests/test_credit_profile_phase17.py tests/test_data_prep_phase16.py tests/risk_knowledge/ingestion/test_swxy_parser_dependencies.py -q`
+    - result: `73 passed`
+  - `python -m compileall -q app tests data_acquisition_agent conftest.py`
+    - result: passed
+  - `git diff --check`
+    - result: passed
+
+## Final Full-Run Result After Repairs
+
+- command:
+  - `pytest -q`
+- result:
+  - `1575 passed, 11 skipped, 33 warnings`
+- delta versus the original blocked run:
+  - failures reduced from `110` to `0`
+  - the main repaired clusters were:
+    - auth-baseline drift from local `.env` auth enablement
+    - worker-lifecycle and reranker environment-sensitive tests
+    - profile fixture / sample-data availability gaps
+    - SWXY optional-dependency coupling
+
+## Release-Gate Closure Evidence
+
+- PR-acceptance profile:
+  - `python -m app.release.pre_m3_gate --profile pr_acceptance --full-regression-status passed --output-json /tmp/pre_m3_gate_pr_acceptance_passed.json`
+  - result: `PASS`
+- production-release profile:
+  - `python -m app.release.pre_m3_gate --profile production_release --strict --full-regression-status passed --output-json /tmp/pre_m3_gate_production_release_passed.json`
+  - result: `PASS`
+
+## Final Acceptance Outcome
+
+- PR-A is accepted for Pre-M3 scope
+- PR-B is accepted for Pre-M3 scope
+- PR-C is accepted for Pre-M3 scope
+- Pre-M3 final acceptance is closed
+- Pre-M3 gates are ready for M3 entry
+- this branch remains acceptance-repair closure only; it does not start M3 runtime work

@@ -14,6 +14,7 @@ class _StrictModel(BaseModel):
 ReleaseGateStatus = Literal["PASS", "WARN", "FAIL", "BLOCKED"]
 ReleaseGateCheckStatus = Literal["PASS", "WARN", "FAIL", "BLOCKED", "NOT_RUN"]
 ReleaseGateProfile = Literal["pr_acceptance", "production_release"]
+FullRegressionStatus = Literal["not_run", "passed", "failed"]
 
 
 class ReleaseGateCheckResult(_StrictModel):
@@ -29,6 +30,7 @@ class ReleaseGateReport(_StrictModel):
     gate_name: str = "pre_m3_release_gate"
     profile: ReleaseGateProfile
     release_gate_status: ReleaseGateStatus
+    full_regression_status: FullRegressionStatus | None = None
     checks: list[ReleaseGateCheckResult] = Field(default_factory=list)
     failed_checks: list[str] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
