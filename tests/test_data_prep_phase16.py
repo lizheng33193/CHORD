@@ -219,19 +219,39 @@ class DataPrepPhase16Tests(unittest.TestCase):
             self.assertEqual(all_result["credit"]["status"], "skipped")
 
     def test_behavior_and_credit_skill_sample_regression(self) -> None:
-        repository = LocalUserRepository()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_root = Path(temp_dir)
+            data_root = temp_root / "data"
+            behavior_source_dir = data_root / "behavior" / "source"
+            behavior_by_uid_dir = data_root / "behavior" / "by_uid"
+            credit_source_dir = data_root / "credit" / "source"
+            credit_by_uid_dir = data_root / "credit" / "by_uid"
 
-        behavior_model = ModelClient()
-        behavior_model.mode = "mock"
-        behavior_result = BehaviorProfileSkill(behavior_model).analyze("user_001", repository=repository)
-        self.assertEqual(behavior_result["structured_result"]["status"], "ok")
-        self.assertTrue(behavior_result["report_markdown"])
+            self._seed_sample_files(data_root)
+            behavior_source_dir.mkdir(parents=True, exist_ok=True)
+            behavior_by_uid_dir.mkdir(parents=True, exist_ok=True)
+            credit_source_dir.mkdir(parents=True, exist_ok=True)
+            credit_by_uid_dir.mkdir(parents=True, exist_ok=True)
 
-        credit_model = ModelClient()
-        credit_model.mode = "mock"
-        credit_result = CreditProfileSkill(credit_model).analyze("user_001", repository=repository)
-        self.assertEqual(credit_result["structured_result"]["status"], "ok")
-        self.assertTrue(credit_result["report_markdown"])
+            settings.data_dir = str(data_root)
+            settings.behavior_source_dir = str(behavior_source_dir)
+            settings.behavior_by_uid_dir = str(behavior_by_uid_dir)
+            settings.credit_source_dir = str(credit_source_dir)
+            settings.credit_by_uid_dir = str(credit_by_uid_dir)
+
+            repository = LocalUserRepository()
+
+            behavior_model = ModelClient()
+            behavior_model.mode = "mock"
+            behavior_result = BehaviorProfileSkill(behavior_model).analyze("user_001", repository=repository)
+            self.assertEqual(behavior_result["structured_result"]["status"], "ok")
+            self.assertTrue(behavior_result["report_markdown"])
+
+            credit_model = ModelClient()
+            credit_model.mode = "mock"
+            credit_result = CreditProfileSkill(credit_model).analyze("user_001", repository=repository)
+            self.assertEqual(credit_result["structured_result"]["status"], "ok")
+            self.assertTrue(credit_result["report_markdown"])
 
     def _seed_sample_files(self, data_root: Path) -> None:
         data_root.mkdir(parents=True, exist_ok=True)

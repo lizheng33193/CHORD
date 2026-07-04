@@ -8,8 +8,9 @@
 - later `PR-A / PR-B / PR-C` runtime gates plus the `codex/pre-m3-final-acceptance-closure` branch define the current system-level acceptance truth
 - current system-level truth is:
   - core runtime hardening landed
-  - final acceptance remains blocked by full-repository regression failures
-  - Pre-M3 gates are not ready for M3 entry
+  - the first closure attempt was blocked by full-repository regression failures
+  - later acceptance repair on `codex/pre-m3-regression-triage` passed with `1575 passed, 11 skipped, 33 warnings`
+  - Pre-M3 gates are ready for M3 entry
 
 ## Scope
 

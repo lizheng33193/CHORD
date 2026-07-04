@@ -35,7 +35,7 @@
 - [x] E1 单用户埋点深度解析 → docs/plans/trace-analyzer-plan.md（2026-05-01）
 
 ## 当前进行中的功能
-- [x] PR-A｜Risk QA + Context Isolation + Evidence/Citation Production Gate — implemented; pending final acceptance（2026-07-04）
+- [x] PR-A｜Risk QA + Context Isolation + Evidence/Citation Production Gate — accepted for Pre-M3 scope（2026-07-04）
   - docs:
     - `docs/specs/risk-qa-production-gate-contract.md`
     - `docs/plans/pre-m3-risk-qa-production-gate-plan.md`
@@ -53,18 +53,18 @@
     - `[x]` persist additive artifact metadata and trace metadata
     - `[x]` prove Data Agent non-regression
   - final acceptance closure status:
-    - `pytest -q` executed on `codex/pre-m3-final-acceptance-closure`
-    - result: `110 failed, 1462 passed, 11 skipped, 33 warnings`
-    - status remains `implemented; pending final acceptance`
+    - initial closure attempt on `codex/pre-m3-final-acceptance-closure`: `110 failed, 1462 passed, 11 skipped, 33 warnings`
+    - acceptance repair closure on `codex/pre-m3-regression-triage`: `1575 passed, 11 skipped, 33 warnings`
+    - status: `accepted for Pre-M3 scope`
 
-- [x] PR-B｜Indexing Worker + Job Observability Gate — implemented; pending final acceptance（2026-07-04）
+- [x] PR-B｜Indexing Worker + Job Observability Gate — accepted for Pre-M3 scope（2026-07-04）
   - docs:
     - `docs/plans/pre-m3-indexing-worker-gate-plan.md`
     - `docs/reviews/pre-m3-indexing-worker-gate-acceptance-review.md`
   - baseline:
     - planning landed on `main` via `PR #55`
     - merge commit `193e80c69c337c26e0059206fa3d1720d177817c`
-    - `PR-A` frozen as `implemented; pending final acceptance`
+    - `PR-A` frozen as `accepted for Pre-M3 scope`
   - planning decisions:
     - `[x]` docs-only planning scope defined
     - `[x]` Compat Layer API strategy selected
@@ -87,16 +87,17 @@
     - `[x]` targeted runtime and compatibility verification passing
     - `[x]` branch pushed and ready for runtime PR creation
   - current acceptance posture:
-    - status: `implemented; pending final acceptance`
+    - status: `accepted for Pre-M3 scope`
     - targeted verification: `68 passed, 6 warnings`
     - additional checks: `python -m compileall -q app tests` passed; `git diff --check` passed
     - route registration confirmed for admin compatibility plus `/api/risk-knowledge/indexing/*`, `/api/risk-knowledge/manifests/*`, and `/api/risk-knowledge/workers/*`
     - runtime defaults confirmed: `RISK_KNOWLEDGE_WORKER_MODE=external`, `RISK_KNOWLEDGE_IN_PROCESS_WORKER_FALLBACK_ENABLED=false`
     - schema evolution risk remains part of final acceptance because no repo-managed migration files were added in this PR
-    - full-repository final acceptance attempt result: `110 failed, 1462 passed, 11 skipped, 33 warnings`
-    - `[ ]` final acceptance
+    - initial full-repository final acceptance attempt result: `110 failed, 1462 passed, 11 skipped, 33 warnings`
+    - acceptance-repair rerun result: `1575 passed, 11 skipped, 33 warnings`
+    - `[x]` final acceptance
 
-- [x] PR-C｜Eval Regression + M2C Essential Semantic Validator + Release Gate — implemented; pending final acceptance（2026-07-04）
+- [x] PR-C｜Eval Regression + M2C Essential Semantic Validator + Release Gate — accepted for Pre-M3 scope（2026-07-04）
   - docs:
     - `docs/plans/pre-m3-eval-semantic-release-gate-plan.md`
     - `docs/reviews/pre-m3-eval-semantic-release-gate-acceptance-review.md`
@@ -106,8 +107,8 @@
     - PR-C1 planning merged via `PR #57`
     - PR-C2 runtime merged via `PR #58 feat: add pre-m3 eval semantic release gate`
     - acceptance hardening merged via `PR #59 fix: harden pre-m3 release gate acceptance`
-    - `PR-A` remains frozen as `implemented; pending final acceptance`
-    - `PR-B` remains `implemented; pending final acceptance`
+    - `PR-A` remains frozen as `accepted for Pre-M3 scope`
+    - `PR-B` remains `accepted for Pre-M3 scope`
   - planning decisions:
     - `[x]` docs-only planning scope defined
     - `[x]` Risk QA regression boundary selected under `app/risk_knowledge/evaluation/`
@@ -126,39 +127,41 @@
     - `[x]` release / rollback runbook
     - `[x]` targeted runtime tests
   - current acceptance posture:
-    - status: `implemented; pending final acceptance`
+    - status: `accepted for Pre-M3 scope`
     - targeted verification: `93 passed, 6 warnings`
     - release gate CLI smoke:
-      - `pr_acceptance` -> `WARN` with exit `0`
-      - `production_release --strict` -> `BLOCKED` with exit `1`
+      - initial smoke with default `not_run`: `pr_acceptance -> WARN`, `production_release --strict -> BLOCKED`
+      - final closure check with `--full-regression-status passed`: `pr_acceptance -> PASS`, `production_release --strict -> PASS`
     - PR-B non-regression verification: `7 passed, 6 warnings`
     - additional checks: `python -m compileall -q app tests` passed; `git diff --check` passed
-    - full-repository final acceptance attempt result: `110 failed, 1462 passed, 11 skipped, 33 warnings`
-    - release-gate default runner still reports `full repository regression not run`; production profile remains blocked
-    - `[ ]` final acceptance
+    - initial full-repository final acceptance attempt result: `110 failed, 1462 passed, 11 skipped, 33 warnings`
+    - acceptance-repair rerun result: `1575 passed, 11 skipped, 33 warnings`
+    - `[x]` final acceptance
 
-- [ ] Pre-M3 Final Acceptance Closure — blocked（2026-07-04）
+- [x] Pre-M3 Final Acceptance Closure — accepted for Pre-M3 scope（2026-07-04）
   - branch:
-    - `codex/pre-m3-final-acceptance-closure`
+    - initial blocked attempt: `codex/pre-m3-final-acceptance-closure`
+    - acceptance-repair closure: `codex/pre-m3-regression-triage`
   - current reading:
-    - M2D / Pre-M3 system-level hardening main runtime slices are implemented
-    - PR-A / PR-B / PR-C all remain `implemented; pending final acceptance`
-    - do not describe the current state as `completed`, `production accepted`, or `ready for M3 entry`
+    - M2D / Pre-M3 system-level hardening main runtime slices are accepted for Pre-M3 scope
+    - PR-A / PR-B / PR-C are all `accepted for Pre-M3 scope`
+    - this does not start M3 runtime work by itself
   - verification:
-    - `pytest -q` -> `110 failed, 1462 passed, 11 skipped, 33 warnings`
+    - initial run: `pytest -q` -> `110 failed, 1462 passed, 11 skipped, 33 warnings`
+    - repaired rerun: `pytest -q` -> `1575 passed, 11 skipped, 33 warnings`
     - `python -m compileall -q app tests` -> passed
     - `git diff --check` -> passed
-    - `python -m app.release.pre_m3_gate --profile pr_acceptance --output-json /tmp/pre_m3_gate_pr_acceptance.json` -> `WARN`
-    - `python -m app.release.pre_m3_gate --profile production_release --strict --output-json /tmp/pre_m3_gate_production_release.json` -> `BLOCKED`
+    - `python -m app.release.pre_m3_gate --profile pr_acceptance --full-regression-status passed --output-json /tmp/pre_m3_gate_pr_acceptance_passed.json` -> `PASS`
+    - `python -m app.release.pre_m3_gate --profile production_release --strict --full-regression-status passed --output-json /tmp/pre_m3_gate_production_release_passed.json` -> `PASS`
   - closure result:
-    - PR-A / PR-B / PR-C remain `implemented; pending final acceptance`
-    - Pre-M3 gates are not ready for M3 entry
-    - production release remains blocked
+    - PR-A / PR-B / PR-C are accepted for Pre-M3 scope
+    - Pre-M3 gates are ready for M3 entry
+    - production release is no longer blocked by full-regression status
   - next required step:
-    - Pre-M3 full-regression triage and acceptance repair
-    - do not start new M3 runtime work from this state
+    - start any M3 planning or runtime work on a fresh branch
+    - do not continue implementation work on the acceptance-repair branch
 
-- [ ] M2D｜Risk Domain Knowledge RAG & Knowledge Base Module — major runtime landed; system-level final acceptance blocked（2026-07-04）
+- [x] M2D｜Risk Domain Knowledge RAG & Knowledge Base Module — accepted for Pre-M3 scope（2026-07-04）
   - review / spec / plan：
     - `docs/reviews/m2d-current-state-and-scope-review.md`
     - `docs/reviews/m2d-existing-rag-integration-review.md`
@@ -217,10 +220,10 @@
     - `[x] M2D-15A Indexing Job Observability & Runtime State Fidelity`
     - `[x] M2D-15 Production Hardening`
   - 当前阶段状态：
-    - `M2D: major runtime landed; system-level final acceptance blocked`
-    - `M2D / Pre-M3 system-level hardening main runtime slices are implemented across historical M2D plus PR-A / PR-B / PR-C`
-    - `M2D` is not production accepted
-    - Pre-M3 gates are not ready for M3 entry
+    - `M2D: major runtime landed; system-level acceptance passed for the Pre-M3 boundary`
+    - `M2D / Pre-M3 system-level hardening main runtime slices are accepted across historical M2D plus PR-A / PR-B / PR-C`
+    - `M2D` is accepted for Pre-M3 scope
+    - Pre-M3 gates are ready for M3 entry
     - `M2D-4 vendor import landed; no runtime integration started`
     - `M2D-5 knowledge base module skeleton landed; no ingestion/retrieval runtime started`
     - `M2D-6 SWXY ingestion adapter landed; no embedding/retrieval/ES runtime started`

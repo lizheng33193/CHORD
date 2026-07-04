@@ -4,14 +4,14 @@
 
 - runtime acceptance hardening snapshot after the merged PR-C2 runtime slice
 - this review records implementation readiness and targeted verification evidence
-- final production release acceptance remains out of scope until broader regression and deployment evidence are complete
+- final acceptance repair closure is now recorded after the broader regression baseline passed
 
 ## 2. Baseline
 
 - latest `main` after the PR-C2 runtime merge via `PR #58`
 - merge commit: `323711e03577c979736b3fcb4c71842ccbe78e88`
-- `PR-A` remains frozen as `implemented; pending final acceptance`
-- `PR-B` remains frozen as `implemented; pending final acceptance`
+- `PR-A` remains frozen as `accepted for Pre-M3 scope`
+- `PR-B` remains frozen as `accepted for Pre-M3 scope`
 
 ## 3. Planning Decision
 
@@ -21,7 +21,7 @@
 
 ## 4. Runtime Implementation Status
 
-- `PR-C Eval Regression + M2C Essential Semantic Validator + Release Gate implemented; pending final acceptance`
+- `PR-C Eval Regression + M2C Essential Semantic Validator + Release Gate accepted for Pre-M3 scope`
 - merged runtime slice includes:
   - Risk QA regression extensions under `app/risk_knowledge/evaluation/`
   - deterministic SQL semantic validation under `app/data_agent/semantic_validation/`
@@ -63,8 +63,8 @@
   - `tests/risk_knowledge/reranking/test_dashscope_provider.py`
   - `tests/risk_knowledge/runtime/test_worker_lifecycle.py`
 - acceptance outcome:
-  - PR-C remains `implemented; pending final acceptance`
-  - Pre-M3 gates are not ready for M3 entry
+  - PR-C remained `implemented; pending final acceptance`
+  - Pre-M3 gates were not yet ready for M3 entry
 
 ## 6. Production Risk Checks
 
@@ -90,3 +90,19 @@
 - resolve the repository-level regression failures
 - wire final regression evidence into the production release decision path if a stricter end-to-end release-gate contract is required
 - retry final acceptance closure only after the broader repository regression baseline is green
+
+## 9. Final Acceptance Repair Closure
+
+- executed later on `2026-07-04` from `codex/pre-m3-regression-triage`
+- full-repository regression:
+  - `pytest -q`
+  - result: `1575 passed, 11 skipped, 33 warnings`
+- release-gate closure verification:
+  - `python -m app.release.pre_m3_gate --profile pr_acceptance --full-regression-status passed --output-json /tmp/pre_m3_gate_pr_acceptance_passed.json`
+  - result: `PASS`
+  - `python -m app.release.pre_m3_gate --profile production_release --strict --full-regression-status passed --output-json /tmp/pre_m3_gate_production_release_passed.json`
+  - result: `PASS`
+- final outcome:
+  - PR-C is accepted for Pre-M3 scope
+  - Pre-M3 final acceptance is closed
+  - Pre-M3 gates are ready for M3 entry

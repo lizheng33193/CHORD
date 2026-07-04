@@ -42,10 +42,12 @@ def _build_request() -> RerankRequest:
     )
 
 
-def test_dashscope_provider_requires_api_key() -> None:
+def test_dashscope_provider_requires_api_key(monkeypatch) -> None:
+    from app.core.config import settings
     from app.risk_knowledge.reranking.dashscope_provider import DashScopeRerankerProvider
     from app.risk_knowledge.reranking.errors import RerankerProviderConfigError
 
+    monkeypatch.setattr(settings, "dashscope_api_key", None, raising=False)
     provider = DashScopeRerankerProvider(api_key=None, endpoint="https://example.invalid")
 
     with pytest.raises(RerankerProviderConfigError):

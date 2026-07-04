@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import csv
+import json
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import Mock
@@ -68,9 +71,80 @@ class InvalidAppRepository(BaseUserRepository):
 class AppProfilePhase1Tests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
+        cls._temp_dir = tempfile.TemporaryDirectory()
+        cls._original_settings = {
+            "data_dir": settings.data_dir,
+            "app_source_dir": settings.app_source_dir,
+            "app_by_uid_dir": settings.app_by_uid_dir,
+            "behavior_source_dir": settings.behavior_source_dir,
+            "behavior_by_uid_dir": settings.behavior_by_uid_dir,
+            "credit_source_dir": settings.credit_source_dir,
+            "credit_by_uid_dir": settings.credit_by_uid_dir,
+        }
+        temp_root = Path(cls._temp_dir.name)
+        data_root = temp_root / "data"
+        app_source_dir = data_root / "app" / "source"
+        app_by_uid_dir = data_root / "app" / "by_uid"
+        behavior_source_dir = data_root / "behavior" / "source"
+        behavior_by_uid_dir = data_root / "behavior" / "by_uid"
+        credit_source_dir = data_root / "credit" / "source"
+        credit_by_uid_dir = data_root / "credit" / "by_uid"
+
+        app_source_dir.mkdir(parents=True, exist_ok=True)
+        app_by_uid_dir.mkdir(parents=True, exist_ok=True)
+        behavior_source_dir.mkdir(parents=True, exist_ok=True)
+        credit_source_dir.mkdir(parents=True, exist_ok=True)
+
+        settings.data_dir = str(data_root)
+        settings.app_source_dir = str(app_source_dir)
+        settings.app_by_uid_dir = str(app_by_uid_dir)
+        settings.behavior_source_dir = str(behavior_source_dir)
+        settings.behavior_by_uid_dir = str(behavior_by_uid_dir)
+        settings.credit_source_dir = str(credit_source_dir)
+        settings.credit_by_uid_dir = str(credit_by_uid_dir)
+
+        cls._write_csv(
+            app_by_uid_dir / f"{SAMPLE_UID}.csv",
+            [
+                "uid",
+                "app_name",
+                "app_package",
+                "first_install_time",
+                "last_update_time",
+                "gp_category",
+                "ai_category_level_2_CN",
+            ],
+            [
+                {
+                    "uid": SAMPLE_UID,
+                    "app_name": "Kueski",
+                    "app_package": "com.kueski.app",
+                    "first_install_time": "1772467899697",
+                    "last_update_time": "1772467899697",
+                    "gp_category": "Finance",
+                    "ai_category_level_2_CN": "Loan",
+                },
+                {
+                    "uid": SAMPLE_UID,
+                    "app_name": "Mercado Pago",
+                    "app_package": "com.mercadopago.wallet",
+                    "first_install_time": "1771467899697",
+                    "last_update_time": "1772467899697",
+                    "gp_category": "Finance",
+                    "ai_category_level_2_CN": "Wallet",
+                },
+            ],
+        )
+        cls._seed_sample_files(data_root)
         cls.prompt_path = settings.resolve_path(f"{settings.prompt_dir}/app_profile_prompt.md")
-        cls.repository = LocalUserRepository()
+        cls.repository = LocalUserRepository(allow_sample_fallback=False)
         cls.context = build_app_run_context(SAMPLE_UID)
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        for key, value in cls._original_settings.items():
+            setattr(settings, key, value)
+        cls._temp_dir.cleanup()
 
     def _build_pipeline_objects(self) -> tuple[dict, dict, dict, dict]:
         provider = AppDataProvider(self.repository)
@@ -349,6 +423,44 @@ class AppProfilePhase1Tests(unittest.TestCase):
         result = response.results[0]
         self.assertEqual(result.uid, SAMPLE_UID)
         self.assertTrue(result.app_profile.structured_result)
+
+    @staticmethod
+    def _seed_sample_files(data_root: Path) -> None:
+        AppProfilePhase1Tests._write_csv(
+            data_root / "sample_behavior_data.csv",
+            ["uid", "avg_session_minutes", "login_days_30d", "purchase_preference"],
+            [
+                {
+                    "uid": "user_001",
+                    "avg_session_minutes": "52",
+                    "login_days_30d": "27",
+                    "purchase_preference": "premium_quality",
+                }
+            ],
+        )
+        (data_root / "sample_credit_data.json").write_text(
+            json.dumps(
+                [
+                    {
+                        "uid": "user_001",
+                        "credit_score_band": "A",
+                        "repayment_status": "stable",
+                        "risk_level": "low",
+                    }
+                ],
+                ensure_ascii=False,
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+
+    @staticmethod
+    def _write_csv(path: Path, fieldnames: list[str], rows: list[dict[str, str]]) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("w", encoding="utf-8", newline="") as csv_file:
+            writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(rows)
 
 
 if __name__ == "__main__":

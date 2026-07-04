@@ -153,9 +153,30 @@ Representative failing areas in the full-repository run included:
 
 Acceptance outcome:
 
-- PR-A remains `implemented; pending final acceptance`
-- Pre-M3 acceptance is not closed
-- Pre-M3 gates are not yet ready for M3 entry
+- PR-A remained `implemented; pending final acceptance` after the first closure attempt
+- Pre-M3 acceptance was not yet closed at that point
+- Pre-M3 gates were not yet ready for M3 entry
+
+## Final Acceptance Repair Closure
+
+Executed later on `2026-07-04` from `codex/pre-m3-regression-triage`:
+
+- `pytest -q`
+  - result: `1575 passed, 11 skipped, 33 warnings`
+- `python -m compileall -q app tests data_acquisition_agent conftest.py`
+  - result: passed
+- `git diff --check`
+  - result: passed
+- `python -m app.release.pre_m3_gate --profile pr_acceptance --full-regression-status passed --output-json /tmp/pre_m3_gate_pr_acceptance_passed.json`
+  - result: `PASS`
+- `python -m app.release.pre_m3_gate --profile production_release --strict --full-regression-status passed --output-json /tmp/pre_m3_gate_production_release_passed.json`
+  - result: `PASS`
+
+Final outcome:
+
+- PR-A is accepted for Pre-M3 scope
+- Pre-M3 final acceptance is closed
+- Pre-M3 gates are ready for M3 entry
 
 ## Known Limitations
 

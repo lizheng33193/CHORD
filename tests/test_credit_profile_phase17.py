@@ -4,6 +4,7 @@ import json
 import shutil
 import tempfile
 import unittest
+import csv
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -115,8 +116,43 @@ class SchemaMismatchRepository(BaseUserRepository):
 class CreditProfilePhase17Tests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
+        cls._temp_dir = tempfile.TemporaryDirectory()
+        cls._original_settings = {
+            "data_dir": settings.data_dir,
+            "app_source_dir": settings.app_source_dir,
+            "app_by_uid_dir": settings.app_by_uid_dir,
+            "behavior_source_dir": settings.behavior_source_dir,
+            "behavior_by_uid_dir": settings.behavior_by_uid_dir,
+            "credit_source_dir": settings.credit_source_dir,
+            "credit_by_uid_dir": settings.credit_by_uid_dir,
+        }
+        temp_root = Path(cls._temp_dir.name)
+        data_root = temp_root / "data"
+        app_source_dir = data_root / "app" / "source"
+        app_by_uid_dir = data_root / "app" / "by_uid"
+        behavior_source_dir = data_root / "behavior" / "source"
+        behavior_by_uid_dir = data_root / "behavior" / "by_uid"
+        credit_source_dir = data_root / "credit" / "source"
+        credit_by_uid_dir = data_root / "credit" / "by_uid"
+
+        app_source_dir.mkdir(parents=True, exist_ok=True)
+        app_by_uid_dir.mkdir(parents=True, exist_ok=True)
+        behavior_source_dir.mkdir(parents=True, exist_ok=True)
+        credit_source_dir.mkdir(parents=True, exist_ok=True)
+        credit_by_uid_dir.mkdir(parents=True, exist_ok=True)
+
+        settings.data_dir = str(data_root)
+        settings.app_source_dir = str(app_source_dir)
+        settings.app_by_uid_dir = str(app_by_uid_dir)
+        settings.behavior_source_dir = str(behavior_source_dir)
+        settings.behavior_by_uid_dir = str(behavior_by_uid_dir)
+        settings.credit_source_dir = str(credit_source_dir)
+        settings.credit_by_uid_dir = str(credit_by_uid_dir)
+
+        cls._seed_sample_files(data_root)
+        cls._write_credit_csv(credit_by_uid_dir / f"{REAL_UID}.csv")
         cls.prompt_path = settings.resolve_path(f"{settings.prompt_dir}/credit_profile_prompt.md")
-        cls.repository = LocalUserRepository()
+        cls.repository = LocalUserRepository(allow_sample_fallback=False)
         cls.sample_context = build_credit_run_context(SAMPLE_UID)
         cls.real_context = build_credit_run_context(REAL_UID)
         cls.real_csv_path = settings.resolve_path(settings.credit_by_uid_dir) / f"{REAL_UID}.csv"
@@ -125,6 +161,12 @@ class CreditProfilePhase17Tests(unittest.TestCase):
             REAL_UID,
             country_code=cls.real_context["country_code"],
         )
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        for key, value in cls._original_settings.items():
+            setattr(settings, key, value)
+        cls._temp_dir.cleanup()
 
     def _build_pipeline_objects(self, uid: str = REAL_UID) -> tuple[dict, dict, dict, dict]:
         context = build_credit_run_context(uid)
@@ -397,6 +439,69 @@ class CreditProfilePhase17Tests(unittest.TestCase):
         self.assertEqual(record["schema_version"], CREDIT_PREPARED_SCHEMA_VERSION)
         self.assertEqual(record["source_meta"]["source_variant"], "missing")
         self.assertEqual(len(record["repayment_timeline"]), 12)
+
+    @staticmethod
+    def _seed_sample_files(data_root: Path) -> None:
+        data_root.mkdir(parents=True, exist_ok=True)
+        (data_root / "sample_credit_data.json").write_text(
+            json.dumps(
+                [
+                    {
+                        "uid": "user_001",
+                        "credit_score_band": "A",
+                        "repayment_status": "stable",
+                        "risk_level": "low",
+                    }
+                ],
+                ensure_ascii=False,
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+
+    @staticmethod
+    def _write_credit_csv(path: Path) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        credit_rows = [
+            {
+                "uid": REAL_UID,
+                "valor": "300",
+                "dt": "2026-06-30",
+                "nombrescore": "FICO",
+                "razones": "late payments,high utilization",
+                "fechanacimiento": "1990-01-15",
+                "ciudad": "Monterrey",
+                "ocupacion": "Engineer",
+                "consultas_detail_json": json.dumps(
+                    [
+                        {
+                            "consultas_nombreotorgante": "BBVA",
+                            "fechaconsulta": "2026-05-10",
+                        }
+                    ],
+                    ensure_ascii=False,
+                ),
+                "creditos_detail_json": json.dumps(
+                    [
+                        {
+                            "credito_nombreotorgante": "BBVA",
+                            "credito_tipocredito": "TC",
+                            "limitecredito": "10000",
+                            "saldoactual": "7500",
+                            "montopagar": "1200",
+                            "dias_atraso": "15",
+                            "fechaaperturacuenta": "2021-01-01",
+                            "fechaactualizacion": "2026-06-30",
+                        }
+                    ],
+                    ensure_ascii=False,
+                ),
+            }
+        ]
+        with path.open("w", encoding="utf-8", newline="") as csv_file:
+            writer = csv.DictWriter(csv_file, fieldnames=list(credit_rows[0].keys()))
+            writer.writeheader()
+            writer.writerows(credit_rows)
 
 
 if __name__ == "__main__":
