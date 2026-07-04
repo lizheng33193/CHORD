@@ -33,9 +33,11 @@ class CitationRenderer:
                     document_title=document_title,
                     version_id=citation.version_id,
                     chunk_id=citation.chunk_id,
+                    evidence_id=citation.evidence_id,
                     section_path=section_path,
                     page_start=evidence.page_start if evidence else citation.page_start,
                     page_end=evidence.page_end if evidence else citation.page_end,
+                    quote=(evidence.text[:160] if evidence is not None else None),
                 )
             )
         return rendered

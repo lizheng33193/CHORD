@@ -109,3 +109,13 @@ def test_run_agent_loop_risk_knowledge_flow_skips_legacy_and_tool_registry(monke
     assert called["legacy"] is False
     assert events[-1]["type"] == "final"
     assert "多头借贷风险" in events[-1]["final_message"]
+    assert events[-1]["artifacts"]
+    artifact = events[-1]["artifacts"][0]
+    assert artifact["type"] == "risk_knowledge_answer"
+    assert artifact["schema_version"] == "risk_knowledge_answer.v1"
+    assert artifact["grounding_status"] == "grounded"
+    trace = session.execution_traces[-1]
+    assert trace.internal_metadata["context_hash"]
+    assert trace.internal_metadata["retrieval_snapshot_id"]
+    assert trace.internal_metadata["grounding_status"] == "grounded"
+    assert "blocked_context_sources" in trace.internal_metadata

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import uuid
 from typing import AsyncIterator
 
@@ -85,6 +86,20 @@ class RiskKnowledgeAnswerFlow:
             )
             return
 
+        update_internal_trace_metadata(
+            trace,
+            {
+                "context_hash": _resolve_context_hash(answer),
+                "retrieval_snapshot_id": _resolve_retrieval_snapshot_id(answer),
+                "selected_evidence_ids": _resolve_selected_evidence_ids(answer),
+                "selected_chunk_ids": _resolve_selected_chunk_ids(answer),
+                "blocked_context_sources": list(answer.blocked_context_sources),
+                "grounding_status": answer.grounding_status,
+                "warning_codes": [warning.code for warning in answer.warnings],
+                "citation_count": len(answer.citations),
+                "evidence_count": len(_resolve_selected_evidence_ids(answer)),
+            },
+        )
         result_summary = (
             "已基于风控知识证据生成回答。"
             if answer.should_answer
@@ -105,6 +120,56 @@ class RiskKnowledgeAnswerFlow:
             final_message=answer.answer,
             confidence=confidence,
             detected_country=ctx.detected_country,
+            artifacts=[_build_risk_knowledge_artifact(answer)],
             turn_id=ctx.turn_id,
             run_id=ctx.run_id,
         )
+
+
+def _build_risk_knowledge_artifact(answer) -> dict[str, object]:
+    return {
+        "type": answer.type,
+        "schema_version": answer.schema_version,
+        "query": answer.query,
+        "answer": answer.answer,
+        "answer_type": answer.answer_type,
+        "grounding_status": answer.grounding_status,
+        "citations": [citation.model_dump(mode="json") for citation in answer.citations],
+        "evidence_trace": [item.model_dump(mode="json") for item in answer.evidence_trace],
+        "retrieval_snapshot_id": _resolve_retrieval_snapshot_id(answer),
+        "blocked_context_sources": list(answer.blocked_context_sources),
+        "context_hash": _resolve_context_hash(answer),
+        "warnings": [warning.model_dump(mode="json") for warning in answer.warnings],
+    }
+
+
+def _resolve_selected_evidence_ids(answer) -> list[str]:
+    if answer.evidence_trace:
+        return [item.evidence_id for item in answer.evidence_trace]
+    return [item.evidence_id for item in answer.evidence_bundle.selected_evidence]
+
+
+def _resolve_selected_chunk_ids(answer) -> list[str]:
+    if answer.evidence_trace:
+        return [item.chunk_id for item in answer.evidence_trace if item.chunk_id]
+    return [item.chunk_id for item in answer.evidence_bundle.selected_evidence if item.chunk_id]
+
+
+def _resolve_context_hash(answer) -> str:
+    if answer.context_hash:
+        return answer.context_hash
+    payload = "::".join(
+        [
+            answer.query,
+            ",".join(sorted(_resolve_selected_evidence_ids(answer))),
+            ",".join(sorted(answer.blocked_context_sources)),
+        ]
+    )
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _resolve_retrieval_snapshot_id(answer) -> str:
+    if answer.retrieval_snapshot_id:
+        return answer.retrieval_snapshot_id
+    payload = "::".join([answer.query, ",".join(_resolve_selected_chunk_ids(answer))])
+    return f"rqs_{hashlib.sha256(payload.encode('utf-8')).hexdigest()[:16]}"
