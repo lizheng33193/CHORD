@@ -35,6 +35,20 @@
 - [x] E1 单用户埋点深度解析 → docs/plans/trace-analyzer-plan.md（2026-05-01）
 
 ## 当前进行中的功能
+- [x] PR-A｜Risk QA + Context Isolation + Evidence/Citation Production Gate — implemented; pending final acceptance（2026-07-04）
+  - docs:
+    - `docs/specs/risk-qa-production-gate-contract.md`
+    - `docs/plans/pre-m3-risk-qa-production-gate-plan.md`
+    - `docs/reviews/pre-m3-risk-qa-production-gate-acceptance-review.md`
+  - target outcomes:
+    - `[x]` keep `risk_knowledge_answer` public route compatibility
+    - `[x]` keep `RiskKnowledgeService` as facade only
+    - `[x]` add internal QA pipeline / context isolation / evidence manager
+    - `[x]` add fail-closed citation validation
+    - `[x]` add insufficient-evidence pre-generation stop
+    - `[x]` persist additive artifact metadata and trace metadata
+    - `[x]` prove Data Agent non-regression
+
 - [ ] M2D｜Risk Domain Knowledge RAG & Knowledge Base Module — implementation in progress（2026-07-01）
   - review / spec / plan：
     - `docs/reviews/m2d-current-state-and-scope-review.md`

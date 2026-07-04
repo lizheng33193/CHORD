@@ -170,6 +170,97 @@ def test_risk_knowledge_service_returns_grounded_answer_and_rendered_citations()
     assert result.used_citation_ids == ["cite_risk_1"]
 
 
+def test_risk_knowledge_service_exposes_additive_risk_qa_metadata() -> None:
+    from app.risk_knowledge.service.risk_knowledge_service import RiskKnowledgeService
+    from app.risk_knowledge.service.schemas import (
+        EvidenceContext,
+        EvidenceContextItem,
+        GroundedAnswerResult,
+        RenderedCitation,
+        RiskKnowledgeQuery,
+        RouteDecision,
+    )
+
+    class _Pipeline:
+        def build_bundle(self, query):
+            return _build_bundle(should_answer=True, reason=EvidenceGateReason.SUFFICIENT)
+
+        def build_trace(self, query):
+            from app.risk_knowledge.service.risk_knowledge_service import _build_fallback_trace
+
+            bundle = _build_bundle(should_answer=True, reason=EvidenceGateReason.SUFFICIENT)
+            return _build_fallback_trace(query, bundle)
+
+    class _RoutePolicy:
+        def decide(self, query):
+            return RouteDecision(should_route=True, reason="risk_concept", target_kb_id=query.kb_id)
+
+    class _ContextBuilder:
+        def build(self, bundle):
+            return EvidenceContext(
+                query=bundle.query,
+                evidence_items=[
+                    EvidenceContextItem(
+                        citation_id="cite_risk_1",
+                        text=bundle.selected_evidence[0].text,
+                        document_title="风控手册",
+                        section_path=["风控手册", "贷前风险"],
+                        page_start=1,
+                        page_end=1,
+                        rerank_score=0.92,
+                        evidence_rank=1,
+                    )
+                ],
+                citation_map={citation.citation_id: citation for citation in bundle.citations},
+                total_chars=len(bundle.selected_evidence[0].text),
+            )
+
+    class _Synthesizer:
+        def synthesize(self, request):
+            return GroundedAnswerResult(
+                answer="多头借贷风险表示借款人短时间内向多家机构重复申请借款。[cite_risk_1]",
+                used_citation_ids=["cite_risk_1"],
+                provider="deterministic",
+                model="deterministic-answer-v1",
+            )
+
+    class _Renderer:
+        def render(self, bundle):
+            return [
+                RenderedCitation(
+                    citation_id="cite_risk_1",
+                    label="[1] 风控手册 / 贷前风险 / p.1",
+                    document_id="risk_guide",
+                    document_title="风控手册",
+                    version_id="risk_guide_v1",
+                    chunk_id="risk_chunk_001",
+                    section_path="风控手册 / 贷前风险",
+                    page_start=1,
+                    page_end=1,
+                )
+            ]
+
+    service = RiskKnowledgeService(
+        pipeline=_Pipeline(),
+        route_policy=_RoutePolicy(),
+        context_builder=_ContextBuilder(),
+        synthesizer=_Synthesizer(),
+        citation_renderer=_Renderer(),
+    )
+
+    result = service.answer(
+        RiskKnowledgeQuery(query="什么是多头借贷风险？", intent="risk_knowledge_qa")
+    )
+
+    assert hasattr(result, "schema_version")
+    assert hasattr(result, "grounding_status")
+    assert hasattr(result, "evidence_trace")
+    assert hasattr(result, "retrieval_snapshot_id")
+    assert hasattr(result, "blocked_context_sources")
+    assert hasattr(result, "context_hash")
+    assert hasattr(result, "warnings")
+
+
 def test_risk_knowledge_service_returns_refusal_without_calling_synthesizer() -> None:
     from app.risk_knowledge.service.risk_knowledge_service import RiskKnowledgeService
     from app.risk_knowledge.service.schemas import RiskKnowledgeQuery, RouteDecision
@@ -206,6 +297,10 @@ def test_risk_knowledge_service_returns_refusal_without_calling_synthesizer() ->
     assert result.should_answer is False
     assert result.refusal_reason == "below_min_score"
     assert synthesizer_called["value"] is False
+    assert result.grounding_status == "insufficient_evidence"
+    assert result.blocked_context_sources
+    assert result.context_hash
+    assert hasattr(result, "warnings")
 
 
 def test_risk_knowledge_service_answer_with_trace_preserves_core_answer_output() -> None:

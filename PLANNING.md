@@ -25,6 +25,22 @@
   - no SSE / WebSocket
   - no Celery / RQ / Kafka
 
+## 2026-07-04 PR-A Risk QA Production Gate
+
+- new contract artifact:
+  - `docs/specs/risk-qa-production-gate-contract.md`
+- new execution plan:
+  - `docs/plans/pre-m3-risk-qa-production-gate-plan.md`
+- acceptance review:
+  - `docs/reviews/pre-m3-risk-qa-production-gate-acceptance-review.md`
+- current state:
+  - `PR-A Risk QA + Context Isolation + Evidence/Citation Production Gate implemented; pending final acceptance`
+- intended outcome:
+  - keep `risk_knowledge_answer` as the public route
+  - keep `RiskKnowledgeService` as the public facade
+  - add internal QA pipeline, context isolation, fail-closed citation validation, and insufficient-evidence refusal
+  - preserve Data Agent / Data Knowledge public contracts without mixing Data/Risk RAG responsibilities
+
 ## 2026-07-02 M2D-14C Acceptance & M2D-15A Planning
 
 - historical note:
