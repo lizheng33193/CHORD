@@ -191,6 +191,13 @@ class TestComprehensiveDecisionEngine:
         result = self.engine.decide(self.feature, self.upstream, self.context)
         m = result["metrics"]
         assert "segment" in m
+        assert "segment_name" in m
+        assert "overall_risk" in m
+        assert "overall_value" in m
+        assert "confidence" in m
+        assert "data_completeness" in m
+        assert "behavior_tags" in m
+        assert "financial_tags" in m
         assert "risk_level" in m
         assert "value_signal_level" in m
         assert "confidence_level" in m
@@ -367,6 +374,19 @@ class TestComprehensivePageAssembler:
         assert "metrics" in fb
         assert "summary" in fb
         assert "tags" in fb
+        for field in (
+            "segment",
+            "segment_name",
+            "overall_risk",
+            "overall_value",
+            "confidence",
+            "data_completeness",
+            "behavior_tags",
+            "financial_tags",
+        ):
+            assert field in fb
+            assert field in fb["metrics"]
+            assert fb[field] == fb["metrics"][field]
 
     def test_assemble_merges_llm_text(self) -> None:
         fb = self.assembler.build_fallback_structured(

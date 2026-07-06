@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.country_packs.mx.segments import MX_SEGMENT_NAMES
 from app.runtime_skills.comprehensive.contracts import (
     ComprehensiveDecisionResult,
     ComprehensiveFeatureBundle,
@@ -52,7 +53,16 @@ class ComprehensiveDecisionEngine:
             app_structured, behavior_structured, credit_structured,
         )
         flat_metrics = self._flatten_metrics(
-            feature_bundle, segment, risk, value, confidence, conflicts,
+            feature_bundle,
+            upstream,
+            segment,
+            risk,
+            value,
+            confidence,
+            conflicts,
+            app_structured,
+            behavior_structured,
+            credit_structured,
         )
 
         return ComprehensiveDecisionResult(
@@ -262,14 +272,32 @@ class ComprehensiveDecisionEngine:
     @staticmethod
     def _flatten_metrics(
         feature_bundle: ComprehensiveFeatureBundle,
+        upstream: ComprehensiveUpstreamBundle,
         segment: str,
         risk: str,
         value: str,
         confidence: str,
         conflicts: list[str],
+        app_structured: dict[str, Any],
+        behavior_structured: dict[str, Any],
+        credit_structured: dict[str, Any],
     ) -> dict[str, Any]:
+        segment_name = MX_SEGMENT_NAMES.get(segment, segment)
+        behavior_tags = ComprehensiveDecisionEngine._build_behavior_tags(behavior_structured)
+        financial_tags = ComprehensiveDecisionEngine._build_financial_tags(
+            app_structured,
+            credit_structured,
+        )
+        data_completeness = ComprehensiveDecisionEngine._build_data_completeness(upstream)
         return {
             "segment": segment,
+            "segment_name": segment_name,
+            "overall_risk": risk,
+            "overall_value": value,
+            "confidence": confidence,
+            "data_completeness": data_completeness,
+            "behavior_tags": behavior_tags,
+            "financial_tags": financial_tags,
             "risk_level": risk,
             "value_signal_level": value,
             "confidence_level": confidence,
@@ -280,4 +308,101 @@ class ComprehensiveDecisionEngine:
             },
             "conflict_count": len(conflicts),
             "conflict_explanations": list(conflicts),
+        }
+
+    @staticmethod
+    def _build_data_completeness(upstream: ComprehensiveUpstreamBundle) -> dict[str, str]:
+        status_map = {
+            "app": ComprehensiveDecisionEngine._normalize_module_availability(upstream["app_status"]),
+            "behavior": ComprehensiveDecisionEngine._normalize_module_availability(upstream["behavior_status"]),
+            "credit": ComprehensiveDecisionEngine._normalize_module_availability(upstream["credit_status"]),
+        }
+        available_count = sum(1 for status in status_map.values() if status == "available")
+        if available_count == 3:
+            overall = "complete"
+        elif available_count == 0:
+            overall = "insufficient"
+        else:
+            overall = "partial"
+        return {
+            **status_map,
+            "overall": overall,
+        }
+
+    @staticmethod
+    def _normalize_module_availability(status: str) -> str:
+        if status == "ok":
+            return "available"
+        if status == "degraded":
+            return "degraded"
+        return "missing"
+
+    @staticmethod
+    def _build_behavior_tags(behavior_structured: dict[str, Any]) -> dict[str, Any]:
+        metrics = (
+            behavior_structured.get("metrics", {})
+            if isinstance(behavior_structured.get("metrics"), dict)
+            else {}
+        )
+        contact_preference = (
+            behavior_structured.get("contact_preference", {})
+            if isinstance(behavior_structured.get("contact_preference"), dict)
+            else {}
+        )
+        evidence = (
+            behavior_structured.get("evidence", {})
+            if isinstance(behavior_structured.get("evidence"), dict)
+            else {}
+        )
+        evidence_contact = (
+            evidence.get("contact_preference", {})
+            if isinstance(evidence.get("contact_preference"), dict)
+            else {}
+        )
+        return {
+            "churn_risk": str(
+                behavior_structured.get("churn_risk_level")
+                or metrics.get("churn_risk_level")
+                or ""
+            ),
+            "best_contact_channel": str(
+                contact_preference.get("best_channel")
+                or evidence_contact.get("best_channel")
+                or ""
+            ),
+            "best_contact_time": str(
+                contact_preference.get("best_time")
+                or evidence_contact.get("best_time")
+                or ""
+            ),
+            "product_activity": str(behavior_structured.get("engagement_level") or ""),
+        }
+
+    @staticmethod
+    def _build_financial_tags(
+        app_structured: dict[str, Any],
+        credit_structured: dict[str, Any],
+    ) -> dict[str, Any]:
+        app_metrics = (
+            app_structured.get("metrics", {})
+            if isinstance(app_structured.get("metrics"), dict)
+            else {}
+        )
+        credit_metrics = (
+            credit_structured.get("metrics", {})
+            if isinstance(credit_structured.get("metrics"), dict)
+            else {}
+        )
+        return {
+            "multi_head_risk": str(app_metrics.get("multi_loan_risk_level") or ""),
+            "debt_pressure": str(
+                credit_structured.get("debt_pressure_level")
+                or credit_metrics.get("debt_pressure_level")
+                or ""
+            ),
+            "borrowing_urgency": str(
+                credit_structured.get("borrowing_urgency_level")
+                or credit_metrics.get("borrowing_urgency_level")
+                or ""
+            ),
         }

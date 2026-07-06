@@ -30,5 +30,7 @@ class OpsAdviceStructuredResult(BaseModel):
     retention_offer: dict[str, Any] = Field(default_factory=dict)
     churn_root_cause: list[str] = Field(default_factory=list)
     tags: list[str] = Field(default_factory=list)
+    missing_comprehensive_advice_fields: list[str] = Field(default_factory=list)
+    used_default_advice_inputs: bool = False
     explanation: dict[str, Any] = Field(default_factory=dict)
     model_trace: ModelTrace = Field(default_factory=ModelTrace)

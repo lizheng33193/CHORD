@@ -35,6 +35,10 @@ class OpsAdvicePageAssembler:
         structured = OpsAdviceStructuredResult(
             uid=uid, status="data_missing", segment="", segment_name="",
             tags=["数据不足", "建议人工复核"],
+            missing_comprehensive_advice_fields=list(
+                upstream.get("missing_comprehensive_advice_fields", [])
+            ),
+            used_default_advice_inputs=bool(upstream.get("used_default_advice_inputs", False)),
             model_trace={
                 "mode": self.model_client.mode, "used_llm": False,
                 "model_name": self.model_client.model_name,
@@ -51,6 +55,7 @@ class OpsAdvicePageAssembler:
     def build_fallback_structured(
         self,
         uid: str,
+        upstream: OpsAdviceUpstreamBundle,
         feature_bundle: OpsAdviceFeatureBundle,
         decision_result: OpsAdviceDecisionResult,
     ) -> dict[str, Any]:
@@ -64,9 +69,14 @@ class OpsAdvicePageAssembler:
             retention_offer=decision_result.get("retention_offer", {}),
             churn_root_cause=list(feature_bundle.get("churn_root_cause", [])),
             tags=list(decision_result.get("tags", [])),
+            missing_comprehensive_advice_fields=list(
+                upstream.get("missing_comprehensive_advice_fields", [])
+            ),
+            used_default_advice_inputs=bool(upstream.get("used_default_advice_inputs", False)),
             model_trace={
                 "mode": self.model_client.mode, "used_llm": False,
-                "model_name": self.model_client.model_name, "fallback_reason": "",
+                "model_name": self.model_client.model_name,
+                "fallback_reason": self._contract_fallback_reason(upstream),
             },
         )
         return model_dump_compat(structured)
@@ -82,11 +92,17 @@ class OpsAdvicePageAssembler:
         if explanation_result.get("used_llm") and isinstance(payload, dict):
             structured["explanation"] = payload
 
+        existing_reason = str(
+            ((structured.get("model_trace") or {}).get("fallback_reason"))
+            if isinstance(structured.get("model_trace"), dict)
+            else ""
+        )
+        explanation_reason = str(explanation_result.get("fallback_reason", ""))
         structured["model_trace"] = {
             "mode": self.model_client.mode,
             "used_llm": bool(explanation_result.get("used_llm")),
             "model_name": str(explanation_result.get("model_name", self.model_client.model_name) or ""),
-            "fallback_reason": str(explanation_result.get("fallback_reason", "")),
+            "fallback_reason": self._merge_fallback_reasons(existing_reason, explanation_reason),
         }
         validated = model_dump_compat(model_validate_compat(OpsAdviceStructuredResult, structured))
         summary = self._build_summary(validated, payload)
@@ -132,3 +148,15 @@ class OpsAdvicePageAssembler:
             for s in explanation.get("outreach_script", []):
                 lines.append(f"- {s}")
         return "\n".join(lines)
+
+    @staticmethod
+    def _contract_fallback_reason(upstream: OpsAdviceUpstreamBundle) -> str:
+        missing = list(upstream.get("missing_comprehensive_advice_fields", []))
+        if not missing:
+            return ""
+        return f"missing_comprehensive_advice_fields:{','.join(missing)}"
+
+    @staticmethod
+    def _merge_fallback_reasons(existing: str, new: str) -> str:
+        reasons = [reason for reason in (existing.strip(), new.strip()) if reason]
+        return "; ".join(dict.fromkeys(reasons))

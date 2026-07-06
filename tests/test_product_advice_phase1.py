@@ -16,6 +16,20 @@ def _comp_result(segment="S2", overall_risk="中低", overall_value="中高", ch
         "structured_result": {
             "uid": "U1",
             "status": status,
+            "segment": segment,
+            "segment_name": "稳健经营客",
+            "overall_risk": overall_risk,
+            "overall_value": overall_value,
+            "behavior_tags": {"churn_risk": churn, "best_contact_channel": "WhatsApp",
+                              "best_contact_time": "晚间19-21点", "product_activity": "★★★★☆"},
+            "financial_tags": {"multi_head_risk": "中", "debt_pressure": "中", "borrowing_urgency": "高"},
+            "confidence": "高",
+            "data_completeness": {
+                "app": "available",
+                "behavior": "available",
+                "credit": "available",
+                "overall": "complete",
+            },
             "metrics": {
                 "recommended_segment": segment,
                 "segment_name": "稳健经营客",
@@ -25,7 +39,12 @@ def _comp_result(segment="S2", overall_risk="中低", overall_value="中高", ch
                                   "best_contact_time": "晚间19-21点", "product_activity": "★★★★☆"},
                 "financial_tags": {"multi_head_risk": "中", "debt_pressure": "中", "borrowing_urgency": "高"},
                 "confidence": "高",
-                "data_completeness": {"skill1_available": True, "skill2_available": True, "skill3_available": True},
+                "data_completeness": {
+                    "app": "available",
+                    "behavior": "available",
+                    "credit": "available",
+                    "overall": "complete",
+                },
             },
         },
     }
@@ -38,6 +57,28 @@ class ProductAdviceDataAccessTests(unittest.TestCase):
         self.assertEqual(bundle["data_status"], "ok")
         self.assertEqual(bundle["segment"], "S2")
         self.assertEqual(bundle["behavior_tags"]["churn_risk"], "低")
+        self.assertEqual(bundle["missing_comprehensive_advice_fields"], [])
+        self.assertFalse(bundle["used_default_advice_inputs"])
+
+    def test_fetch_keeps_metrics_compatibility_when_top_level_missing(self):
+        ctx = build_product_advice_run_context("U1")
+        comp = _comp_result()
+        sr = comp["structured_result"]
+        for field in (
+            "segment",
+            "segment_name",
+            "overall_risk",
+            "overall_value",
+            "behavior_tags",
+            "financial_tags",
+            "confidence",
+            "data_completeness",
+        ):
+            sr.pop(field, None)
+        bundle = ProductAdviceUpstreamProvider().fetch("U1", ctx, comprehensive_result=comp)
+        self.assertEqual(bundle["data_status"], "ok")
+        self.assertEqual(bundle["missing_comprehensive_advice_fields"], [])
+        self.assertFalse(bundle["used_default_advice_inputs"])
 
     def test_fetch_missing_when_empty(self):
         ctx = build_product_advice_run_context("U1")
@@ -130,6 +171,8 @@ class ProductAdviceSkillTests(unittest.TestCase):
         self.assertEqual(sr["segment"], "S2")
         self.assertEqual(sr["renewal_strategy"]["action"], "续贷优惠")
         self.assertIn("S2", sr["tags"])
+        self.assertEqual(sr["missing_comprehensive_advice_fields"], [])
+        self.assertFalse(sr["used_default_advice_inputs"])
         self.assertEqual(out["charts"], [])
         self.assertTrue(out["report_markdown"].startswith("## "))
         from app.schemas.final_response import AgentOutput
@@ -156,3 +199,14 @@ class ProductAdviceSkillTests(unittest.TestCase):
         self.assertEqual(mt["mode"], "mock")
         self.assertFalse(mt["used_llm"])
         self.assertEqual(mt["fallback_reason"], "model_mode_mock")
+
+    def test_model_trace_appends_contract_warning_without_overwriting_mock_reason(self):
+        comp = _comp_result()
+        comp["structured_result"].pop("confidence", None)
+        comp["structured_result"]["metrics"].pop("confidence", None)
+        out = self.skill.analyze("U1", comprehensive_profile_result=comp)
+        sr = out["structured_result"]
+        self.assertEqual(sr["missing_comprehensive_advice_fields"], ["confidence"])
+        self.assertTrue(sr["used_default_advice_inputs"])
+        self.assertIn("missing_comprehensive_advice_fields:confidence", sr["model_trace"]["fallback_reason"])
+        self.assertIn("model_mode_mock", sr["model_trace"]["fallback_reason"])

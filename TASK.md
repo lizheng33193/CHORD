@@ -367,7 +367,26 @@
     - 未修改 legacy event compatibility bridge
     - 未修改 public API response shape
   - 下一步：
-    - `M3-2` 保持 not started
+    - `M3-2` 当前按 legacy runtime implemented / not M3-certified 追踪
+
+- [x] M3 Minimum Closure Before M4 — implemented（2026-07-06）
+  - review:
+    - `docs/reviews/m3-minimum-closure-before-m4.md`
+  - 本阶段产出：
+    - `comprehensive` 稳定 top-level advice contract + metrics mirror
+    - `product_advice` / `ops_advice` 显式 fallback diagnostics
+    - `app/services/profile_dag/memory_snapshot.py`
+    - `tests/test_profile_dag_comprehensive_to_advice_contract.py`
+    - `tests/test_profile_memory_snapshot.py`
+  - 本阶段结果：
+    - `M3-1` 保持 completed
+    - `M3-2` 按 implemented but not M3-certified 口径记录
+    - whole `M3` remains deferred
+    - `M4` may start only through `ProfileMemorySnapshot` + memory-isolation constraints
+  - 明确不代表：
+    - 不代表 `M3 completed`
+    - 不代表 `M3-3 / M3-4 / M3-5 / M3-6 / M3-7 completed`
+    - 不代表已接入 `M4` persistence / retrieval / promotion
 
 
 - [x] M2B-9.1：Hybrid Enabled Rollout Observability & Acceptance — 已完成（2026-06-29）
