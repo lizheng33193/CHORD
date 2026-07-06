@@ -388,7 +388,7 @@
     - 不代表 `M3-3 / M3-4 / M3-5 / M3-6 / M3-7 completed`
     - 不代表已接入 `M4` persistence / retrieval / promotion
 
-- [x] M4-1 Memory Type & Isolation Contract — implemented / pending acceptance（2026-07-06）
+- [x] M4-1 Memory Type & Isolation Contract — completed（2026-07-06）
   - docs:
     - `docs/specs/m4-1-memory-type-isolation-contract.md`
     - `docs/plans/m4-1-memory-type-isolation-contract-plan.md`
@@ -401,15 +401,40 @@
     - candidate adapters for `ProfileMemorySnapshot`, Risk QA answers, approved SQL, and failed SQL
     - `ProfileMemorySnapshot` terminology unified to `MemoryUsePurpose.value`
   - current status:
-    - `M4-1 Memory Type & Isolation Contract: implemented / pending acceptance`
+    - `M4-1 Memory Type & Isolation Contract: completed`
     - `M4 full completion: not completed`
-    - `M4-2 Memory Write Gate & Store Metadata: next`
+    - `M4-2 Memory Write Gate & Store Metadata: implemented / pending acceptance`
   - explicit non-goals:
     - no persistence / retrieval / promotion
     - no SQLite schema migration
     - no vector memory
     - no dashboard
     - no automatic prompt injection
+
+- [x] M4-2 Memory Write Gate & Store Metadata — implemented / pending acceptance（2026-07-06）
+  - docs:
+    - `docs/specs/m4-2-memory-write-gate-store-metadata.md`
+    - `docs/plans/m4-2-memory-write-gate-store-metadata-plan.md`
+    - `docs/reviews/m4-2-memory-write-gate-store-metadata-review.md`
+  - implementation:
+    - `MemoryWriteStatus` / `MemoryWriteRejectReason`
+    - `MemoryWriteDecision` / `MemoryRecordDraft`
+    - deterministic content normalization + dedupe-key generation
+    - narrow hard-secret rejection before write persistence
+    - `MemoryWriteGate.evaluate(...)` / `write(...)`
+    - `InMemoryMemoryStoreAdapter`
+    - isolated `SQLiteV1MemoryStoreAdapter`
+  - current status:
+    - `M4-1 Memory Type & Isolation Contract: completed`
+    - `M4-2 Memory Write Gate & Store Metadata: implemented / pending acceptance`
+    - `M4 full completion: not completed`
+    - `M4-3 Memory Retrieval Boundary & Context Injection: next`
+  - explicit non-goals:
+    - no retrieval / context injection / promotion
+    - no vector memory
+    - no dashboard
+    - no orchestrator auto-write integration
+    - no whole-`M4` completion
 
 
 - [x] M2B-9.1：Hybrid Enabled Rollout Observability & Acceptance — 已完成（2026-06-29）
