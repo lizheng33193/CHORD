@@ -378,6 +378,66 @@
   - `M4` must not consume raw profile internals
   - `profile_result` memory must not be promoted into Data / Risk / SQL / policy authority paths
 
+## 2026-07-06 M4-1 Memory Type & Isolation Contract
+
+- contract spec:
+  - `docs/specs/m4-1-memory-type-isolation-contract.md`
+- execution plan:
+  - `docs/plans/m4-1-memory-type-isolation-contract-plan.md`
+- review artifact:
+  - `docs/reviews/m4-1-memory-type-isolation-contract-review.md`
+- current state:
+  - `M4-1 Memory Type & Isolation Contract: completed`
+  - `M4 full completion: not completed`
+  - `M4-2 Memory Write Gate & Store Metadata: implemented / pending acceptance`
+- implementation boundary:
+  - add `app/services/memory/` as the dedicated M4 contract layer
+  - keep `app/services/orchestrator_agent/memory_*` SQLite v1 chat memory unchanged
+  - keep `ProfileMemorySnapshot` as the only approved M4-facing profile artifact
+- landed behavior:
+  - unified `MemorySourceType`, `MemoryAuthorityLevel`, and `MemoryUsePurpose`
+  - deterministic allowed / forbidden memory-use policy by source type
+  - `validate_memory_use(...)` isolation gate with explicit block codes
+  - adapters for profile snapshot, Risk QA answer, approved SQL, and failed SQL candidates
+  - `ProfileMemorySnapshot` now emits `MemoryUsePurpose.value` strings rather than free-form memory-use labels
+- explicit non-goals:
+  - no persistence or SQLite schema migration
+  - no retrieval / ranking / vector memory
+  - no prompt injection or automatic long-term writes
+  - no dashboard or whole-M4 completion
+
+## 2026-07-06 M4-2 Memory Write Gate & Store Metadata
+
+- contract spec:
+  - `docs/specs/m4-2-memory-write-gate-store-metadata.md`
+- execution plan:
+  - `docs/plans/m4-2-memory-write-gate-store-metadata-plan.md`
+- review artifact:
+  - `docs/reviews/m4-2-memory-write-gate-store-metadata-review.md`
+- current state:
+  - `M4-1 Memory Type & Isolation Contract: completed`
+  - `M4-2 Memory Write Gate & Store Metadata: implemented / pending acceptance`
+  - `M4 full completion: not completed`
+  - `M4-3 Memory Retrieval Boundary & Context Injection: next`
+- implementation boundary:
+  - add write governance under `app/services/memory/`
+  - keep existing `app/services/orchestrator_agent/memory_*` auto-write behavior unchanged
+  - persist M4 truth in `metadata_json` rather than legacy SQLite schema changes
+- landed behavior:
+  - `MemoryWriteStatus`, `MemoryWriteRejectReason`, `MemoryWriteDecision`, and `MemoryRecordDraft`
+  - deterministic dedupe for `MemoryCandidate`
+  - narrow hard-secret rejection before write persistence
+  - `MemoryWriteGate.evaluate(...)` and `MemoryWriteGate.write(...)` with explicit deferred semantics
+  - `InMemoryMemoryStoreAdapter` for focused duplicate tests
+  - isolated `SQLiteV1MemoryStoreAdapter` for metadata persistence compatibility checks
+- explicit non-goals:
+  - no retrieval or context injection
+  - no vector memory
+  - no promotion
+  - no dashboard
+  - no orchestrator auto-write integration
+  - no whole-M4 completion
+
 ## 2026-06-30 M2C Status Reconciliation
 
 - 新增状态校准 review：

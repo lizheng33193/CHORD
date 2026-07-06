@@ -49,7 +49,7 @@ This closure does not complete `M3`.
 
 ## 6. Explicit Forbidden Promotions
 
-- `profile_result` memory must not become Data Knowledge authority
+- `profile_result` memory must not become Risk Knowledge source-document authority
 - `profile_result` memory must not become Risk Knowledge document evidence
 - `profile_result` memory must not ground SQL generation
 - `profile_result` memory must not become approved strategy or policy truth
