@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from app.services.memory.contracts import MemoryUsePurpose
 from app.services.profile_dag.contracts import ProfileNodeRun, ProfileRun, ProfileRunResultSnapshot, utcnow
 from app.services.profile_dag.memory_snapshot import build_profile_memory_snapshot
 
@@ -123,17 +124,19 @@ def test_build_profile_memory_snapshot_uses_stable_fields_and_boundaries():
     assert memory_snapshot["memory_source_type"] == "profile_result"
     assert memory_snapshot["authority_level"] == "system_generated"
     assert memory_snapshot["allowed_memory_use"] == [
-        "profile_result_recall",
-        "profile_followup_context",
-        "user_profile_history",
+        MemoryUsePurpose.PROFILE_RESULT_RECALL.value,
+        MemoryUsePurpose.PROFILE_FOLLOWUP_CONTEXT.value,
+        MemoryUsePurpose.USER_PROFILE_HISTORY.value,
     ]
     assert memory_snapshot["forbidden_memory_use"] == [
-        "data_agent_field_grounding",
-        "data_knowledge_authority",
-        "risk_knowledge_document_evidence",
-        "approved_strategy_policy",
-        "sql_generation_grounding",
+        MemoryUsePurpose.DATA_AGENT_FIELD_GROUNDING.value,
+        MemoryUsePurpose.RISK_KNOWLEDGE_DOCUMENT_EVIDENCE.value,
+        MemoryUsePurpose.RISK_KNOWLEDGE_SOURCE_DOCUMENT.value,
+        MemoryUsePurpose.APPROVED_STRATEGY_POLICY.value,
+        MemoryUsePurpose.SQL_GENERATION_GROUNDING.value,
     ]
+    assert all(isinstance(use, str) for use in memory_snapshot["allowed_memory_use"])
+    assert all(isinstance(use, str) for use in memory_snapshot["forbidden_memory_use"])
     assert memory_snapshot["evidence_status"] == "risk_domain_not_integrated"
 
 

@@ -388,6 +388,29 @@
     - 不代表 `M3-3 / M3-4 / M3-5 / M3-6 / M3-7 completed`
     - 不代表已接入 `M4` persistence / retrieval / promotion
 
+- [x] M4-1 Memory Type & Isolation Contract — implemented / pending acceptance（2026-07-06）
+  - docs:
+    - `docs/specs/m4-1-memory-type-isolation-contract.md`
+    - `docs/plans/m4-1-memory-type-isolation-contract-plan.md`
+    - `docs/reviews/m4-1-memory-type-isolation-contract-review.md`
+  - implementation:
+    - new `app/services/memory/` contract layer
+    - `MemorySourceType` / `MemoryAuthorityLevel` / `MemoryUsePurpose`
+    - `MemoryCandidate` / `MemoryUseDecision`
+    - default policy + deterministic isolation validator
+    - candidate adapters for `ProfileMemorySnapshot`, Risk QA answers, approved SQL, and failed SQL
+    - `ProfileMemorySnapshot` terminology unified to `MemoryUsePurpose.value`
+  - current status:
+    - `M4-1 Memory Type & Isolation Contract: implemented / pending acceptance`
+    - `M4 full completion: not completed`
+    - `M4-2 Memory Write Gate & Store Metadata: next`
+  - explicit non-goals:
+    - no persistence / retrieval / promotion
+    - no SQLite schema migration
+    - no vector memory
+    - no dashboard
+    - no automatic prompt injection
+
 
 - [x] M2B-9.1：Hybrid Enabled Rollout Observability & Acceptance — 已完成（2026-06-29）
   - runbook / matrix / examples / checklist / review：

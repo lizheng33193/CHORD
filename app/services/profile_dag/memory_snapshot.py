@@ -6,22 +6,16 @@ from datetime import datetime, timezone
 from typing import Any, Literal, TypedDict
 
 from app.services.label_builder import build_standardized_labels
+from app.services.memory.policy import (
+    PROFILE_RESULT_ALLOWED,
+    PROFILE_RESULT_FORBIDDEN,
+    memory_use_values,
+)
 from app.services.profile_dag.contracts import ProfileRun, ProfileRunResultSnapshot
 
 
-ALLOWED_MEMORY_USE = [
-    "profile_result_recall",
-    "profile_followup_context",
-    "user_profile_history",
-]
-
-FORBIDDEN_MEMORY_USE = [
-    "data_agent_field_grounding",
-    "data_knowledge_authority",
-    "risk_knowledge_document_evidence",
-    "approved_strategy_policy",
-    "sql_generation_grounding",
-]
+ALLOWED_MEMORY_USE = memory_use_values(PROFILE_RESULT_ALLOWED)
+FORBIDDEN_MEMORY_USE = memory_use_values(PROFILE_RESULT_FORBIDDEN)
 
 
 class ProfileMemorySnapshot(TypedDict):
