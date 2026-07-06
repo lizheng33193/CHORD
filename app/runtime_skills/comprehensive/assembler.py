@@ -4,6 +4,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.core.model_client import ModelClient
+from app.country_packs.mx.segments import MX_SEGMENT_NAMES
 from app.runtime_skills.comprehensive.contracts import (
     ComprehensiveDecisionResult,
     ComprehensiveExplanationResult,
@@ -34,9 +35,38 @@ class ComprehensivePageAssembler:
         structured = {
             "uid": uid,
             "status": "data_missing",
+            "summary": "No upstream profile data was available for comprehensive analysis.",
             "persona": "unknown",
             "upstream_summaries": {},
-            "metrics": {"dimension_scores": {"app": 0, "behavior": 0, "credit": 0}},
+            "segment": "",
+            "segment_name": "",
+            "overall_risk": "",
+            "overall_value": "",
+            "confidence": "",
+            "data_completeness": {
+                "app": self._availability_from_upstream(upstream["app_status"]),
+                "behavior": self._availability_from_upstream(upstream["behavior_status"]),
+                "credit": self._availability_from_upstream(upstream["credit_status"]),
+                "overall": "insufficient",
+            },
+            "behavior_tags": {},
+            "financial_tags": {},
+            "metrics": {
+                "dimension_scores": {"app": 0, "behavior": 0, "credit": 0},
+                "segment": "",
+                "segment_name": "",
+                "overall_risk": "",
+                "overall_value": "",
+                "confidence": "",
+                "data_completeness": {
+                    "app": self._availability_from_upstream(upstream["app_status"]),
+                    "behavior": self._availability_from_upstream(upstream["behavior_status"]),
+                    "credit": self._availability_from_upstream(upstream["credit_status"]),
+                    "overall": "insufficient",
+                },
+                "behavior_tags": {},
+                "financial_tags": {},
+            },
             "tags": ["upstream-data-missing"],
             "model_trace": {
                 "mode": self.model_client.mode,
@@ -62,14 +92,30 @@ class ComprehensivePageAssembler:
         decision_result: ComprehensiveDecisionResult,
     ) -> dict[str, Any]:
         summary = self._fallback_summary(decision_result)
+        metrics = dict(decision_result["metrics"])
+        segment = str(metrics.get("segment") or decision_result["segment"])
         return {
             "uid": uid,
             "status": "ok",
-            "persona": decision_result["persona_seed"],
-            "upstream_summaries": dict(feature_bundle["upstream_summaries"]),
-            "metrics": dict(decision_result["metrics"]),
-            "tags": list(decision_result["tags_rule"]),
             "summary": summary,
+            "persona": decision_result["persona_seed"],
+            "segment": segment,
+            "segment_name": str(metrics.get("segment_name") or MX_SEGMENT_NAMES.get(segment, segment)),
+            "overall_risk": str(metrics.get("overall_risk") or ""),
+            "overall_value": str(metrics.get("overall_value") or ""),
+            "confidence": str(metrics.get("confidence") or ""),
+            "data_completeness": dict(metrics.get("data_completeness", {}))
+            if isinstance(metrics.get("data_completeness"), dict)
+            else {},
+            "behavior_tags": dict(metrics.get("behavior_tags", {}))
+            if isinstance(metrics.get("behavior_tags"), dict)
+            else {},
+            "financial_tags": dict(metrics.get("financial_tags", {}))
+            if isinstance(metrics.get("financial_tags"), dict)
+            else {},
+            "upstream_summaries": dict(feature_bundle["upstream_summaries"]),
+            "metrics": metrics,
+            "tags": list(decision_result["tags_rule"]),
             "model_trace": {
                 "mode": self.model_client.mode,
                 "used_llm": False,
@@ -152,3 +198,11 @@ class ComprehensivePageAssembler:
     @staticmethod
     def _validate_against_schema(structured: dict[str, Any]) -> None:
         model_validate_compat(ComprehensiveProfileStructuredResult, structured)
+
+    @staticmethod
+    def _availability_from_upstream(status: str) -> str:
+        if status == "ok":
+            return "available"
+        if status == "degraded":
+            return "degraded"
+        return "missing"

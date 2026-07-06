@@ -26,6 +26,8 @@ class OpsAdviceUpstreamBundle(TypedDict):
     financial_tags: dict[str, Any]
     confidence: str
     data_completeness: dict[str, Any]
+    missing_comprehensive_advice_fields: list[str]
+    used_default_advice_inputs: bool
     raw: dict[str, Any]
 
 

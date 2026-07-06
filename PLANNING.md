@@ -357,7 +357,26 @@
   - frontend contract blocker 已通过最小 `ChatPanel.jsx` 修复关闭
   - `compileall`、targeted acceptance suite、`git diff --check`、full regression `AUTH_ENABLED=0 pytest -q` 已通过
   - `M3-1` 已完成，且 closure 未修改 `ProfileDagExecutor`、`analyze_module` 依赖闭包、legacy compatibility bridge 或 public API shape
-  - `M3-2` 仍未启动；后续可在独立阶段进入 UI/SSE runtime alignment
+  - `M3-2` 当前应理解为 legacy runtime implemented，但尚未达到 `M3-certified`
+
+## 2026-07-06 M3 Minimum Closure Before M4
+
+- review artifact:
+  - `docs/reviews/m3-minimum-closure-before-m4.md`
+- current state:
+  - `M3-1 Profile DAG Runtime Skeleton: completed`
+  - `M3-2 Core Profile Skills: legacy runtime implemented; not M3-certified`
+  - `M3 full completion: deferred`
+  - `M4 Unified Memory & Memory Isolation: may start only through ProfileMemorySnapshot and memory-isolation constraints`
+- minimum fixes landed:
+  - `comprehensive` now emits stable top-level advice fields and mirrors them in `structured_result.metrics`
+  - `product_advice` / `ops_advice` now consume the real comprehensive contract and expose explicit fallback diagnostics
+  - `app/services/profile_dag/memory_snapshot.py` now defines a stable M4-facing `ProfileMemorySnapshot` helper
+- explicit guardrail:
+  - this closure does not complete `M3`
+  - `M3-3 / M3-4 / M3-5 / M3-6 / M3-7` remain deferred
+  - `M4` must not consume raw profile internals
+  - `profile_result` memory must not be promoted into Data / Risk / SQL / policy authority paths
 
 ## 2026-06-30 M2C Status Reconciliation
 

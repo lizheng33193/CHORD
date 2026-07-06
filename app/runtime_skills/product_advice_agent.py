@@ -43,7 +43,12 @@ class ProductAdviceSkill(BaseSkill):
         feature_bundle = self.feature_builder.build(upstream, context)
         decision_result = self.decision_engine.decide(feature_bundle, context)
         prompt_payload = self.decision_engine.build_prompt_payload(feature_bundle, decision_result)
-        fallback_structured = self.assembler.build_fallback_structured(uid, feature_bundle, decision_result)
+        fallback_structured = self.assembler.build_fallback_structured(
+            uid,
+            upstream,
+            feature_bundle,
+            decision_result,
+        )
         explanation_result = self.explainer.explain(
             uid, feature_bundle, decision_result, prompt_payload, context,
         )

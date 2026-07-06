@@ -8,6 +8,10 @@ from app.services.profile_dag.contracts import (
     ProfileRunResultSnapshot,
 )
 from app.services.profile_dag.executor import ProfileDagExecutor
+from app.services.profile_dag.memory_snapshot import (
+    ProfileMemorySnapshot,
+    build_profile_memory_snapshot,
+)
 from app.services.profile_dag.node_registry import (
     NODE_KEY_TO_SPEC,
     PROFILE_NODE_SPECS,
@@ -24,6 +28,8 @@ __all__ = [
     "ProfileNodeEvent",
     "ProfileNodeRun",
     "ProfileNodeSpec",
+    "ProfileMemorySnapshot",
     "ProfileRun",
     "ProfileRunResultSnapshot",
+    "build_profile_memory_snapshot",
 ]

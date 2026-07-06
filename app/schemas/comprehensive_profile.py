@@ -22,7 +22,16 @@ class ComprehensiveProfileStructuredResult(BaseModel):
     agent_name: str = "comprehensive_profile_agent"
     uid: str
     status: str = "ok"
+    summary: str = ""
     persona: str = "unknown"
+    segment: str = ""
+    segment_name: str = ""
+    overall_risk: str = ""
+    overall_value: str = ""
+    confidence: str = ""
+    data_completeness: dict[str, Any] = Field(default_factory=dict)
+    behavior_tags: dict[str, Any] = Field(default_factory=dict)
+    financial_tags: dict[str, Any] = Field(default_factory=dict)
     upstream_summaries: dict[str, Any] = Field(default_factory=dict)
     metrics: dict[str, Any] = Field(default_factory=dict)
     tags: list[str] = Field(default_factory=list)
