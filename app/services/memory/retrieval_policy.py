@@ -193,7 +193,7 @@ def resolve_retrieval_policies(task_type: MemoryRetrievalTaskType) -> tuple[Memo
                 MemoryUsePurpose.EVAL_CANDIDATE,
                 (
                     MemoryAuthorityLevel.EVIDENCE_GROUNDED,
-                    MemoryAuthorityLevel.UNVERIFIED,
+                    MemoryAuthorityLevel.HUMAN_APPROVED,
                 ),
                 max_items=20,
             ),
@@ -217,4 +217,3 @@ def _policy(
         min_authority_levels=min_authority_levels,
         max_items=max_items,
     )
-

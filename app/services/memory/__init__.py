@@ -27,6 +27,16 @@ from app.services.memory.policy import (
     USER_PREFERENCE_ALLOWED,
     USER_PREFERENCE_FORBIDDEN,
 )
+from app.services.memory.promotion import (
+    MemoryPromotionBlockReason,
+    MemoryPromotionDecision,
+    MemoryPromotionRequest,
+    MemoryPromotionStatus,
+    MemoryPromotionTarget,
+    promotion_request_from_candidate,
+    promotion_request_from_retrieved_item,
+    validate_memory_promotion,
+)
 from app.services.memory.records import (
     MemoryRecordDraft,
     MemoryWriteDecision,
@@ -81,6 +91,11 @@ __all__ = [
     "MemoryRecordDraft",
     "MemoryAuthorityLevel",
     "MemoryCandidate",
+    "MemoryPromotionBlockReason",
+    "MemoryPromotionDecision",
+    "MemoryPromotionRequest",
+    "MemoryPromotionStatus",
+    "MemoryPromotionTarget",
     "MemoryRedactionResult",
     "MemoryRejectedRetrievalItem",
     "MemoryRetrievalPolicy",
@@ -101,6 +116,8 @@ __all__ = [
     "normalize_memory_content",
     "PROFILE_RESULT_ALLOWED",
     "PROFILE_RESULT_FORBIDDEN",
+    "promotion_request_from_candidate",
+    "promotion_request_from_retrieved_item",
     "redact_memory_content",
     "resolve_retrieval_policies",
     "RISK_QA_ALLOWED",
@@ -113,5 +130,6 @@ __all__ = [
     "SQL_ERROR_FORBIDDEN",
     "USER_PREFERENCE_ALLOWED",
     "USER_PREFERENCE_FORBIDDEN",
+    "validate_memory_promotion",
     "validate_memory_use",
 ]

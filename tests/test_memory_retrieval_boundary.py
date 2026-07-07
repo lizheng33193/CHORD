@@ -300,6 +300,42 @@ def test_audit_event_appears_only_for_audit_review() -> None:
     assert [item.memory_id for item in audit.items] == ["audit-1"]
 
 
+def test_eval_collection_allows_grounded_risk_qa_answer_and_rejects_unverified() -> None:
+    from app.services.memory.retrieval import MemoryRetrievalRequest
+    from app.services.memory.retrieval_policy import MemoryRetrievalTaskType
+
+    service = _service_with_records(
+        _record(
+            memory_id="risk-grounded",
+            content="Grounded risk QA answer.",
+            source_type=MemorySourceType.RISK_QA_ANSWER,
+            authority=MemoryAuthorityLevel.EVIDENCE_GROUNDED,
+            allowed=(MemoryUsePurpose.EVAL_CANDIDATE,),
+        ),
+        _record(
+            memory_id="risk-unverified",
+            content="Unverified risk QA answer.",
+            source_type=MemorySourceType.RISK_QA_ANSWER,
+            authority=MemoryAuthorityLevel.UNVERIFIED,
+            allowed=(MemoryUsePurpose.EVAL_CANDIDATE,),
+        ),
+    )
+
+    result = service.retrieve(
+        MemoryRetrievalRequest(
+            query="collect evaluation examples",
+            task_type=MemoryRetrievalTaskType.EVAL_COLLECTION,
+            user_id="u1",
+            project_id="p1",
+            country="mx",
+        )
+    )
+
+    assert [item.memory_id for item in result.items] == ["risk-grounded"]
+    assert [item.memory_id for item in result.rejected_items] == ["risk-unverified"]
+    assert result.rejected_items[0].blocked_by == "authority_level_insufficient"
+
+
 def test_malformed_m4_metadata_is_rejected() -> None:
     from app.services.memory.retrieval import MemoryRetrievalRequest
     from app.services.memory.retrieval_policy import MemoryRetrievalTaskType
