@@ -436,6 +436,33 @@
     - no orchestrator auto-write integration
     - no whole-`M4` completion
 
+- [x] M4-3 Memory Retrieval Boundary & Context Injection — implemented / pending acceptance（2026-07-07）
+  - docs:
+    - `docs/specs/m4-3-memory-retrieval-boundary-context.md`
+    - `docs/plans/m4-3-memory-retrieval-boundary-context-plan.md`
+    - `docs/reviews/m4-3-memory-retrieval-boundary-context-review.md`
+  - implementation:
+    - `MemoryRetrievalTaskType` / `MemoryRetrievalPolicy`
+    - isolated `MemoryReadableStoreAdapter`
+    - `InMemoryMemoryRetrievalAdapter`
+    - `SQLiteV1MemoryRetrievalAdapter`
+    - `MemoryRetrievalRequest` / `MemoryRetrievedItem` / `MemoryRejectedRetrievalItem` / `MemoryRetrievalResult`
+    - `MemoryRetrievalService.retrieve(...)`
+    - source-aware `MemoryContextBundle` renderer with item-level truncation
+  - current status:
+    - `M4-1 Memory Type & Isolation Contract: completed`
+    - `M4-2 Memory Write Gate & Store Metadata: completed`
+    - `M4-3 Memory Retrieval Boundary & Context Injection: implemented / pending acceptance`
+    - `M4 full completion: not completed`
+    - `M4-4 Memory Promotion Policy & Acceptance Closure: next`
+  - explicit non-goals:
+    - no orchestrator runtime integration
+    - no feature flag / runtime seam
+    - no vector / embedding retrieval
+    - no promotion
+    - no dashboard
+    - no whole-`M4` completion
+
 
 - [x] M2B-9.1：Hybrid Enabled Rollout Observability & Acceptance — 已完成（2026-06-29）
   - runbook / matrix / examples / checklist / review：
