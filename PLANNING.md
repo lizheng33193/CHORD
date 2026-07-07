@@ -389,7 +389,7 @@
 - current state:
   - `M4-1 Memory Type & Isolation Contract: completed`
   - `M4 full completion: not completed`
-  - `M4-2 Memory Write Gate & Store Metadata: implemented / pending acceptance`
+  - `M4-2 Memory Write Gate & Store Metadata: completed`
 - implementation boundary:
   - add `app/services/memory/` as the dedicated M4 contract layer
   - keep `app/services/orchestrator_agent/memory_*` SQLite v1 chat memory unchanged
@@ -416,9 +416,9 @@
   - `docs/reviews/m4-2-memory-write-gate-store-metadata-review.md`
 - current state:
   - `M4-1 Memory Type & Isolation Contract: completed`
-  - `M4-2 Memory Write Gate & Store Metadata: implemented / pending acceptance`
+  - `M4-2 Memory Write Gate & Store Metadata: completed`
   - `M4 full completion: not completed`
-  - `M4-3 Memory Retrieval Boundary & Context Injection: next`
+  - `M4-3 Memory Retrieval Boundary & Context Injection: ready to start`
 - implementation boundary:
   - add write governance under `app/services/memory/`
   - keep existing `app/services/orchestrator_agent/memory_*` auto-write behavior unchanged
@@ -436,6 +436,38 @@
   - no promotion
   - no dashboard
   - no orchestrator auto-write integration
+  - no whole-M4 completion
+
+## 2026-07-07 M4-3 Memory Retrieval Boundary & Context Injection
+
+- contract spec:
+  - `docs/specs/m4-3-memory-retrieval-boundary-context.md`
+- execution plan:
+  - `docs/plans/m4-3-memory-retrieval-boundary-context-plan.md`
+- review artifact:
+  - `docs/reviews/m4-3-memory-retrieval-boundary-context-review.md`
+- current state:
+  - `M4-1 Memory Type & Isolation Contract: completed`
+  - `M4-2 Memory Write Gate & Store Metadata: completed`
+  - `M4-3 Memory Retrieval Boundary & Context Injection: implemented / pending acceptance`
+  - `M4 full completion: not completed`
+  - `M4-4 Memory Promotion Policy & Acceptance Closure: next`
+- implementation boundary:
+  - add isolated retrieval + context rendering under `app/services/memory/`
+  - keep existing `app/services/orchestrator_agent/memory_*` retrieval unchanged
+  - read only M4-governed SQLite metadata envelopes
+- landed behavior:
+  - `MemoryRetrievalTaskType`, `MemoryRetrievalPolicy`, and multi-policy resolution
+  - `MemoryReadableStoreAdapter`, `InMemoryMemoryRetrievalAdapter`, and isolated `SQLiteV1MemoryRetrievalAdapter`
+  - `MemoryRetrievalRequest`, `MemoryRetrievedItem`, `MemoryRejectedRetrievalItem`, `MemoryRetrievalResult`
+  - `MemoryRetrievalService.retrieve(...)` with scope checks, authority checks, and isolation revalidation
+  - `MemoryContextBundle` rendering with provenance labels and item-level truncation
+- explicit non-goals:
+  - no orchestrator runtime integration
+  - no feature flag / runtime seam
+  - no vector or embedding retrieval
+  - no promotion
+  - no dashboard
   - no whole-M4 completion
 
 ## 2026-06-30 M2C Status Reconciliation

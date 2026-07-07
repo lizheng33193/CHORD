@@ -7,6 +7,16 @@ from collections.abc import Iterable
 from app.services.memory.contracts import MemorySourceType, MemoryUsePurpose
 
 
+CONVERSATION_ALLOWED = (
+    MemoryUsePurpose.CONVERSATION_CONTEXT,
+    MemoryUsePurpose.FOLLOWUP_CONTEXT,
+)
+CONVERSATION_FORBIDDEN = (
+    MemoryUsePurpose.DATA_AGENT_FIELD_GROUNDING,
+    MemoryUsePurpose.SQL_GENERATION_GROUNDING,
+    MemoryUsePurpose.RISK_KNOWLEDGE_SOURCE_DOCUMENT,
+)
+
 PROFILE_RESULT_ALLOWED = (
     MemoryUsePurpose.PROFILE_RESULT_RECALL,
     MemoryUsePurpose.PROFILE_FOLLOWUP_CONTEXT,
@@ -77,23 +87,33 @@ AUDIT_EVENT_FORBIDDEN = (
     MemoryUsePurpose.PRODUCTION_GROUNDING,
 )
 
+EVAL_CASE_ALLOWED = (MemoryUsePurpose.EVAL_CANDIDATE,)
+EVAL_CASE_FORBIDDEN = (
+    MemoryUsePurpose.SQL_GENERATION_GROUNDING,
+    MemoryUsePurpose.PRODUCTION_GROUNDING,
+)
+
 
 DEFAULT_ALLOWED_MEMORY_USE: dict[MemorySourceType, tuple[MemoryUsePurpose, ...]] = {
+    MemorySourceType.CONVERSATION: CONVERSATION_ALLOWED,
     MemorySourceType.PROFILE_RESULT: PROFILE_RESULT_ALLOWED,
     MemorySourceType.RISK_QA_ANSWER: RISK_QA_ALLOWED,
     MemorySourceType.DATA_AGENT_SQL_CASE: SQL_CASE_ALLOWED,
     MemorySourceType.DATA_AGENT_SQL_ERROR: SQL_ERROR_ALLOWED,
     MemorySourceType.USER_PREFERENCE: USER_PREFERENCE_ALLOWED,
     MemorySourceType.AUDIT_EVENT: AUDIT_EVENT_ALLOWED,
+    MemorySourceType.EVAL_CASE: EVAL_CASE_ALLOWED,
 }
 
 DEFAULT_FORBIDDEN_MEMORY_USE: dict[MemorySourceType, tuple[MemoryUsePurpose, ...]] = {
+    MemorySourceType.CONVERSATION: CONVERSATION_FORBIDDEN,
     MemorySourceType.PROFILE_RESULT: PROFILE_RESULT_FORBIDDEN,
     MemorySourceType.RISK_QA_ANSWER: RISK_QA_FORBIDDEN,
     MemorySourceType.DATA_AGENT_SQL_CASE: SQL_CASE_FORBIDDEN,
     MemorySourceType.DATA_AGENT_SQL_ERROR: SQL_ERROR_FORBIDDEN,
     MemorySourceType.USER_PREFERENCE: USER_PREFERENCE_FORBIDDEN,
     MemorySourceType.AUDIT_EVENT: AUDIT_EVENT_FORBIDDEN,
+    MemorySourceType.EVAL_CASE: EVAL_CASE_FORBIDDEN,
 }
 
 
