@@ -5,6 +5,18 @@
 - 整体架构：单体 FastAPI 后端，五层（API → 编排 → Skill 执行 → 数据访问 → 外部服务）
 - 入口文件：`app/main.py`
 
+## 2026-07-07 M5-1 Shared Eval Foundation
+
+- new spec artifact:
+  - `docs/specs/m5-eval-regression-foundation.md`
+- new plan artifact:
+  - `docs/plans/m5-1-eval-regression-foundation-plan.md`
+- current scope:
+  - add additive shared eval foundation under `app/eval/`
+  - ship only `release_gate_smoke` as the first runnable shared suite
+  - keep `app/risk_knowledge/evaluation`, `tests/golden/memory_eval.py`, and `app/release/pre_m3_gate.py` domain-owned and authoritative
+  - do not start full eval-suite migration for Memory / Data / Risk / Profile in `M5-1`
+
 ## 2026-07-04 Pre-M3 / M2D System-Level Acceptance Snapshot
 
 - status summary:

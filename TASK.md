@@ -35,6 +35,20 @@
 - [x] E1 单用户埋点深度解析 → docs/plans/trace-analyzer-plan.md（2026-05-01）
 
 ## 当前进行中的功能
+- [x] M5-1｜Shared Eval Foundation — 已落地共享底座（2026-07-07）
+  - docs:
+    - `docs/specs/m5-eval-regression-foundation.md`
+    - `docs/plans/m5-1-eval-regression-foundation-plan.md`
+  - delivered:
+    - `[x]` 新增 `app/eval/` 共享 schema / loader / registry / profiles / report / runner
+    - `[x]` 新增 `release_gate_smoke` 共享 suite
+    - `[x]` 新增 `pr_acceptance` / `production_release` 两个共享 profile
+    - `[x]` 新增 `tests/eval/` 定向覆盖
+  - out of scope:
+    - `[x]` 不迁移 `app/risk_knowledge/evaluation`
+    - `[x]` 不迁移 `tests/golden/memory_eval.py`
+    - `[x]` 不替换 `app/release/pre_m3_gate.py`
+
 - [x] PR-A｜Risk QA + Context Isolation + Evidence/Citation Production Gate — accepted for Pre-M3 scope（2026-07-04）
   - docs:
     - `docs/specs/risk-qa-production-gate-contract.md`

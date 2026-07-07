@@ -1,0 +1,69 @@
+cases:
+  - case_id: pr_warn_not_run
+    suite: release_gate_smoke
+    task_type: release_gate_smoke
+    input:
+      profile: pr_acceptance
+      strict: false
+      full_regression_status: not_run
+    expected:
+      status: WARN
+      exit_code: 0
+      must_include_check_ids:
+        - full_repo_regression
+    tags:
+      - smoke
+      - release_gate
+    severity: major
+    source: manual
+  - case_id: production_blocked_not_run
+    suite: release_gate_smoke
+    task_type: release_gate_smoke
+    input:
+      profile: production_release
+      strict: true
+      full_regression_status: not_run
+    expected:
+      status: BLOCKED
+      exit_code: 1
+      must_include_check_ids:
+        - full_repo_regression
+    tags:
+      - smoke
+      - release_gate
+    severity: critical
+    source: manual
+  - case_id: pr_fail_failed
+    suite: release_gate_smoke
+    task_type: release_gate_smoke
+    input:
+      profile: pr_acceptance
+      strict: false
+      full_regression_status: failed
+    expected:
+      status: FAIL
+      exit_code: 1
+      must_include_check_ids:
+        - full_repo_regression
+    tags:
+      - smoke
+      - release_gate
+    severity: critical
+    source: manual
+  - case_id: production_pass_passed
+    suite: release_gate_smoke
+    task_type: release_gate_smoke
+    input:
+      profile: production_release
+      strict: true
+      full_regression_status: passed
+    expected:
+      status: PASS
+      exit_code: 0
+      must_include_check_ids:
+        - full_repo_regression
+    tags:
+      - smoke
+      - release_gate
+    severity: major
+    source: manual

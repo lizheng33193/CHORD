@@ -1,0 +1,18 @@
+cases:
+  - case_id: yaml_warn_case
+    suite: release_gate_smoke
+    task_type: release_gate_smoke
+    input:
+      profile: pr_acceptance
+      strict: false
+      full_regression_status: not_run
+    expected:
+      status: WARN
+      exit_code: 0
+      must_include_check_ids:
+        - full_repo_regression
+    tags:
+      - smoke
+      - release_gate
+    severity: major
+    source: manual
