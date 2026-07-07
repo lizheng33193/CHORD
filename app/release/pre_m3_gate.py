@@ -146,6 +146,12 @@ def default_check_runner(
     )
 
 
+def determine_release_gate_exit_code(release_gate_status: str, *, strict: bool) -> int:
+    if strict:
+        return 0 if release_gate_status == "PASS" else 1
+    return 0 if release_gate_status in {"PASS", "WARN"} else 1
+
+
 def main(argv: list[str] | None = None, *, check_runner: CheckRunner | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run the Pre-M3 release gate.")
     parser.add_argument("--profile", choices=["pr_acceptance", "production_release"], default="pr_acceptance")
@@ -177,9 +183,7 @@ def main(argv: list[str] | None = None, *, check_runner: CheckRunner | None = No
             encoding="utf-8",
         )
 
-    if args.strict:
-        return 0 if report.release_gate_status == "PASS" else 1
-    return 0 if report.release_gate_status in {"PASS", "WARN"} else 1
+    return determine_release_gate_exit_code(report.release_gate_status, strict=args.strict)
 
 
 if __name__ == "__main__":  # pragma: no cover

@@ -1,0 +1,27 @@
+{
+  "cases": [
+    {
+      "case_id": "json_pass_case",
+      "suite": "release_gate_smoke",
+      "task_type": "release_gate_smoke",
+      "input": {
+        "profile": "production_release",
+        "strict": true,
+        "full_regression_status": "passed"
+      },
+      "expected": {
+        "status": "PASS",
+        "exit_code": 0,
+        "must_include_check_ids": [
+          "full_repo_regression"
+        ]
+      },
+      "tags": [
+        "smoke",
+        "release_gate"
+      ],
+      "severity": "major",
+      "source": "manual"
+    }
+  ]
+}
