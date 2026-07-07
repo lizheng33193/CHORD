@@ -403,7 +403,7 @@
   - current status:
     - `M4-1 Memory Type & Isolation Contract: completed`
     - `M4 full completion: not completed`
-    - `M4-2 Memory Write Gate & Store Metadata: implemented / pending acceptance`
+    - `M4-2 Memory Write Gate & Store Metadata: completed`
   - explicit non-goals:
     - no persistence / retrieval / promotion
     - no SQLite schema migration
@@ -411,7 +411,7 @@
     - no dashboard
     - no automatic prompt injection
 
-- [x] M4-2 Memory Write Gate & Store Metadata — implemented / pending acceptance（2026-07-06）
+- [x] M4-2 Memory Write Gate & Store Metadata — completed（2026-07-06）
   - docs:
     - `docs/specs/m4-2-memory-write-gate-store-metadata.md`
     - `docs/plans/m4-2-memory-write-gate-store-metadata-plan.md`
@@ -426,9 +426,9 @@
     - isolated `SQLiteV1MemoryStoreAdapter`
   - current status:
     - `M4-1 Memory Type & Isolation Contract: completed`
-    - `M4-2 Memory Write Gate & Store Metadata: implemented / pending acceptance`
+    - `M4-2 Memory Write Gate & Store Metadata: completed`
     - `M4 full completion: not completed`
-    - `M4-3 Memory Retrieval Boundary & Context Injection: next`
+    - `M4-3 Memory Retrieval Boundary & Context Injection: ready to start`
   - explicit non-goals:
     - no retrieval / context injection / promotion
     - no vector memory

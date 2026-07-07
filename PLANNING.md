@@ -389,7 +389,7 @@
 - current state:
   - `M4-1 Memory Type & Isolation Contract: completed`
   - `M4 full completion: not completed`
-  - `M4-2 Memory Write Gate & Store Metadata: implemented / pending acceptance`
+  - `M4-2 Memory Write Gate & Store Metadata: completed`
 - implementation boundary:
   - add `app/services/memory/` as the dedicated M4 contract layer
   - keep `app/services/orchestrator_agent/memory_*` SQLite v1 chat memory unchanged
@@ -416,9 +416,9 @@
   - `docs/reviews/m4-2-memory-write-gate-store-metadata-review.md`
 - current state:
   - `M4-1 Memory Type & Isolation Contract: completed`
-  - `M4-2 Memory Write Gate & Store Metadata: implemented / pending acceptance`
+  - `M4-2 Memory Write Gate & Store Metadata: completed`
   - `M4 full completion: not completed`
-  - `M4-3 Memory Retrieval Boundary & Context Injection: next`
+  - `M4-3 Memory Retrieval Boundary & Context Injection: ready to start`
 - implementation boundary:
   - add write governance under `app/services/memory/`
   - keep existing `app/services/orchestrator_agent/memory_*` auto-write behavior unchanged
