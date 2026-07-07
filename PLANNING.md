@@ -17,6 +17,22 @@
   - keep `app/risk_knowledge/evaluation`, `tests/golden/memory_eval.py`, and `app/release/pre_m3_gate.py` domain-owned and authoritative
   - do not start full eval-suite migration for Memory / Data / Risk / Profile in `M5-1`
 
+## 2026-07-07 M5-2 Memory Governance Eval Suite
+
+- new spec artifact:
+  - `docs/specs/m5-memory-governance-eval.md`
+- new plan artifact:
+  - `docs/plans/m5-2-memory-governance-eval-plan.md`
+- new review artifact:
+  - `docs/reviews/m5-2-memory-governance-eval-review.md`
+- current scope:
+  - add `memory_governance` as the first contract-backed domain suite on `app/eval/`
+  - extend the shared eval foundation only for additive multi-suite profile execution and suite-scoped reporting
+  - run `pr_acceptance` as `release_gate_smoke + memory_governance`
+  - keep `production_release` unchanged as smoke-only until `M5-6`
+  - preserve raw runtime reason codes alongside normalized eval reason codes
+  - do not change Memory runtime behavior in `M5-2`
+
 ## 2026-07-04 Pre-M3 / M2D System-Level Acceptance Snapshot
 
 - status summary:

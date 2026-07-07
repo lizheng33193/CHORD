@@ -53,6 +53,21 @@ def test_runner_returns_zero_for_pr_profile(tmp_path) -> None:
     assert exit_code == 0
 
 
+def test_runner_returns_zero_for_memory_governance_suite(tmp_path) -> None:
+    from app.eval.runner import main
+
+    exit_code = main(
+        [
+            "--suite",
+            "memory_governance",
+            "--output-dir",
+            str(tmp_path),
+        ]
+    )
+
+    assert exit_code == 0
+
+
 def test_runner_returns_zero_for_production_profile_strict(tmp_path) -> None:
     from app.eval.runner import main
 
@@ -93,6 +108,31 @@ def test_runner_returns_two_for_missing_suite(tmp_path) -> None:
     exit_code = main(["--suite", "missing_suite", "--output-dir", str(tmp_path)])
 
     assert exit_code == 2
+
+
+def test_runner_profile_report_includes_multi_suite_summary(tmp_path) -> None:
+    from app.eval.runner import main
+
+    exit_code = main(
+        [
+            "--profile",
+            "pr_acceptance",
+            "--output-dir",
+            str(tmp_path),
+        ]
+    )
+
+    assert exit_code == 0
+    report_paths = list(tmp_path.glob("shared_eval_*.json"))
+    assert report_paths
+    payload = json.loads(report_paths[0].read_text(encoding="utf-8"))
+    assert payload["selected_suites"] == ["release_gate_smoke", "memory_governance"]
+    assert {item["suite_id"] for item in payload["suite_summaries"]} == {
+        "release_gate_smoke",
+        "memory_governance",
+    }
+    assert "memory_governance" in payload["suite_metrics"]
+    assert "memory_governance_pass_rate" in payload["suite_metrics"]["memory_governance"]
 
 
 def test_runner_returns_two_for_malformed_case_file(tmp_path) -> None:

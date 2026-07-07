@@ -13,13 +13,23 @@ def test_registry_exposes_release_gate_smoke_suite() -> None:
     assert suite.evaluator == "release_gate_smoke"
 
 
+def test_registry_exposes_memory_governance_suite() -> None:
+    from app.eval.registry import get_suite
+
+    suite = get_suite("memory_governance")
+
+    assert suite.suite_id == "memory_governance"
+    assert Path(suite.case_path).name == "memory_governance.yaml"
+    assert suite.evaluator == "memory_governance"
+
+
 def test_profiles_map_to_release_gate_smoke() -> None:
     from app.eval.profiles import get_profile
 
     pr_profile = get_profile("pr_acceptance")
     production_profile = get_profile("production_release")
 
-    assert pr_profile.suites == ["release_gate_smoke"]
+    assert pr_profile.suites == ["release_gate_smoke", "memory_governance"]
     assert pr_profile.strict_by_default is False
     assert production_profile.suites == ["release_gate_smoke"]
     assert production_profile.strict_by_default is True
