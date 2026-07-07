@@ -470,6 +470,40 @@
   - no dashboard
   - no whole-M4 completion
 
+## 2026-07-07 M4-4 Memory Promotion Policy & Acceptance Closure
+
+- contract spec:
+  - `docs/specs/m4-4-memory-promotion-policy.md`
+- execution plan:
+  - `docs/plans/m4-4-memory-promotion-acceptance-plan.md`
+- review artifacts:
+  - `docs/reviews/m4-4-memory-promotion-acceptance-review.md`
+  - `docs/reviews/m4-acceptance-closure-review.md`
+- current state:
+  - `M4-1 Memory Type & Isolation Contract: completed`
+  - `M4-2 Memory Write Gate & Store Metadata: completed`
+  - `M4-3 Memory Retrieval Boundary & Context Injection: completed`
+  - `M4-4 Memory Promotion Policy & Acceptance Closure: implemented / pending acceptance`
+  - `M4 Unified Memory & Memory Isolation: pending M4-4 acceptance`
+  - `M5 Eval / Regression Platform: next`
+- implementation boundary:
+  - add promotion eligibility governance under `app/services/memory/`
+  - keep existing write gate, retrieval service, store adapters, and orchestrator runtime unchanged
+  - allow only candidate-level promotion decisions; do not execute ingestion
+- landed behavior:
+  - `MemoryPromotionTarget`, `MemoryPromotionRequest`, `MemoryPromotionDecision`, and explicit block reasons
+  - deterministic promotion validation for profile, Risk QA, SQL case, SQL error, audit, and eval memory sources
+  - explicit block boundary for Data / Risk / strategy / safety / HITL authority targets
+  - candidate-only allow semantics for `approved_sql_example`
+  - minimal alignment for grounded Risk QA eval-candidate retrieval semantics
+- explicit non-goals:
+  - no automatic promotion execution
+  - no Data Knowledge / Risk Knowledge / SQL example / golden set writes
+  - no orchestrator runtime integration
+  - no vector memory or embedding retrieval
+  - no dashboard
+  - no whole-`M4` completion wording inside this PR
+
 ## 2026-06-30 M2C Status Reconciliation
 
 - 新增状态校准 review：

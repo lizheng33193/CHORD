@@ -34,6 +34,7 @@ RISK_QA_ALLOWED = (
     MemoryUsePurpose.RISK_QA_FOLLOWUP_CONTEXT,
     MemoryUsePurpose.RISK_QA_HISTORY_RECALL,
     MemoryUsePurpose.FOLLOWUP_CONTEXT,
+    MemoryUsePurpose.EVAL_CANDIDATE,
 )
 RISK_QA_FORBIDDEN = (
     MemoryUsePurpose.RISK_KNOWLEDGE_SOURCE_DOCUMENT,

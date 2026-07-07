@@ -463,6 +463,33 @@
     - no dashboard
     - no whole-`M4` completion
 
+- [x] M4-4 Memory Promotion Policy & Acceptance Closure — implemented / pending acceptance（2026-07-07）
+  - docs:
+    - `docs/specs/m4-4-memory-promotion-policy.md`
+    - `docs/plans/m4-4-memory-promotion-acceptance-plan.md`
+    - `docs/reviews/m4-4-memory-promotion-acceptance-review.md`
+    - `docs/reviews/m4-acceptance-closure-review.md`
+  - implementation:
+    - `app/services/memory/promotion.py`
+    - `MemoryPromotionTarget` / `MemoryPromotionRequest` / `MemoryPromotionDecision`
+    - deterministic promotion validator with explicit blocked authority targets
+    - helper constructors from candidate and retrieved-item contracts
+    - minimal Risk QA eval-candidate policy alignment
+  - current status:
+    - `M4-1 Memory Type & Isolation Contract: completed`
+    - `M4-2 Memory Write Gate & Store Metadata: completed`
+    - `M4-3 Memory Retrieval Boundary & Context Injection: completed`
+    - `M4-4 Memory Promotion Policy & Acceptance Closure: implemented / pending acceptance`
+    - `M4 Unified Memory & Memory Isolation: pending M4-4 acceptance`
+    - `M5 Eval / Regression Platform: next`
+  - explicit non-goals:
+    - no automatic promotion execution
+    - no Data Knowledge / Risk Knowledge / SQL example / golden set writes
+    - no orchestrator runtime integration
+    - no vector / embedding retrieval
+    - no dashboard
+    - no whole-`M4` completion wording inside this PR
+
 
 - [x] M2B-9.1：Hybrid Enabled Rollout Observability & Acceptance — 已完成（2026-06-29）
   - runbook / matrix / examples / checklist / review：
