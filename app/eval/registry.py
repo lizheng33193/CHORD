@@ -26,6 +26,14 @@ _SUITES: dict[str, EvalSuite] = {
         blocking=True,
         advisory=False,
     ),
+    "memory_semantic_retrieval": EvalSuite(
+        suite_id="memory_semantic_retrieval",
+        description="Hermetic M6B semantic retrieval and context injection regression coverage.",
+        case_path=str(REPO_ROOT / "tests" / "eval_cases" / "memory_semantic_retrieval.yaml"),
+        evaluator="memory_semantic_retrieval",
+        blocking=True,
+        advisory=False,
+    ),
     "data_agent_sql_safety": EvalSuite(
         suite_id="data_agent_sql_safety",
         description="Deterministic Data Agent SQL safety regression coverage.",

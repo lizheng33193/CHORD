@@ -177,6 +177,28 @@
     - `[x]` `M6A implemented / pending acceptance`
     - `[x]` `M6B not started`
 
+- [x] M6B｜Policy-gated Semantic Memory Retrieval & Context Injection — 已实现 hybrid runtime（2026-07-08）
+  - docs:
+    - `docs/specs/m6b-policy-gated-semantic-memory-retrieval-contract.md`
+    - `docs/plans/m6b-policy-gated-semantic-memory-retrieval-plan.md`
+    - `docs/reviews/m6b-policy-gated-semantic-memory-retrieval-review.md`
+  - delivered:
+    - `[x]` 新增 `MEMORY_VECTOR_CONTEXT_INJECTION_ENABLED` 等 M6B flags
+    - `[x]` 新增 `app/services/memory/vector_index_adapter.py` temporary compatibility seam
+    - `[x]` 扩展 retrieval/context provenance：`retrieval_method` / `raw_distance` / `normalized_score`
+    - `[x]` 新增 semantic retrieval / fusion / hybrid retrieval runtime
+    - `[x]` `build_retrieved_memory_context()` 在 flag on 时接入 shared memory runtime
+    - `[x]` 新增 hermetic `memory_semantic_retrieval` eval suite，并加入 `pr_acceptance` / `production_release`
+  - guardrails:
+    - `[x]` `app/services/memory/*` 仍是唯一 policy / retrieval / context governance 层
+    - `[x]` vector candidate 必须 scoped relational load
+    - `[x]` flag off 时 legacy FTS 输出精确保持不变
+    - `[x]` SQL/Data Agent 路径在 M6B 不接 semantic supplement
+    - `[x]` prompt provenance 最小化，不暴露 `raw_distance` / policy internals
+  - final state:
+    - `[x]` `M6B implemented / pending acceptance`
+    - `[x]` `M6C not started`
+
 - [x] PR-A｜Risk QA + Context Isolation + Evidence/Citation Production Gate — accepted for Pre-M3 scope（2026-07-04）
   - docs:
     - `docs/specs/risk-qa-production-gate-contract.md`

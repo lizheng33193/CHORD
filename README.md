@@ -232,13 +232,14 @@ python -m app.eval.runner --profile production_release --strict
 
 - `M5 completed`
 - `M6A implemented`
-- `M6B not started`
+- `M6B implemented / pending acceptance`
 
 M5 的结果不是“上线观测平台已经完成”，而是：
 
 - Eval / Regression Platform 已完成
 - deterministic release gate 已闭环
 - M6A shadow vector index 已落地，但仍未接 prompt
+- M6B 已把 policy-gated semantic memory retrieval 接到 context，但默认 flag 关闭
 - dashboard、CI integration、online monitoring、release automation 仍然留在后续 `M6`
 
 ### 1.9 当前没有做的事
@@ -1227,6 +1228,13 @@ MEMORY_VECTOR_EMBEDDING_PROVIDER=deterministic
 MEMORY_VECTOR_EMBEDDING_MODEL=memory-fake-embedding-v1
 MEMORY_VECTOR_EMBEDDING_DIM=16
 MEMORY_VECTOR_TOP_K=8
+MEMORY_VECTOR_CONTEXT_INJECTION_ENABLED=0
+MEMORY_VECTOR_RETRIEVAL_MODE=fts_primary
+MEMORY_VECTOR_POLICY_STRICT=1
+MEMORY_VECTOR_FALLBACK_TO_FTS=1
+MEMORY_VECTOR_MAX_CONTEXT_ITEMS=3
+MEMORY_CONTEXT_MAX_TOTAL_ITEMS=8
+MEMORY_CONTEXT_PROVENANCE_ENABLED=1
 ```
 
 ### 8.3 身份隔离
@@ -1289,7 +1297,21 @@ python -m app.services.orchestrator_agent.memory_vector.cli rebuild
 python -m app.services.orchestrator_agent.memory_vector.cli shadow-search --query "我之前的输出偏好是什么？" --user-id local-default-user --project-id agent-user-profile-fork --country mx
 ```
 
-### 8.6 允许写入的 category
+### 8.6 M6B Policy-gated Semantic Retrieval
+
+M6B 现在已经把 semantic memory retrieval 接入 Orchestrator context，但边界保持保守：
+
+- `app/services/memory/*` 是唯一 retrieval / policy / provenance 治理层
+- `app/services/memory/vector_index_adapter.py` 是唯一临时兼容 seam
+- `MEMORY_VECTOR_CONTEXT_INJECTION_ENABLED=0` 时，legacy FTS context 输出保持不变
+- flag 打开后，semantic supplement 只 allowlist：
+  - `general_chat`
+  - `profile_followup`
+  - `risk_qa_followup`
+- `data_agent_sql` / `sql_repair` 在 M6B 不接 vector semantic supplement
+- prompt 中只保留最小 provenance，不暴露 `raw_distance` 或 policy internals
+
+### 8.7 允许写入的 category
 
 当前长期记忆采用严格白名单：
 
@@ -1302,7 +1324,7 @@ python -m app.services.orchestrator_agent.memory_vector.cli shadow-search --quer
 | `task` | 真实画像、取数、trace、工程任务摘要 |
 | `insight` | 历史兼容类别，当前不鼓励普通聊天结论自动写入 |
 
-### 8.7 明确拒写的内容
+### 8.8 明确拒写的内容
 
 以下内容不会进入长期记忆：
 
@@ -1314,7 +1336,7 @@ python -m app.services.orchestrator_agent.memory_vector.cli shadow-search --quer
 - 明显凭据、密钥、token、密码
 - 没有长期价值的闲聊
 
-### 8.8 长期记忆写入流程
+### 8.9 长期记忆写入流程
 
 ```mermaid
 flowchart TD

@@ -16,6 +16,8 @@ def _retrieved_item(
     authority: MemoryAuthorityLevel = MemoryAuthorityLevel.USER_PROVIDED,
     requested_use: MemoryUsePurpose = MemoryUsePurpose.RESPONSE_STYLE,
     evidence_status: str | None = None,
+    retrieval_method: str = "fts",
+    raw_distance: float | None = None,
 ):
     from app.services.memory.retrieval import MemoryRetrievedItem
 
@@ -39,6 +41,9 @@ def _retrieved_item(
         source_run_id=f"run-{memory_id}",
         source_artifact_id=f"artifact-{memory_id}",
         score=0.8,
+        retrieval_method=retrieval_method,
+        raw_distance=raw_distance,
+        normalized_score=0.8,
         metadata={"forbidden_memory_use": ["should_not_render"]},
     )
 
@@ -79,6 +84,7 @@ def test_context_builder_renders_required_provenance_fields() -> None:
     assert "authority=user_provided" in bundle.rendered_text
     assert "use=response_style" in bundle.rendered_text
     assert "evidence=grounded" in bundle.rendered_text
+    assert "retrieval=fts" in bundle.rendered_text
     assert "forbidden_memory_use" not in bundle.rendered_text
 
 
@@ -108,3 +114,21 @@ def test_context_builder_preserves_existing_warnings() -> None:
     )
 
     assert "missing_country" in bundle.warnings
+
+
+def test_context_builder_renders_vector_method_without_raw_distance() -> None:
+    from app.services.memory.context_builder import build_memory_context_bundle
+
+    bundle = build_memory_context_bundle(
+        _result(
+            _retrieved_item(
+                memory_id="pref-2",
+                content="User prefers tabular output for profile follow-ups.",
+                retrieval_method="vector",
+                raw_distance=0.1234,
+            )
+        )
+    )
+
+    assert "retrieval=vector" in bundle.rendered_text
+    assert "0.1234" not in bundle.rendered_text
