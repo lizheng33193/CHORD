@@ -14,8 +14,8 @@ from app.eval.evaluators.memory import MemoryGovernanceEvaluator
 from app.eval.evaluators.profile import ProfileEvaluator
 from app.eval.evaluators.risk_qa import RiskQAEvaluator
 from app.eval.evaluators.release_gate_smoke import ReleaseGateSmokeEvaluator
-from app.eval.profiles import get_profile
-from app.eval.registry import REPO_ROOT, get_suite
+from app.eval.profiles import get_profile, list_profiles
+from app.eval.registry import REPO_ROOT, get_suite, list_suites
 from app.eval.report import write_report
 from app.eval.schemas import EvalCase, EvalReport, EvalResult, EvalStatus, EvalSuite, EvalSuiteSummary
 
@@ -55,13 +55,26 @@ def build_evaluator(evaluator_name: str):
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run shared eval suites.")
-    target = parser.add_mutually_exclusive_group(required=True)
+    target = parser.add_mutually_exclusive_group()
     target.add_argument("--suite")
     target.add_argument("--profile")
+    target.add_argument("--list-suites", action="store_true")
+    target.add_argument("--list-profiles", action="store_true")
     parser.add_argument("--case-file")
     parser.add_argument("--output-dir", default=str(DEFAULT_OUTPUT_DIR))
     parser.add_argument("--strict", action="store_true")
     args = parser.parse_args(argv)
+
+    if args.list_suites:
+        _print_suites()
+        return 0
+
+    if args.list_profiles:
+        _print_profiles()
+        return 0
+
+    if not args.suite and not args.profile:
+        parser.error("one of the arguments --suite --profile is required")
 
     try:
         selection = _resolve_selection(
@@ -283,6 +296,36 @@ def _case_file_label(case_files: list[Path]) -> str:
     if len(labels) == 1:
         return labels[0]
     return ", ".join(labels)
+
+
+def _print_suites() -> None:
+    print("Available eval suites:")
+    profile_map = _suite_to_profiles()
+    for suite in list_suites():
+        profiles = ",".join(profile_map.get(suite.suite_id, [])) or "-"
+        print(
+            f"- {suite.suite_id} "
+            f"evaluator={suite.evaluator} "
+            f"blocking={suite.blocking} "
+            f"case_path={suite.case_path} "
+            f"profiles={profiles}"
+        )
+
+
+def _print_profiles() -> None:
+    print("Available eval profiles:")
+    for profile in list_profiles():
+        print(f"- {profile.profile_id} strict_by_default={profile.strict_by_default}")
+        for suite_id in profile.suites:
+            print(f"  suite={suite_id}")
+
+
+def _suite_to_profiles() -> dict[str, list[str]]:
+    profile_map: dict[str, list[str]] = {}
+    for profile in list_profiles():
+        for suite_id in profile.suites:
+            profile_map.setdefault(suite_id, []).append(profile.profile_id)
+    return profile_map
 
 
 if __name__ == "__main__":  # pragma: no cover

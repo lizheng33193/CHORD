@@ -81,6 +81,41 @@
   - preserve raw runtime statuses and raw memory-policy reason codes alongside normalized eval report codes
   - do not change Profile DAG runtime behavior, node registry behavior, or real runtime skill behavior in `M5-5`
 
+## 2026-07-08 M5-6 Release Gate & Acceptance Closure
+
+- new spec artifact:
+  - `docs/specs/m5-release-gate-policy.md`
+- new plan artifact:
+  - `docs/plans/m5-6-release-gate-acceptance-closure-plan.md`
+- new review artifacts:
+  - `docs/reviews/m5-6-release-gate-acceptance-closure-review.md`
+  - `docs/reviews/m5-acceptance-closure.md`
+- current scope:
+  - promote `production_release` from smoke-only to the full deterministic 7-suite M5 release gate
+  - keep `pr_acceptance` on the same ordered 7-suite list
+  - add shared eval preflight CLI for `--list-suites` and `--list-profiles`
+  - preserve current runner strict semantics with `production_release` strict-by-default
+  - confirm JSON / Markdown report fields are sufficient for release-gate readability
+  - mark `M5 completed`
+  - keep `M6 not started`
+
+## 2026-07-08 M5 Final Status
+
+- status summary:
+  - `M5 Eval / Regression Platform completed`
+  - runnable shared suites:
+    - `release_gate_smoke`
+    - `memory_governance`
+    - `data_agent_sql_safety`
+    - `data_agent_sql_grounding`
+    - `risk_qa_groundedness`
+    - `profile_dag_contract`
+    - `profile_memory_snapshot`
+  - `pr_acceptance` and `production_release` both run the full deterministic 7-suite list
+  - `production_release` is strict-by-default and must be used with strict semantics
+  - no dashboard, CI integration, online monitoring, LangGraph migration, or production deployment was added in M5
+  - `M6 not started`
+
 ## 2026-07-04 Pre-M3 / M2D System-Level Acceptance Snapshot
 
 - status summary:

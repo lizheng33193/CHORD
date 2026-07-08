@@ -159,6 +159,102 @@ def test_runner_returns_zero_for_production_profile_strict(tmp_path) -> None:
     assert exit_code == 0
 
 
+def test_runner_returns_zero_for_production_profile_without_explicit_strict(tmp_path) -> None:
+    from app.eval.runner import main
+
+    exit_code = main(
+        [
+            "--profile",
+            "production_release",
+            "--output-dir",
+            str(tmp_path),
+        ]
+    )
+
+    assert exit_code == 0
+    report_paths = list(tmp_path.glob("shared_eval_*.json"))
+    assert report_paths
+    payload = json.loads(report_paths[0].read_text(encoding="utf-8"))
+    assert payload["strict"] is True
+    assert payload["selected_suites"] == [
+        "release_gate_smoke",
+        "memory_governance",
+        "data_agent_sql_safety",
+        "data_agent_sql_grounding",
+        "risk_qa_groundedness",
+        "profile_dag_contract",
+        "profile_memory_snapshot",
+    ]
+
+
+def test_runner_list_suites_does_not_execute_or_write_report(
+    tmp_path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from app.eval import runner as eval_runner
+
+    monkeypatch.setattr(
+        eval_runner,
+        "build_evaluator",
+        lambda _name: (_ for _ in ()).throw(AssertionError("list-suites must not build evaluators")),
+    )
+    monkeypatch.setattr(
+        eval_runner,
+        "load_eval_cases",
+        lambda _path: (_ for _ in ()).throw(AssertionError("list-suites must not read case files")),
+    )
+
+    output_dir = tmp_path / "reports"
+    exit_code = eval_runner.main(
+        [
+            "--list-suites",
+            "--output-dir",
+            str(output_dir),
+        ]
+    )
+
+    assert exit_code == 0
+    captured = capsys.readouterr().out
+    assert "release_gate_smoke" in captured
+    assert "profile_memory_snapshot" in captured
+    assert "blocking=True" in captured
+    assert "case_path=" in captured
+    assert not output_dir.exists()
+
+
+def test_runner_list_profiles_does_not_execute_or_write_report(
+    tmp_path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from app.eval import runner as eval_runner
+
+    monkeypatch.setattr(
+        eval_runner,
+        "build_evaluator",
+        lambda _name: (_ for _ in ()).throw(AssertionError("list-profiles must not build evaluators")),
+    )
+    monkeypatch.setattr(
+        eval_runner,
+        "load_eval_cases",
+        lambda _path: (_ for _ in ()).throw(AssertionError("list-profiles must not read case files")),
+    )
+
+    output_dir = tmp_path / "reports"
+    exit_code = eval_runner.main(
+        [
+            "--list-profiles",
+            "--output-dir",
+            str(output_dir),
+        ]
+    )
+
+    assert exit_code == 0
+    captured = capsys.readouterr().out
+    assert "pr_acceptance" in captured
+    assert "production_release" in captured
+    assert "strict_by_default=True" in captured
+    assert "profile_memory_snapshot" in captured
+    assert not output_dir.exists()
+
+
 def test_runner_returns_one_for_blocked_matrix_suite(tmp_path) -> None:
     from app.eval.runner import main
 
@@ -231,6 +327,44 @@ def test_runner_profile_report_includes_multi_suite_summary(tmp_path) -> None:
     assert "profile_dag_contract_pass_rate" in payload["suite_metrics"]["profile_dag_contract"]
     assert "profile_memory_snapshot" in payload["suite_metrics"]
     assert "profile_memory_snapshot_pass_rate" in payload["suite_metrics"]["profile_memory_snapshot"]
+
+
+def test_runner_production_profile_report_includes_all_release_gate_suites(tmp_path) -> None:
+    from app.eval.runner import main
+
+    exit_code = main(
+        [
+            "--profile",
+            "production_release",
+            "--strict",
+            "--output-dir",
+            str(tmp_path),
+        ]
+    )
+
+    assert exit_code == 0
+    report_paths = list(tmp_path.glob("shared_eval_*.json"))
+    assert report_paths
+    payload = json.loads(report_paths[0].read_text(encoding="utf-8"))
+    assert payload["strict"] is True
+    assert payload["selected_suites"] == [
+        "release_gate_smoke",
+        "memory_governance",
+        "data_agent_sql_safety",
+        "data_agent_sql_grounding",
+        "risk_qa_groundedness",
+        "profile_dag_contract",
+        "profile_memory_snapshot",
+    ]
+    assert {item["suite_id"] for item in payload["suite_summaries"]} == {
+        "release_gate_smoke",
+        "memory_governance",
+        "data_agent_sql_safety",
+        "data_agent_sql_grounding",
+        "risk_qa_groundedness",
+        "profile_dag_contract",
+        "profile_memory_snapshot",
+    }
 
 
 def test_runner_returns_two_for_malformed_case_file(tmp_path) -> None:

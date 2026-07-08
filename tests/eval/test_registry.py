@@ -79,5 +79,13 @@ def test_profiles_map_to_release_gate_smoke() -> None:
         "profile_memory_snapshot",
     ]
     assert pr_profile.strict_by_default is False
-    assert production_profile.suites == ["release_gate_smoke"]
+    assert production_profile.suites == [
+        "release_gate_smoke",
+        "memory_governance",
+        "data_agent_sql_safety",
+        "data_agent_sql_grounding",
+        "risk_qa_groundedness",
+        "profile_dag_contract",
+        "profile_memory_snapshot",
+    ]
     assert production_profile.strict_by_default is True
