@@ -1,0 +1,301 @@
+cases:
+  - case_id: profile_memory_snapshot_includes_module_outputs
+    suite: profile_memory_snapshot
+    task_type: profile_snapshot
+    input:
+      check_kind: snapshot_contract
+      country_code: mx
+      uids: [uid_001]
+      requested_modules: [comprehensive]
+      application_time: "2026-06-01T00:00:00"
+      strict_data_mode: false
+      fake_skill_outputs:
+        app_profile:
+          summary: App profile ok
+          structured_result: {status: ok, evidence_status: grounded}
+          charts: []
+          report_markdown: App profile ok
+        behavior_profile:
+          summary: Behavior profile ok
+          structured_result: {status: ok, evidence_status: grounded}
+          charts: []
+          report_markdown: Behavior profile ok
+        credit_profile:
+          summary: Credit profile ok
+          structured_result: {status: ok, evidence_status: grounded}
+          charts: []
+          report_markdown: Credit profile ok
+        comprehensive_profile:
+          summary: Comprehensive profile ok
+          structured_result:
+            status: ok
+            evidence_status: grounded
+            summary: Stable low risk segment.
+            segment: S2
+            overall_risk: medium
+            overall_value: high
+            confidence: medium
+          charts: []
+          report_markdown: Comprehensive profile ok
+    expected:
+      decision: allowed
+      required_output_keys: [app, behavior, credit, comprehensive, product, ops]
+    tags: [profile_snapshot, snapshot_contract]
+    severity: blocker
+    source: m5_profile_dag_regression
+  - case_id: profile_memory_snapshot_user_analysis_result_contract
+    suite: profile_memory_snapshot
+    task_type: profile_snapshot
+    input:
+      check_kind: legacy_adapter
+      country_code: mx
+      uids: [uid_001]
+      requested_modules: [product, ops]
+      application_time: "2026-06-01T00:00:00"
+      strict_data_mode: false
+      metadata:
+        adapter_target: user_analysis_result
+      fake_skill_outputs:
+        app_profile:
+          summary: App profile ok
+          structured_result: {status: ok, evidence_status: grounded}
+          charts: []
+          report_markdown: App profile ok
+        behavior_profile:
+          summary: Behavior profile ok
+          structured_result: {status: ok, evidence_status: grounded}
+          charts: []
+          report_markdown: Behavior profile ok
+        credit_profile:
+          summary: Credit profile ok
+          structured_result: {status: ok, evidence_status: grounded}
+          charts: []
+          report_markdown: Credit profile ok
+        comprehensive_profile:
+          summary: Comprehensive profile ok
+          structured_result:
+            status: ok
+            evidence_status: grounded
+            summary: Stable low risk segment.
+            segment: S2
+            overall_risk: medium
+            overall_value: high
+            confidence: medium
+          charts: []
+          report_markdown: Comprehensive profile ok
+        product_advice:
+          summary: Product advice ok
+          structured_result: {status: ok, evidence_status: derived_from_comprehensive}
+          charts: []
+          report_markdown: Product advice ok
+        ops_advice:
+          summary: Ops advice ok
+          structured_result: {status: ok, evidence_status: derived_from_comprehensive}
+          charts: []
+          report_markdown: Ops advice ok
+    expected:
+      decision: allowed
+      required_output_keys:
+        - app_profile
+        - behavior_profile
+        - credit_profile
+        - comprehensive_profile
+        - product_advice
+        - ops_advice
+    tags: [profile_snapshot, adapter]
+    severity: major
+    source: m5_profile_dag_regression
+  - case_id: profile_memory_snapshot_run_profile_rows_contract
+    suite: profile_memory_snapshot
+    task_type: profile_snapshot
+    input:
+      check_kind: legacy_adapter
+      country_code: mx
+      uids: [uid_001]
+      requested_modules: [product]
+      application_time: "2026-06-01T00:00:00"
+      strict_data_mode: false
+      metadata:
+        adapter_target: run_profile_rows
+      fake_skill_outputs:
+        app_profile:
+          summary: App profile ok
+          structured_result: {status: ok, evidence_status: grounded}
+          charts: []
+          report_markdown: App profile ok
+        behavior_profile:
+          summary: Behavior profile ok
+          structured_result: {status: ok, evidence_status: grounded}
+          charts: []
+          report_markdown: Behavior profile ok
+        credit_profile:
+          summary: Credit profile ok
+          structured_result: {status: ok, evidence_status: grounded}
+          charts: []
+          report_markdown: Credit profile ok
+        comprehensive_profile:
+          summary: Comprehensive profile ok
+          structured_result:
+            status: ok
+            evidence_status: grounded
+            summary: Stable low risk segment.
+            segment: S2
+            overall_risk: medium
+            overall_value: high
+            confidence: medium
+          charts: []
+          report_markdown: Comprehensive profile ok
+        product_advice:
+          summary: Product advice ok
+          structured_result: {status: ok, evidence_status: derived_from_comprehensive}
+          charts: []
+          report_markdown: Product advice ok
+    expected:
+      decision: allowed
+      required_nodes: [product]
+    tags: [profile_snapshot, adapter]
+    severity: major
+    source: m5_profile_dag_regression
+  - case_id: profile_memory_snapshot_blocks_data_agent_grounding
+    suite: profile_memory_snapshot
+    task_type: profile_snapshot
+    input:
+      check_kind: memory_boundary
+      country_code: mx
+      uids: [uid_001]
+      requested_modules: [comprehensive]
+      application_time: "2026-06-01T00:00:00"
+      strict_data_mode: false
+      metadata:
+        requested_use: data_agent_field_grounding
+      fake_skill_outputs:
+        app_profile:
+          summary: App profile ok
+          structured_result: {status: ok, evidence_status: grounded}
+          charts: []
+          report_markdown: App profile ok
+        behavior_profile:
+          summary: Behavior profile ok
+          structured_result: {status: ok, evidence_status: grounded}
+          charts: []
+          report_markdown: Behavior profile ok
+        credit_profile:
+          summary: Credit profile ok
+          structured_result: {status: ok, evidence_status: grounded}
+          charts: []
+          report_markdown: Credit profile ok
+        comprehensive_profile:
+          summary: Comprehensive profile ok
+          structured_result:
+            status: ok
+            evidence_status: grounded
+            summary: Stable low risk segment.
+            segment: S2
+            overall_risk: medium
+            overall_value: high
+            confidence: medium
+          charts: []
+          report_markdown: Comprehensive profile ok
+    expected:
+      decision: blocked
+      forbidden_memory_uses: [data_agent_field_grounding]
+      required_failure_codes: [PROFILE_DAG_PROFILE_RESULT_NOT_DATA_GROUNDING]
+    tags: [profile_snapshot, memory_boundary]
+    severity: blocker
+    source: m5_profile_dag_regression
+  - case_id: profile_memory_snapshot_blocks_risk_qa_source_document
+    suite: profile_memory_snapshot
+    task_type: profile_snapshot
+    input:
+      check_kind: memory_boundary
+      country_code: mx
+      uids: [uid_001]
+      requested_modules: [comprehensive]
+      application_time: "2026-06-01T00:00:00"
+      strict_data_mode: false
+      metadata:
+        requested_use: risk_knowledge_source_document
+      fake_skill_outputs:
+        app_profile:
+          summary: App profile ok
+          structured_result: {status: ok, evidence_status: grounded}
+          charts: []
+          report_markdown: App profile ok
+        behavior_profile:
+          summary: Behavior profile ok
+          structured_result: {status: ok, evidence_status: grounded}
+          charts: []
+          report_markdown: Behavior profile ok
+        credit_profile:
+          summary: Credit profile ok
+          structured_result: {status: ok, evidence_status: grounded}
+          charts: []
+          report_markdown: Credit profile ok
+        comprehensive_profile:
+          summary: Comprehensive profile ok
+          structured_result:
+            status: ok
+            evidence_status: grounded
+            summary: Stable low risk segment.
+            segment: S2
+            overall_risk: medium
+            overall_value: high
+            confidence: medium
+          charts: []
+          report_markdown: Comprehensive profile ok
+    expected:
+      decision: blocked
+      forbidden_memory_uses: [risk_knowledge_source_document]
+      required_failure_codes: [PROFILE_DAG_PROFILE_RESULT_NOT_RISK_QA_SOURCE]
+    tags: [profile_snapshot, memory_boundary]
+    severity: blocker
+    source: m5_profile_dag_regression
+  - case_id: profile_memory_snapshot_degraded_snapshot_retains_evidence_status
+    suite: profile_memory_snapshot
+    task_type: profile_snapshot
+    input:
+      check_kind: snapshot_contract
+      country_code: mx
+      uids: [uid_001]
+      requested_modules: [comprehensive]
+      application_time: "2026-06-01T00:00:00"
+      strict_data_mode: true
+      metadata:
+        snapshot_fields: [evidence_status]
+      fake_skill_outputs:
+        app_profile:
+          summary: App profile ok
+          structured_result: {status: ok, evidence_status: grounded}
+          charts: []
+          report_markdown: App profile ok
+        behavior_profile:
+          summary: Behavior profile ok
+          structured_result: {status: ok, evidence_status: grounded}
+          charts: []
+          report_markdown: Behavior profile ok
+        credit_profile:
+          summary: Credit profile degraded
+          structured_result:
+            status: data_missing
+            evidence_status: partial
+          charts: []
+          report_markdown: Credit profile degraded
+        comprehensive_profile:
+          summary: Comprehensive profile degraded
+          structured_result:
+            status: ok
+            evidence_status: partial
+            summary: Degraded profile due to upstream signal.
+            segment: S2
+            overall_risk: medium
+            overall_value: high
+            confidence: medium
+          charts: []
+          report_markdown: Comprehensive profile degraded
+    expected:
+      decision: allowed
+      degraded_nodes: [credit, comprehensive]
+      required_structured_fields: [evidence_status]
+    tags: [profile_snapshot, degraded]
+    severity: blocker
+    source: m5_profile_dag_regression
