@@ -33,6 +33,11 @@ class MemoryRetrievalRequest:
     max_items: int = 8
     include_legacy_memory: bool = False
     production_context: bool = False
+    allow_vector: bool = False
+    allow_fts: bool = True
+    retrieval_mode: str = "fts_only"
+    max_vector_items: int = 3
+    require_policy_gate: bool = True
 
     def __post_init__(self) -> None:
         user_id = str(self.user_id or "").strip()
@@ -44,6 +49,8 @@ class MemoryRetrievalRequest:
         object.__setattr__(self, "country", _optional_text(self.country))
         object.__setattr__(self, "session_id", _optional_text(self.session_id))
         object.__setattr__(self, "max_items", max(1, int(self.max_items or 1)))
+        object.__setattr__(self, "max_vector_items", max(1, int(self.max_vector_items or 1)))
+        object.__setattr__(self, "retrieval_mode", str(self.retrieval_mode or "fts_only").strip().lower())
 
 
 @dataclass(frozen=True)
@@ -60,6 +67,9 @@ class MemoryRetrievedItem:
     source_run_id: str | None
     source_artifact_id: str | None
     score: float
+    retrieval_method: str = "fts"
+    raw_distance: float | None = None
+    normalized_score: float | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
@@ -144,7 +154,33 @@ class MemoryRetrievalService:
         record: MemoryStoredRecord,
         request: MemoryRetrievalRequest,
         policy: MemoryRetrievalPolicy,
+        *,
+        score: float | None = None,
+        retrieval_method: str = "fts",
+        raw_distance: float | None = None,
+        normalized_score: float | None = None,
     ) -> tuple[MemoryRetrievedItem | None, MemoryRejectedRetrievalItem | None]:
+        return evaluate_retrieved_record(
+            record,
+            request,
+            policy,
+            score=score,
+            retrieval_method=retrieval_method,
+            raw_distance=raw_distance,
+            normalized_score=normalized_score,
+        )
+
+
+def evaluate_retrieved_record(
+    record: MemoryStoredRecord,
+    request: MemoryRetrievalRequest,
+    policy: MemoryRetrievalPolicy,
+    *,
+    score: float | None = None,
+    retrieval_method: str = "fts",
+    raw_distance: float | None = None,
+    normalized_score: float | None = None,
+) -> tuple[MemoryRetrievedItem | None, MemoryRejectedRetrievalItem | None]:
         metadata = dict(record.metadata_json or {})
         if not _is_valid_m4_envelope(metadata):
             return None, MemoryRejectedRetrievalItem(
@@ -246,7 +282,10 @@ class MemoryRetrievalService:
                 evidence_status=_optional_text(metadata.get("evidence_status")),
                 source_run_id=_optional_text(metadata.get("source_run_id")),
                 source_artifact_id=_optional_text(metadata.get("source_artifact_id")),
-                score=_score(record),
+                score=(float(score) if score is not None else _score(record)),
+                retrieval_method=str(retrieval_method or "fts"),
+                raw_distance=raw_distance,
+                normalized_score=normalized_score,
                 metadata={
                     **dict(candidate.metadata),
                     "importance": float(record.importance),

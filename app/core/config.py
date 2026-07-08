@@ -258,6 +258,33 @@ class Settings(BaseModel):
     )
     memory_vector_top_k: int = int(os.getenv("MEMORY_VECTOR_TOP_K", "8"))
     memory_vector_text_max_chars: int = int(os.getenv("MEMORY_VECTOR_TEXT_MAX_CHARS", "2000"))
+    memory_vector_context_injection_enabled: bool = os.getenv(
+        "MEMORY_VECTOR_CONTEXT_INJECTION_ENABLED",
+        "0",
+    ).strip().lower() in {"1", "true", "yes", "on"}
+    memory_vector_retrieval_mode: str = os.getenv(
+        "MEMORY_VECTOR_RETRIEVAL_MODE",
+        "fts_primary",
+    ).strip().lower() or "fts_primary"
+    memory_vector_policy_strict: bool = os.getenv(
+        "MEMORY_VECTOR_POLICY_STRICT",
+        "1",
+    ).strip().lower() in {"1", "true", "yes", "on"}
+    memory_vector_fallback_to_fts: bool = os.getenv(
+        "MEMORY_VECTOR_FALLBACK_TO_FTS",
+        "1",
+    ).strip().lower() in {"1", "true", "yes", "on"}
+    memory_vector_max_context_items: int = int(os.getenv("MEMORY_VECTOR_MAX_CONTEXT_ITEMS", "3"))
+    memory_vector_min_score: float | None = (
+        float(os.getenv("MEMORY_VECTOR_MIN_SCORE"))
+        if str(os.getenv("MEMORY_VECTOR_MIN_SCORE", "")).strip()
+        else None
+    )
+    memory_context_max_total_items: int = int(os.getenv("MEMORY_CONTEXT_MAX_TOTAL_ITEMS", "8"))
+    memory_context_provenance_enabled: bool = os.getenv(
+        "MEMORY_CONTEXT_PROVENANCE_ENABLED",
+        "1",
+    ).strip().lower() in {"1", "true", "yes", "on"}
     risk_knowledge_reranker_max_candidates: int = int(
         os.getenv("RISK_KNOWLEDGE_RERANKER_MAX_CANDIDATES", "50")
     )

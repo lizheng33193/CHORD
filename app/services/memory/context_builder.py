@@ -17,6 +17,7 @@ class MemoryContextItem:
     authority_level: str
     evidence_status: str | None
     requested_use: str
+    retrieval_method: str
     source_run_id: str | None = None
 
 
@@ -46,6 +47,7 @@ def build_memory_context_bundle(
                 f"[{index}] source_type={item.memory_source_type.value} | "
                 f"authority={item.authority_level.value} | "
                 f"use={item.requested_use.value} | "
+                f"retrieval={item.retrieval_method} | "
                 f"evidence={item.evidence_status or 'none'} | "
                 f"memory_id={item.memory_id}"
             ),
@@ -54,6 +56,7 @@ def build_memory_context_bundle(
             authority_level=item.authority_level.value,
             evidence_status=item.evidence_status,
             requested_use=item.requested_use.value,
+            retrieval_method=item.retrieval_method,
             source_run_id=item.source_run_id,
         )
         block = f"{context_item.header}\n{context_item.content}"
@@ -80,4 +83,3 @@ def build_memory_context_bundle(
         rendered_text=rendered_text,
         metadata=metadata,
     )
-

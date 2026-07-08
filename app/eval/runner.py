@@ -11,6 +11,7 @@ from typing import Any
 from app.eval.cases import EvalCaseLoadError, load_eval_cases
 from app.eval.evaluators.data_agent import DataAgentEvaluator
 from app.eval.evaluators.memory import MemoryGovernanceEvaluator
+from app.eval.evaluators.memory_semantic import MemorySemanticRetrievalEvaluator
 from app.eval.evaluators.profile import ProfileEvaluator
 from app.eval.evaluators.risk_qa import RiskQAEvaluator
 from app.eval.evaluators.release_gate_smoke import ReleaseGateSmokeEvaluator
@@ -44,6 +45,8 @@ def build_evaluator(evaluator_name: str):
         return ReleaseGateSmokeEvaluator()
     if evaluator_name == "memory_governance":
         return MemoryGovernanceEvaluator()
+    if evaluator_name == "memory_semantic_retrieval":
+        return MemorySemanticRetrievalEvaluator()
     if evaluator_name == "data_agent":
         return DataAgentEvaluator()
     if evaluator_name == "risk_qa":

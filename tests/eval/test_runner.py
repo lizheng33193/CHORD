@@ -179,6 +179,7 @@ def test_runner_returns_zero_for_production_profile_without_explicit_strict(tmp_
     assert payload["selected_suites"] == [
         "release_gate_smoke",
         "memory_governance",
+        "memory_semantic_retrieval",
         "data_agent_sql_safety",
         "data_agent_sql_grounding",
         "risk_qa_groundedness",
@@ -300,6 +301,7 @@ def test_runner_profile_report_includes_multi_suite_summary(tmp_path) -> None:
     assert payload["selected_suites"] == [
         "release_gate_smoke",
         "memory_governance",
+        "memory_semantic_retrieval",
         "data_agent_sql_safety",
         "data_agent_sql_grounding",
         "risk_qa_groundedness",
@@ -309,6 +311,7 @@ def test_runner_profile_report_includes_multi_suite_summary(tmp_path) -> None:
     assert {item["suite_id"] for item in payload["suite_summaries"]} == {
         "release_gate_smoke",
         "memory_governance",
+        "memory_semantic_retrieval",
         "data_agent_sql_safety",
         "data_agent_sql_grounding",
         "risk_qa_groundedness",
@@ -317,6 +320,8 @@ def test_runner_profile_report_includes_multi_suite_summary(tmp_path) -> None:
     }
     assert "memory_governance" in payload["suite_metrics"]
     assert "memory_governance_pass_rate" in payload["suite_metrics"]["memory_governance"]
+    assert "memory_semantic_retrieval" in payload["suite_metrics"]
+    assert "semantic_hit_at_k" in payload["suite_metrics"]["memory_semantic_retrieval"]
     assert "data_agent_sql_safety" in payload["suite_metrics"]
     assert "data_agent_sql_safety_pass_rate" in payload["suite_metrics"]["data_agent_sql_safety"]
     assert "data_agent_sql_grounding" in payload["suite_metrics"]
@@ -350,6 +355,7 @@ def test_runner_production_profile_report_includes_all_release_gate_suites(tmp_p
     assert payload["selected_suites"] == [
         "release_gate_smoke",
         "memory_governance",
+        "memory_semantic_retrieval",
         "data_agent_sql_safety",
         "data_agent_sql_grounding",
         "risk_qa_groundedness",
@@ -359,6 +365,7 @@ def test_runner_production_profile_report_includes_all_release_gate_suites(tmp_p
     assert {item["suite_id"] for item in payload["suite_summaries"]} == {
         "release_gate_smoke",
         "memory_governance",
+        "memory_semantic_retrieval",
         "data_agent_sql_safety",
         "data_agent_sql_grounding",
         "risk_qa_groundedness",
