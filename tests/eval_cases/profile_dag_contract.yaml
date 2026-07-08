@@ -1,0 +1,286 @@
+cases:
+  - case_id: profile_dag_node_registry_contract
+    suite: profile_dag_contract
+    task_type: profile_dag
+    input:
+      check_kind: node_registry
+    expected:
+      decision: allowed
+      required_nodes: [app, behavior, credit, comprehensive, product, ops]
+    tags: [profile_dag, registry]
+    severity: blocker
+    source: m5_profile_dag_regression
+  - case_id: profile_dag_product_request_expands_dependencies
+    suite: profile_dag_contract
+    task_type: profile_dag
+    input:
+      check_kind: execution_closure
+      requested_modules: [product]
+    expected:
+      decision: allowed
+      required_nodes: [app, behavior, credit, comprehensive, product]
+    tags: [profile_dag, closure]
+    severity: blocker
+    source: m5_profile_dag_regression
+  - case_id: profile_dag_ops_request_expands_dependencies
+    suite: profile_dag_contract
+    task_type: profile_dag
+    input:
+      check_kind: execution_closure
+      requested_modules: [ops]
+    expected:
+      decision: allowed
+      required_nodes: [app, behavior, credit, comprehensive, ops]
+    tags: [profile_dag, closure]
+    severity: major
+    source: m5_profile_dag_regression
+  - case_id: profile_dag_comprehensive_request_expands_base_nodes
+    suite: profile_dag_contract
+    task_type: profile_dag
+    input:
+      check_kind: execution_closure
+      requested_modules: [comprehensive]
+    expected:
+      decision: allowed
+      required_nodes: [app, behavior, credit, comprehensive]
+    tags: [profile_dag, closure]
+    severity: blocker
+    source: m5_profile_dag_regression
+  - case_id: profile_dag_full_execution_completed
+    suite: profile_dag_contract
+    task_type: profile_dag
+    input:
+      check_kind: dag_execution
+      country_code: mx
+      uids: [uid_001]
+      requested_modules: [product, ops]
+      application_time: "2026-06-01T00:00:00"
+      strict_data_mode: false
+      fake_skill_outputs:
+        app_profile:
+          summary: App profile ok
+          structured_result:
+            status: ok
+            evidence_status: grounded
+          charts: []
+          report_markdown: App profile ok
+        behavior_profile:
+          summary: Behavior profile ok
+          structured_result:
+            status: ok
+            evidence_status: grounded
+          charts: []
+          report_markdown: Behavior profile ok
+        credit_profile:
+          summary: Credit profile ok
+          structured_result:
+            status: ok
+            evidence_status: grounded
+          charts: []
+          report_markdown: Credit profile ok
+        comprehensive_profile:
+          summary: Comprehensive profile ok
+          structured_result:
+            status: ok
+            evidence_status: grounded
+            summary: Stable low risk segment.
+          charts: []
+          report_markdown: Comprehensive profile ok
+        product_advice:
+          summary: Product advice ok
+          structured_result:
+            status: ok
+            evidence_status: derived_from_comprehensive
+          charts: []
+          report_markdown: Product advice ok
+        ops_advice:
+          summary: Ops advice ok
+          structured_result:
+            status: ok
+            evidence_status: derived_from_comprehensive
+          charts: []
+          report_markdown: Ops advice ok
+    expected:
+      decision: allowed
+      required_run_status: completed
+      completed_nodes: [app, behavior, credit, comprehensive, product, ops]
+      required_structured_fields: [status, evidence_status]
+    tags: [profile_dag, execution]
+    severity: blocker
+    source: m5_profile_dag_regression
+  - case_id: profile_dag_unrequested_ops_handled_by_runtime_contract
+    suite: profile_dag_contract
+    task_type: profile_dag
+    input:
+      check_kind: dag_execution
+      country_code: mx
+      uids: [uid_001]
+      requested_modules: [product]
+      application_time: "2026-06-01T00:00:00"
+      strict_data_mode: false
+      fake_skill_outputs:
+        app_profile:
+          summary: App profile ok
+          structured_result: {status: ok, evidence_status: grounded}
+          charts: []
+          report_markdown: App profile ok
+        behavior_profile:
+          summary: Behavior profile ok
+          structured_result: {status: ok, evidence_status: grounded}
+          charts: []
+          report_markdown: Behavior profile ok
+        credit_profile:
+          summary: Credit profile ok
+          structured_result: {status: ok, evidence_status: grounded}
+          charts: []
+          report_markdown: Credit profile ok
+        comprehensive_profile:
+          summary: Comprehensive profile ok
+          structured_result: {status: ok, evidence_status: grounded, summary: Stable profile.}
+          charts: []
+          report_markdown: Comprehensive profile ok
+        product_advice:
+          summary: Product advice ok
+          structured_result: {status: ok, evidence_status: derived_from_comprehensive}
+          charts: []
+          report_markdown: Product advice ok
+    expected:
+      decision: allowed
+      completed_nodes: [app, behavior, credit, comprehensive, product]
+      skipped_nodes: [ops]
+    tags: [profile_dag, skipped]
+    severity: major
+    source: m5_profile_dag_regression
+  - case_id: profile_dag_upstream_failure_skips_downstream_product
+    suite: profile_dag_contract
+    task_type: profile_dag
+    input:
+      check_kind: dependency_skip
+      country_code: mx
+      uids: [uid_001]
+      requested_modules: [product]
+      application_time: "2026-06-01T00:00:00"
+      strict_data_mode: true
+      fake_skill_outputs:
+        app_profile:
+          summary: App profile ok
+          structured_result: {status: ok, evidence_status: grounded}
+          charts: []
+          report_markdown: App profile ok
+        behavior_profile:
+          summary: Behavior profile ok
+          structured_result: {status: ok, evidence_status: grounded}
+          charts: []
+          report_markdown: Behavior profile ok
+        credit_profile:
+          summary: Credit profile ok
+          structured_result: {status: ok, evidence_status: grounded}
+          charts: []
+          report_markdown: Credit profile ok
+      fake_skill_failures:
+        comprehensive_profile:
+          message: comprehensive failed
+    expected:
+      decision: allowed
+      failed_nodes: [comprehensive]
+      skipped_nodes: [product]
+      required_run_status: completed_with_degradation
+    tags: [profile_dag, dependency_skip]
+    severity: blocker
+    source: m5_profile_dag_regression
+  - case_id: profile_dag_base_degraded_yields_comprehensive_degraded
+    suite: profile_dag_contract
+    task_type: profile_dag
+    input:
+      check_kind: degraded_execution
+      country_code: mx
+      uids: [uid_001]
+      requested_modules: [comprehensive]
+      application_time: "2026-06-01T00:00:00"
+      strict_data_mode: true
+      fake_skill_outputs:
+        app_profile:
+          summary: App profile ok
+          structured_result: {status: ok, evidence_status: grounded}
+          charts: []
+          report_markdown: App profile ok
+        behavior_profile:
+          summary: Behavior profile ok
+          structured_result: {status: ok, evidence_status: grounded}
+          charts: []
+          report_markdown: Behavior profile ok
+        credit_profile:
+          summary: Credit profile degraded
+          structured_result:
+            status: data_missing
+            evidence_status: partial
+          charts: []
+          report_markdown: Credit profile degraded
+        comprehensive_profile:
+          summary: Comprehensive profile degraded
+          structured_result:
+            status: ok
+            evidence_status: partial
+            summary: Comprehensive profile degraded by upstream signal.
+          charts: []
+          report_markdown: Comprehensive profile degraded
+    expected:
+      decision: allowed
+      degraded_nodes: [credit, comprehensive]
+      required_run_status: completed_with_degradation
+      required_structured_fields: [status, evidence_status]
+    tags: [profile_dag, degraded]
+    severity: blocker
+    source: m5_profile_dag_regression
+  - case_id: profile_dag_missing_structured_result_blocked
+    suite: profile_dag_contract
+    task_type: profile_dag
+    input:
+      check_kind: structured_output
+      country_code: mx
+      uids: [uid_001]
+      requested_modules: [app]
+      application_time: "2026-06-01T00:00:00"
+      strict_data_mode: false
+      fake_skill_outputs:
+        app_profile:
+          summary: App profile without structured result
+          charts: []
+          report_markdown: App profile without structured result
+    expected:
+      decision: blocked
+      required_failure_codes: [PROFILE_DAG_STRUCTURED_RESULT_MISSING]
+    tags: [profile_dag, structured_output]
+    severity: blocker
+    source: m5_profile_dag_regression
+  - case_id: profile_dag_event_contract_contains_required_events
+    suite: profile_dag_contract
+    task_type: profile_dag
+    input:
+      check_kind: event_contract
+      country_code: mx
+      uids: [uid_001]
+      requested_modules: [app]
+      application_time: "2026-06-01T00:00:00"
+      strict_data_mode: false
+      expected_events:
+        - profile_run_started
+        - profile_node_started
+        - profile_node_completed
+        - profile_run_completed
+      fake_skill_outputs:
+        app_profile:
+          summary: App profile ok
+          structured_result: {status: ok, evidence_status: grounded}
+          charts: []
+          report_markdown: App profile ok
+    expected:
+      decision: allowed
+      required_event_types:
+        - profile_run_started
+        - profile_node_started
+        - profile_node_completed
+        - profile_run_completed
+    tags: [profile_dag, events]
+    severity: major
+    source: m5_profile_dag_regression

@@ -113,6 +113,36 @@ def test_runner_returns_zero_for_risk_qa_groundedness_suite(tmp_path) -> None:
     assert exit_code == 0
 
 
+def test_runner_returns_zero_for_profile_dag_contract_suite(tmp_path) -> None:
+    from app.eval.runner import main
+
+    exit_code = main(
+        [
+            "--suite",
+            "profile_dag_contract",
+            "--output-dir",
+            str(tmp_path),
+        ]
+    )
+
+    assert exit_code == 0
+
+
+def test_runner_returns_zero_for_profile_memory_snapshot_suite(tmp_path) -> None:
+    from app.eval.runner import main
+
+    exit_code = main(
+        [
+            "--suite",
+            "profile_memory_snapshot",
+            "--output-dir",
+            str(tmp_path),
+        ]
+    )
+
+    assert exit_code == 0
+
+
 def test_runner_returns_zero_for_production_profile_strict(tmp_path) -> None:
     from app.eval.runner import main
 
@@ -177,6 +207,8 @@ def test_runner_profile_report_includes_multi_suite_summary(tmp_path) -> None:
         "data_agent_sql_safety",
         "data_agent_sql_grounding",
         "risk_qa_groundedness",
+        "profile_dag_contract",
+        "profile_memory_snapshot",
     ]
     assert {item["suite_id"] for item in payload["suite_summaries"]} == {
         "release_gate_smoke",
@@ -184,6 +216,8 @@ def test_runner_profile_report_includes_multi_suite_summary(tmp_path) -> None:
         "data_agent_sql_safety",
         "data_agent_sql_grounding",
         "risk_qa_groundedness",
+        "profile_dag_contract",
+        "profile_memory_snapshot",
     }
     assert "memory_governance" in payload["suite_metrics"]
     assert "memory_governance_pass_rate" in payload["suite_metrics"]["memory_governance"]
@@ -193,6 +227,10 @@ def test_runner_profile_report_includes_multi_suite_summary(tmp_path) -> None:
     assert "data_agent_sql_grounding_pass_rate" in payload["suite_metrics"]["data_agent_sql_grounding"]
     assert "risk_qa_groundedness" in payload["suite_metrics"]
     assert "risk_qa_groundedness_pass_rate" in payload["suite_metrics"]["risk_qa_groundedness"]
+    assert "profile_dag_contract" in payload["suite_metrics"]
+    assert "profile_dag_contract_pass_rate" in payload["suite_metrics"]["profile_dag_contract"]
+    assert "profile_memory_snapshot" in payload["suite_metrics"]
+    assert "profile_memory_snapshot_pass_rate" in payload["suite_metrics"]["profile_memory_snapshot"]
 
 
 def test_runner_returns_two_for_malformed_case_file(tmp_path) -> None:

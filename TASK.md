@@ -109,6 +109,28 @@
   - deferred:
     - `[x]` `risk_qa_groundedness` 不加入 `production_release`，延后到 `M5-6`
 
+- [x] M5-5｜Profile DAG Regression Suite — 已落地共享 suite（2026-07-08）
+  - docs:
+    - `docs/specs/m5-profile-dag-regression-suite.md`
+    - `docs/plans/m5-5-profile-dag-regression-suite-plan.md`
+    - `docs/reviews/m5-5-profile-dag-regression-suite-review.md`
+  - delivered:
+    - `[x]` 新增 `profile_dag_contract` shared suite
+    - `[x]` 新增 `profile_memory_snapshot` shared suite
+    - `[x]` 新增 `app/eval/evaluators/profile.py`
+    - `[x]` `pr_acceptance` 扩展为顺序执行 `release_gate_smoke + memory_governance + data_agent_sql_safety + data_agent_sql_grounding + risk_qa_groundedness + profile_dag_contract + profile_memory_snapshot`
+    - `[x]` `production_release` 保持仅运行 `release_gate_smoke`
+    - `[x]` `tests/eval_cases/profile_dag_contract.yaml` 与 `tests/eval_cases/profile_memory_snapshot.yaml` 落地 deterministic case set
+    - `[x]` `tests/eval/` 覆盖 evaluator / registry / runner / report serialization
+  - guardrails:
+    - `[x]` 不修改 `ProfileDagExecutor` runtime 行为
+    - `[x]` 不修改 node registry 行为
+    - `[x]` 不调用真实 runtime skill / LLM / DB
+    - `[x]` 保留 raw runtime status 与 raw memory policy reason code
+    - `[x]` `eval_only` fallback 未使用
+  - deferred:
+    - `[x]` Profile suites 不加入 `production_release`，延后到 `M5-6`
+
 - [x] PR-A｜Risk QA + Context Isolation + Evidence/Citation Production Gate — accepted for Pre-M3 scope（2026-07-04）
   - docs:
     - `docs/specs/risk-qa-production-gate-contract.md`

@@ -49,6 +49,22 @@ _SUITES: dict[str, EvalSuite] = {
         evaluator="risk_qa",
         blocking=True,
         advisory=False,
+    ),
+    "profile_dag_contract": EvalSuite(
+        suite_id="profile_dag_contract",
+        description="Deterministic Profile DAG node registry, execution, degraded, and event contract coverage.",
+        case_path=str(REPO_ROOT / "tests" / "eval_cases" / "profile_dag_contract.yaml"),
+        evaluator="profile",
+        blocking=True,
+        advisory=False,
+    ),
+    "profile_memory_snapshot": EvalSuite(
+        suite_id="profile_memory_snapshot",
+        description="Deterministic Profile DAG snapshot, legacy adapter, and profile-result memory boundary coverage.",
+        case_path=str(REPO_ROOT / "tests" / "eval_cases" / "profile_memory_snapshot.yaml"),
+        evaluator="profile",
+        blocking=True,
+        advisory=False,
     )
 }
 

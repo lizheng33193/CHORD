@@ -65,6 +65,22 @@
   - preserve raw runtime warning / failure codes and raw source labels alongside normalized eval report codes
   - do not change Risk Knowledge runtime behavior or call real LLM / embedding / vector / worker infrastructure in `M5-4`
 
+## 2026-07-08 M5-5 Profile DAG Regression Suite
+
+- new spec artifact:
+  - `docs/specs/m5-profile-dag-regression-suite.md`
+- new plan artifact:
+  - `docs/plans/m5-5-profile-dag-regression-suite-plan.md`
+- new review artifact:
+  - `docs/reviews/m5-5-profile-dag-regression-suite-review.md`
+- current scope:
+  - add `profile_dag_contract` and `profile_memory_snapshot` as shared eval suites
+  - reuse deterministic Profile DAG seams for node registry, dependency closure, executor status semantics, legacy adapters, snapshot shaping, and profile-result memory boundaries
+  - expand `pr_acceptance` to run `release_gate_smoke + memory_governance + data_agent_sql_safety + data_agent_sql_grounding + risk_qa_groundedness + profile_dag_contract + profile_memory_snapshot`
+  - keep `production_release` unchanged as smoke-only until `M5-6`
+  - preserve raw runtime statuses and raw memory-policy reason codes alongside normalized eval report codes
+  - do not change Profile DAG runtime behavior, node registry behavior, or real runtime skill behavior in `M5-5`
+
 ## 2026-07-04 Pre-M3 / M2D System-Level Acceptance Snapshot
 
 - status summary:
