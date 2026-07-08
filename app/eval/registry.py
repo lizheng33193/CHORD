@@ -41,6 +41,14 @@ _SUITES: dict[str, EvalSuite] = {
         evaluator="data_agent",
         blocking=True,
         advisory=False,
+    ),
+    "risk_qa_groundedness": EvalSuite(
+        suite_id="risk_qa_groundedness",
+        description="Deterministic Risk QA groundedness regression coverage.",
+        case_path=str(REPO_ROOT / "tests" / "eval_cases" / "risk_qa_groundedness.yaml"),
+        evaluator="risk_qa",
+        blocking=True,
+        advisory=False,
     )
 }
 

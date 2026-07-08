@@ -13,8 +13,9 @@ _PROFILES: dict[str, EvalProfile] = {
             "memory_governance",
             "data_agent_sql_safety",
             "data_agent_sql_grounding",
+            "risk_qa_groundedness",
         ],
-        description="PR acceptance profile over shared eval foundation, memory governance, and Data Agent regression suites.",
+        description="PR acceptance profile over shared eval foundation, memory governance, Data Agent regression, and Risk QA groundedness suites.",
         strict_by_default=False,
     ),
     "production_release": EvalProfile(

@@ -11,6 +11,7 @@ from typing import Any
 from app.eval.cases import EvalCaseLoadError, load_eval_cases
 from app.eval.evaluators.data_agent import DataAgentEvaluator
 from app.eval.evaluators.memory import MemoryGovernanceEvaluator
+from app.eval.evaluators.risk_qa import RiskQAEvaluator
 from app.eval.evaluators.release_gate_smoke import ReleaseGateSmokeEvaluator
 from app.eval.profiles import get_profile
 from app.eval.registry import REPO_ROOT, get_suite
@@ -44,6 +45,8 @@ def build_evaluator(evaluator_name: str):
         return MemoryGovernanceEvaluator()
     if evaluator_name == "data_agent":
         return DataAgentEvaluator()
+    if evaluator_name == "risk_qa":
+        return RiskQAEvaluator()
     raise KeyError(f"unknown evaluator: {evaluator_name}")
 
 

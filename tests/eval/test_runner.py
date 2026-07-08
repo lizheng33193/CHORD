@@ -98,6 +98,21 @@ def test_runner_returns_zero_for_data_agent_sql_grounding_suite(tmp_path) -> Non
     assert exit_code == 0
 
 
+def test_runner_returns_zero_for_risk_qa_groundedness_suite(tmp_path) -> None:
+    from app.eval.runner import main
+
+    exit_code = main(
+        [
+            "--suite",
+            "risk_qa_groundedness",
+            "--output-dir",
+            str(tmp_path),
+        ]
+    )
+
+    assert exit_code == 0
+
+
 def test_runner_returns_zero_for_production_profile_strict(tmp_path) -> None:
     from app.eval.runner import main
 
@@ -161,12 +176,14 @@ def test_runner_profile_report_includes_multi_suite_summary(tmp_path) -> None:
         "memory_governance",
         "data_agent_sql_safety",
         "data_agent_sql_grounding",
+        "risk_qa_groundedness",
     ]
     assert {item["suite_id"] for item in payload["suite_summaries"]} == {
         "release_gate_smoke",
         "memory_governance",
         "data_agent_sql_safety",
         "data_agent_sql_grounding",
+        "risk_qa_groundedness",
     }
     assert "memory_governance" in payload["suite_metrics"]
     assert "memory_governance_pass_rate" in payload["suite_metrics"]["memory_governance"]
@@ -174,6 +191,8 @@ def test_runner_profile_report_includes_multi_suite_summary(tmp_path) -> None:
     assert "data_agent_sql_safety_pass_rate" in payload["suite_metrics"]["data_agent_sql_safety"]
     assert "data_agent_sql_grounding" in payload["suite_metrics"]
     assert "data_agent_sql_grounding_pass_rate" in payload["suite_metrics"]["data_agent_sql_grounding"]
+    assert "risk_qa_groundedness" in payload["suite_metrics"]
+    assert "risk_qa_groundedness_pass_rate" in payload["suite_metrics"]["risk_qa_groundedness"]
 
 
 def test_runner_returns_two_for_malformed_case_file(tmp_path) -> None:
