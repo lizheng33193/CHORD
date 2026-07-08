@@ -99,6 +99,23 @@
   - mark `M5 completed`
   - keep `M6 not started`
 
+## 2026-07-08 M6A Long-term Memory Vector Shadow Index
+
+- new spec artifact:
+  - `docs/specs/m6a-memory-vector-shadow-index-contract.md`
+- new plan artifact:
+  - `docs/plans/m6a-memory-vector-shadow-index-plan.md`
+- new review artifact:
+  - `docs/reviews/m6a-memory-vector-shadow-index-review.md`
+- current scope:
+  - add independent `MEMORY_VECTOR_*`-controlled FAISS shadow index beside SQLite memory
+  - add `memory_vector_sync` state table in the SQLite memory DB
+  - add CLI-only `status` / `sync-all` / `rebuild` / `shadow-search`
+  - keep SQLite as source of truth and FTS5 as production retrieval
+  - keep vector results out of prompts and out of the current context builder
+  - reuse relational load + hard filtering after vector retrieval
+  - keep M6B policy-gated semantic retrieval and context injection out of scope
+
 ## 2026-07-08 M5 Final Status
 
 - status summary:
@@ -114,7 +131,12 @@
   - `pr_acceptance` and `production_release` both run the full deterministic 7-suite list
   - `production_release` is strict-by-default and must be used with strict semantics
   - no dashboard, CI integration, online monitoring, LangGraph migration, or production deployment was added in M5
-  - `M6 not started`
+  - `M6A implemented / pending acceptance`
+  - long-term memory now has an independent FAISS shadow vector index controlled by `MEMORY_VECTOR_*`
+  - SQLite remains the relational source of truth
+  - FTS5 remains the production retrieval path
+  - vector search is CLI/debug shadow-only and does not inject into prompts
+  - `M6B not started`
 
 ## 2026-07-04 Pre-M3 / M2D System-Level Acceptance Snapshot
 
@@ -2233,7 +2255,7 @@ graph LR
 本批 4 Plan 是 Orchestrator Agent V1。按“试点成功后封装成 Skill 推广”原则，V2 候选项：
 
 1. **Skill 封装**：把 “NL → 画像分析链路” 封装成 ai-code-review 风格的 Skill，方便扩展到其他 Agent（如风控 Agent / 营销 Agent）。
-2. **Persistent Memory**：V1 已从本地 JSON 原型升级为 SQLite + FTS5 长期记忆，支持 `user_id/project_id/country` 隔离、跨 session 召回、Memory Inspector 管理和离线 memory eval；短期聊天历史独立存放在 `outputs/orchestrator_sessions/`，只用于 session 恢复，不参与长期召回；向量数据库 / embedding 仅在 FTS 评估不达标或记忆规模增长后再进入 V2。
+2. **Persistent Memory**：V1 已从本地 JSON 原型升级为 SQLite + FTS5 长期记忆，支持 `user_id/project_id/country` 隔离、跨 session 召回、Memory Inspector 管理和离线 memory eval；短期聊天历史独立存放在 `outputs/orchestrator_sessions/`，只用于 session 恢复，不参与长期召回；M6A 已增加独立 `MEMORY_VECTOR_*` 控制的 FAISS shadow index，但仍不参与 prompt 注入；M6B 之前不把 semantic memory 当成生产召回。
 3. **Multi-tenant**：支持多分析师同时跑，session 隔离 + 配额隔离（突破当前全局 _ACK_PROVIDER 单例限制）。
 4. **自动批跑**：`query_data` 加 `unattended` 变体支持夜间 cron（突破 ACK 限制），需高级凭据 + IT 安全审批。
 
@@ -2270,6 +2292,7 @@ V2 启动前必须重新走 Vibe Coding Step 2 Brainstorming + 新 Design Doc + 
 - [2026-05-01] trace_analyzer 实装完成（docs/plans/trace-analyzer-plan.md）：六步管线全部 GREEN（24 + 3 = 27 新测试）+ /api/trace/{uid} 已挂载 main.py。零回归
 - [2026-05-02] 前端渐进加载迁移（参考项目融合）：Phase A 后端（shared_orchestrator 单例 + 模块缓存 + /api/analyze-module + /api/ui-config）+ Phase B 前端（SSE → 模块级渐进加载 + 假动画过渡 + ModuleStatusPanel + trace 独立加载）+ BehaviorPanel 中文乱码修复 + 大纲 LLM 摘要。270 passed 0 failed
 - [2026-05-25] Orchestrator Memory V1 落地：SQLite + FTS5 长期记忆、严格写入白名单、跨 session 召回、Memory Inspector 管理抽屉、软删除/归档/恢复、离线 memory eval runner。Checkpoint commit: `3c10d85`；行为契约见 `docs/specs/memory-behavior-contract.md`。
+- [2026-07-08] M6A 落地：新增 `MEMORY_VECTOR_*` 控制的 FAISS shadow vector index、`memory_vector_sync` SQLite 状态表、CLI `status/sync-all/rebuild/shadow-search`、relational load + hard filter 的 shadow semantic search。SQLite 仍是 source of truth，FTS5 仍是生产召回，M6B not started。
 - [2026-05-26] Orchestrator Chat progress / memory UI contract：新增 `tool_progress` 模块级进度事件、只读短期会话历史列表、长期记忆状态文案边界；契约见 `docs/specs/orchestrator-chat-progress-memory-ui-contract.md`。
 - [2026-05-29] V7 Capability Gating Follow-up：fake Data Agent 测试改成显式 capability patch；direct profile 缺 bucket 时在 planning 阶段尊重 capability，不再生成误导性的 `repair_*` step；visible execution 新增 `data_acquisition_unavailable` 步骤；credit `source_shape` 与 executor `rows_per_uid` 语义进一步收敛。
 - [2026-05-30] NL Chat UX v4 验收补丁：前端新增 `run_failed` 终态处理，stop 按钮改为 `cancel_requested/cancelling` 派生态禁用；`tool_completed.status=cancelled` 与历史恢复统一走工具状态归一化；`ChatExecutionTraceCard` 按 run 终态区分 pending 摘要文案，避免 completed/cancelled 历史回合继续显示“等待执行...”。
