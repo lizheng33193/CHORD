@@ -73,4 +73,6 @@ def _build_markdown(report: EvalReport) -> str:
         )
         for failure in result.failures:
             lines.append(f"  failure: {failure}")
+        for warning in result.warnings:
+            lines.append(f"  warning: {warning}")
     return "\n".join(lines) + "\n"

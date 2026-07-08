@@ -89,6 +89,26 @@
   - deferred:
     - `[x]` Data Agent suites 不加入 `production_release`，延后到 `M5-6`
 
+- [x] M5-4｜Risk QA Groundedness Eval Suite — 已落地共享 suite（2026-07-08）
+  - docs:
+    - `docs/specs/m5-risk-qa-groundedness-eval.md`
+    - `docs/plans/m5-4-risk-qa-groundedness-eval-plan.md`
+    - `docs/reviews/m5-4-risk-qa-groundedness-eval-review.md`
+  - delivered:
+    - `[x]` 新增 `risk_qa_groundedness` shared suite
+    - `[x]` 新增 `app/eval/evaluators/risk_qa.py`
+    - `[x]` `pr_acceptance` 扩展为顺序执行 `release_gate_smoke + memory_governance + data_agent_sql_safety + data_agent_sql_grounding + risk_qa_groundedness`
+    - `[x]` `production_release` 保持仅运行 `release_gate_smoke`
+    - `[x]` `tests/eval_cases/risk_qa_groundedness.yaml` 落地 deterministic case set
+    - `[x]` `tests/eval/` 覆盖 evaluator / registry / runner / report serialization
+  - guardrails:
+    - `[x]` 不修改 Risk Knowledge runtime 行为
+    - `[x]` 不调用真实 LLM / embedding provider / FAISS / Redis worker / indexing runtime
+    - `[x]` 保留 raw runtime warning / failure codes 与 raw source labels
+    - `[x]` `eval_only` fallback 未使用
+  - deferred:
+    - `[x]` `risk_qa_groundedness` 不加入 `production_release`，延后到 `M5-6`
+
 - [x] PR-A｜Risk QA + Context Isolation + Evidence/Citation Production Gate — accepted for Pre-M3 scope（2026-07-04）
   - docs:
     - `docs/specs/risk-qa-production-gate-contract.md`

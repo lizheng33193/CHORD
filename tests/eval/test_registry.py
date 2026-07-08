@@ -38,6 +38,16 @@ def test_registry_exposes_data_agent_eval_suites() -> None:
     assert grounding_suite.evaluator == "data_agent"
 
 
+def test_registry_exposes_risk_qa_groundedness_suite() -> None:
+    from app.eval.registry import get_suite
+
+    suite = get_suite("risk_qa_groundedness")
+
+    assert suite.suite_id == "risk_qa_groundedness"
+    assert Path(suite.case_path).name == "risk_qa_groundedness.yaml"
+    assert suite.evaluator == "risk_qa"
+
+
 def test_profiles_map_to_release_gate_smoke() -> None:
     from app.eval.profiles import get_profile
 
@@ -49,6 +59,7 @@ def test_profiles_map_to_release_gate_smoke() -> None:
         "memory_governance",
         "data_agent_sql_safety",
         "data_agent_sql_grounding",
+        "risk_qa_groundedness",
     ]
     assert pr_profile.strict_by_default is False
     assert production_profile.suites == ["release_gate_smoke"]

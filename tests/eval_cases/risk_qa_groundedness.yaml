@@ -1,0 +1,395 @@
+cases:
+  - case_id: risk_qa_multi_borrowing_retrieval_hits_expected_section
+    suite: risk_qa_groundedness
+    task_type: risk_qa
+    input:
+      check_kind: retrieval_grounding
+      question: 什么是多头借贷？
+      query: 多头借贷 定义 风险
+      risk_stage: pre_loan
+      topic: credit
+      records:
+        - chunk_id: rk_multi_borrowing_001
+          document_id: smart_risk_guide
+          document_name: 智能风控指南
+          document_version: v1
+          section_id: sec_multi_borrowing
+          section_title: 多头借贷风险
+          section_path: 贷前风控/信用风险/多头借贷
+          page_start: 12
+          page_end: 13
+          risk_stage: pre_loan
+          topic: credit
+          knowledge_type: definition
+          evidence_text: 多头借贷通常指借款人在多个平台或机构同时存在借款申请或债务记录。
+          relevance_score: 0.92
+          rerank_score: 0.88
+          source_type: risk_domain_knowledge
+    expected:
+      decision: allowed
+      required_section_ids: [sec_multi_borrowing]
+      min_evidence_count: 1
+    tags: [retrieval, credit]
+    severity: major
+    source: m5_risk_qa_groundedness
+  - case_id: risk_qa_device_anomaly_retrieval_hits_expected_chunk
+    suite: risk_qa_groundedness
+    task_type: risk_qa
+    input:
+      check_kind: retrieval_grounding
+      question: 为什么设备异常是风险信号？
+      query: 设备异常 风险 信号 反欺诈
+      risk_stage: pre_loan
+      topic: fraud
+      records:
+        - chunk_id: rk_device_anomaly_001
+          document_id: smart_risk_guide
+          document_name: 智能风控指南
+          document_version: v1
+          section_id: sec_device_anomaly
+          section_title: 设备异常与反欺诈
+          section_path: 贷前风控/反欺诈/设备风险
+          page_start: 25
+          page_end: 26
+          risk_stage: pre_loan
+          topic: fraud
+          knowledge_type: indicator
+          evidence_text: 频繁更换设备、设备指纹异常、同一设备关联多个账户可能提示欺诈风险。
+          relevance_score: 0.91
+          rerank_score: 0.87
+          source_type: risk_domain_knowledge
+    expected:
+      decision: allowed
+      required_chunk_ids: [rk_device_anomaly_001]
+      min_evidence_count: 1
+    tags: [retrieval, fraud]
+    severity: major
+    source: m5_risk_qa_groundedness
+  - case_id: risk_qa_unknown_topic_refusal_when_evidence_insufficient
+    suite: risk_qa_groundedness
+    task_type: risk_qa
+    input:
+      check_kind: refusal_policy
+      question: 这个知识库里有没有关于火星贷款风控的策略？
+      query: 火星贷款 风控 策略
+      records: []
+    expected:
+      decision: refused
+      expected_refusal: true
+      required_failure_codes: [RISK_QA_EVIDENCE_INSUFFICIENT]
+    tags: [refusal, insufficient]
+    severity: blocker
+    source: m5_risk_qa_groundedness
+  - case_id: risk_qa_sufficient_evidence_should_not_refuse
+    suite: risk_qa_groundedness
+    task_type: risk_qa
+    input:
+      check_kind: evidence_sufficiency
+      question: 什么是贷前风控？
+      query: 什么是贷前风控
+      records:
+        - chunk_id: rk_preloan_001
+          document_id: smart_risk_guide
+          document_name: 智能风控指南
+          document_version: v1
+          section_id: sec_preloan_definition
+          section_title: 贷前风控定义
+          section_path: 贷前风控/总览/定义
+          page_start: 3
+          page_end: 4
+          risk_stage: pre_loan
+          topic: credit
+          knowledge_type: definition
+          evidence_text: 贷前风控是在贷款发放前对申请人信用、欺诈、还款能力等风险进行识别和评估。
+          relevance_score: 0.94
+          rerank_score: 0.9
+          source_type: risk_domain_knowledge
+    expected:
+      decision: allowed
+      expected_refusal: false
+      min_evidence_count: 1
+    tags: [evidence, pre_loan]
+    severity: major
+    source: m5_risk_qa_groundedness
+  - case_id: risk_qa_answer_missing_citation_blocked
+    suite: risk_qa_groundedness
+    task_type: risk_qa
+    input:
+      check_kind: citation_validation
+      question: 什么是贷后催收分层？
+      records:
+        - chunk_id: rk_collection_001
+          document_id: smart_risk_guide
+          document_name: 智能风控指南
+          document_version: v1
+          section_id: sec_collection_segmentation
+          section_title: 贷后催收分层
+          section_path: 贷后管理/催收/分层
+          page_start: 44
+          page_end: 45
+          evidence_text: 贷后催收通常会根据逾期天数、还款意愿、风险等级进行分层触达。
+          relevance_score: 0.93
+          rerank_score: 0.89
+          source_type: risk_domain_knowledge
+      answer:
+        text: 贷后催收分层是按逾期天数和风险等级进行差异化触达。
+        citations: []
+    expected:
+      decision: blocked
+      required_failure_codes: [RISK_QA_CITATION_MISSING]
+    tags: [citation]
+    severity: blocker
+    source: m5_risk_qa_groundedness
+  - case_id: risk_qa_invalid_citation_chunk_blocked
+    suite: risk_qa_groundedness
+    task_type: risk_qa
+    input:
+      check_kind: citation_validation
+      question: 为什么申请密度高可能是欺诈风险？
+      records:
+        - chunk_id: rk_application_velocity_001
+          document_id: smart_risk_guide
+          document_name: 智能风控指南
+          document_version: v1
+          section_id: sec_application_velocity
+          section_title: 申请密度风险
+          section_path: 贷前风控/反欺诈/申请密度
+          page_start: 18
+          page_end: 18
+          evidence_text: 短时间多次申请可能提示资金紧张或欺诈团伙批量申请风险。
+          relevance_score: 0.9
+          rerank_score: 0.86
+          source_type: risk_domain_knowledge
+      answer:
+        text: 申请密度高可能代表欺诈风险。
+        citations:
+          - citation_id: cite_missing
+            chunk_id: rk_non_existing_chunk
+            section_id: sec_unknown
+    expected:
+      decision: blocked
+      required_failure_codes: [RISK_QA_CITATION_INVALID]
+    tags: [citation]
+    severity: blocker
+    source: m5_risk_qa_groundedness
+  - case_id: risk_qa_grounded_answer_contains_supported_tokens
+    suite: risk_qa_groundedness
+    task_type: risk_qa
+    input:
+      check_kind: answer_grounding
+      question: 为什么申请密度高代表风险？
+      records:
+        - chunk_id: rk_velocity_001
+          document_id: smart_risk_guide
+          document_name: 智能风控指南
+          document_version: v1
+          section_id: sec_application_velocity
+          section_title: 申请密度风险
+          section_path: 贷前风控/反欺诈/申请密度
+          page_start: 18
+          page_end: 18
+          evidence_text: 短时间内多次申请可能表示资金压力、信用风险或欺诈团伙批量申请。
+          relevance_score: 0.92
+          rerank_score: 0.9
+          source_type: risk_domain_knowledge
+      answer:
+        text: 申请密度高的风险在于短时间多次申请可能反映资金压力或批量欺诈风险。
+        citations:
+          - citation_id: cite_velocity
+            chunk_id: rk_velocity_001
+            section_id: sec_application_velocity
+    expected:
+      decision: allowed
+      required_citations: [rk_velocity_001]
+      required_answer_tokens: [短时间多次申请, 资金压力, 欺诈]
+    tags: [grounded_answer]
+    severity: major
+    source: m5_risk_qa_groundedness
+  - case_id: risk_qa_unsupported_claim_blocked
+    suite: risk_qa_groundedness
+    task_type: risk_qa
+    input:
+      check_kind: unsupported_claim
+      question: 多头借贷为什么危险？
+      records:
+        - chunk_id: rk_multi_borrowing_001
+          document_id: smart_risk_guide
+          document_name: 智能风控指南
+          document_version: v1
+          section_id: sec_multi_borrowing
+          section_title: 多头借贷风险
+          section_path: 贷前风控/信用风险/多头借贷
+          page_start: 12
+          page_end: 13
+          evidence_text: 多头借贷可能表示借款人债务压力较高。
+          relevance_score: 0.88
+          rerank_score: 0.84
+          source_type: risk_domain_knowledge
+      answer:
+        text: 多头借贷危险，因为它一定代表用户已经恶意欺诈，并且一定会逾期。
+        citations:
+          - citation_id: cite_multi_borrowing
+            chunk_id: rk_multi_borrowing_001
+            section_id: sec_multi_borrowing
+    expected:
+      decision: blocked
+      required_failure_codes: [RISK_QA_UNSUPPORTED_CLAIM]
+      forbidden_answer_tokens:
+        - 一定代表用户已经恶意欺诈
+        - 一定会逾期
+      max_unsupported_claims: 0
+    tags: [unsupported_claim]
+    severity: blocker
+    source: m5_risk_qa_groundedness
+  - case_id: risk_qa_history_not_source_document
+    suite: risk_qa_groundedness
+    task_type: risk_qa
+    input:
+      check_kind: source_boundary
+      question: 什么是首逾？
+      records:
+        - chunk_id: memory_risk_qa_answer_001
+          raw_source_label: risk_qa_answer
+          source_type: memory_as_authority
+          document_name: previous_answer_memory
+          evidence_text: 历史回答，首逾是第一次逾期。
+    expected:
+      decision: blocked
+      required_failure_codes: [RISK_QA_HISTORY_NOT_SOURCE_DOCUMENT]
+    tags: [source_boundary, memory]
+    severity: blocker
+    source: m5_risk_qa_groundedness
+  - case_id: risk_qa_data_knowledge_sql_example_leakage_blocked
+    suite: risk_qa_groundedness
+    task_type: risk_qa
+    input:
+      check_kind: source_boundary
+      question: 为什么短期多次申请是风险信号？
+      records:
+        - chunk_id: sql_example_001
+          raw_source_label: data_sql_example
+          source_type: sql_examples
+          document_name: data_knowledge_sql_examples
+          evidence_text: SELECT uid FROM loan_apply WHERE apply_cnt_7d > 3
+    expected:
+      decision: blocked
+      required_failure_codes: [RISK_QA_DATA_KNOWLEDGE_LEAKAGE]
+    tags: [source_boundary, data_knowledge]
+    severity: blocker
+    source: m5_risk_qa_groundedness
+  - case_id: risk_qa_citation_requires_section_and_page
+    suite: risk_qa_groundedness
+    task_type: risk_qa
+    input:
+      check_kind: citation_validation
+      question: 什么是贷中监控？
+      records:
+        - chunk_id: rk_inloan_001
+          document_id: smart_risk_guide
+          document_name: 智能风控指南
+          document_version: v1
+          section_id: sec_inloan_monitoring
+          section_title: 贷中监控
+          section_path: 贷中管理/监控/行为变化
+          page_start: 31
+          page_end: 31
+          evidence_text: 贷中监控关注借款后的行为变化。
+          relevance_score: 0.9
+          rerank_score: 0.88
+          source_type: risk_domain_knowledge
+      answer:
+        text: 贷中监控关注借款后的行为变化。
+        citations:
+          - citation_id: cite_inloan
+            chunk_id: rk_inloan_001
+            section_id: sec_inloan_monitoring
+            section_title: 贷中监控
+            page_start: 31
+    expected:
+      decision: allowed
+      required_citations: [rk_inloan_001]
+    tags: [citation, metadata]
+    severity: major
+    source: m5_risk_qa_groundedness
+  - case_id: risk_qa_citation_missing_metadata_warning
+    suite: risk_qa_groundedness
+    task_type: risk_qa
+    input:
+      check_kind: citation_validation
+      question: 什么是贷中监控？
+      records:
+        - chunk_id: rk_inloan_001
+          document_id: smart_risk_guide
+          document_name: 智能风控指南
+          document_version: v1
+          section_id: sec_inloan_monitoring
+          section_title: 贷中监控
+          section_path: 贷中管理/监控/行为变化
+          page_start: 31
+          page_end: 31
+          evidence_text: 贷中监控关注借款后的行为变化。
+          relevance_score: 0.9
+          rerank_score: 0.88
+          source_type: risk_domain_knowledge
+      answer:
+        text: 贷中监控关注借款后的行为变化。
+        citations:
+          - citation_id: cite_inloan_missing_page
+            chunk_id: rk_inloan_001
+            section_id: sec_inloan_monitoring
+            section_title: 贷中监控
+    expected:
+      decision: warning
+      required_warning_codes: [RISK_QA_CITATION_METADATA_INCOMPLETE]
+      required_citations: [rk_inloan_001]
+    tags: [citation, metadata_warning]
+    severity: major
+    source: m5_risk_qa_groundedness
+  - case_id: risk_qa_expected_section_missing_blocked
+    suite: risk_qa_groundedness
+    task_type: risk_qa
+    input:
+      check_kind: retrieval_grounding
+      question: 什么是贷后催收分层？
+      query: 贷后催收 分层
+      records:
+        - chunk_id: rk_unrelated_001
+          document_id: smart_risk_guide
+          document_name: 智能风控指南
+          document_version: v1
+          section_id: sec_preloan_fraud
+          section_title: 贷前反欺诈
+          section_path: 贷前风控/反欺诈/身份设备
+          page_start: 6
+          page_end: 7
+          evidence_text: 贷前反欺诈关注身份、设备、行为异常。
+          relevance_score: 0.62
+          rerank_score: 0.51
+          source_type: risk_domain_knowledge
+    expected:
+      decision: blocked
+      required_section_ids: [sec_collection_segmentation]
+      required_failure_codes: [RISK_QA_EXPECTED_SECTION_MISSING]
+    tags: [retrieval, missing]
+    severity: blocker
+    source: m5_risk_qa_groundedness
+  - case_id: risk_qa_refusal_should_not_fabricate_citation
+    suite: risk_qa_groundedness
+    task_type: risk_qa
+    input:
+      check_kind: refusal_policy
+      question: 知识库没有覆盖的问题
+      query: 知识库没有覆盖的问题
+      records: []
+      answer:
+        text: 当前知识库证据不足，无法可靠回答。
+        citations:
+          - citation_id: fake_chunk_001
+            chunk_id: fake_chunk_001
+    expected:
+      decision: blocked
+      expected_refusal: true
+      required_failure_codes: [RISK_QA_CITATION_INVALID]
+    tags: [refusal, citation]
+    severity: blocker
+    source: m5_risk_qa_groundedness
