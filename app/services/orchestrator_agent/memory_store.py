@@ -220,6 +220,24 @@ class SQLiteMemoryStore:
                 "CREATE INDEX IF NOT EXISTS idx_memory_identity "
                 "ON memory_records(user_id, project_id, country, status, category)"
             )
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS memory_vector_sync (
+                    memory_id TEXT PRIMARY KEY,
+                    vector_namespace TEXT NOT NULL,
+                    embedding_provider TEXT NOT NULL,
+                    embedding_model TEXT NOT NULL,
+                    embedding_dim INTEGER NOT NULL,
+                    content_hash TEXT NOT NULL,
+                    embedding_text_hash TEXT,
+                    vector_status TEXT NOT NULL,
+                    indexed_at TEXT,
+                    last_error TEXT,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                )
+                """
+            )
 
     def add(self, record: MemoryRecord) -> MemoryRecord:
         self.initialize()
@@ -274,6 +292,10 @@ class SQLiteMemoryStore:
                     row,
                 )
             self._refresh_fts(conn, row)
+        self._best_effort_update_vector_sync_for_memory(
+            self.get_record_by_id(record.memory_id),
+            action="write",
+        )
         return record
 
     def search(
@@ -387,6 +409,10 @@ class SQLiteMemoryStore:
                 row,
             )
             self._refresh_fts(conn, row)
+        self._best_effort_update_vector_sync_for_memory(
+            self.get_record_by_id(record.memory_id),
+            action="update",
+        )
         return record
 
     def set_status(
@@ -422,6 +448,10 @@ class SQLiteMemoryStore:
                 "UPDATE memory_records SET status = ?, updated_at = ? WHERE memory_id = ?",
                 (normalized_status, now_iso(), memory_id),
             )
+        self._best_effort_update_vector_sync_for_memory(
+            self.get_record_by_id(memory_id),
+            action="restore" if normalized_status == "active" else normalized_status,
+        )
         updated = self.get(
             memory_id,
             user_id=user_id,
@@ -511,6 +541,131 @@ class SQLiteMemoryStore:
             "by_category": by_category,
             "by_status": by_status,
         }
+
+    def get_record_by_id(self, memory_id: str) -> dict[str, Any] | None:
+        self.initialize()
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT *, NULL AS fts_rank FROM memory_records WHERE memory_id = ?",
+                (memory_id,),
+            ).fetchone()
+        return self._row_to_dict(row) if row else None
+
+    def get_vector_sync_state(
+        self,
+        memory_id: str,
+        *,
+        vector_namespace: str | None = None,
+    ):
+        from app.services.orchestrator_agent.memory_vector.schemas import MemoryVectorSyncState
+
+        self.initialize()
+        namespace = vector_namespace or settings.memory_vector_namespace
+        with self._connect() as conn:
+            row = conn.execute(
+                """
+                SELECT *
+                FROM memory_vector_sync
+                WHERE memory_id = ? AND vector_namespace = ?
+                """,
+                (memory_id, namespace),
+            ).fetchone()
+        if row is None:
+            return None
+        data = dict(row)
+        return MemoryVectorSyncState(
+            memory_id=str(data["memory_id"]),
+            vector_namespace=str(data["vector_namespace"]),
+            embedding_provider=str(data["embedding_provider"]),
+            embedding_model=str(data["embedding_model"]),
+            embedding_dim=int(data["embedding_dim"]),
+            content_hash=str(data["content_hash"]),
+            embedding_text_hash=str(data["embedding_text_hash"]) if data["embedding_text_hash"] else None,
+            vector_status=str(data["vector_status"]),
+            indexed_at=data["indexed_at"],
+            last_error=data["last_error"],
+            created_at=data["created_at"],
+            updated_at=data["updated_at"],
+        )
+
+    def list_vector_sync_states(
+        self,
+        *,
+        vector_namespace: str | None = None,
+        vector_status: str | None = None,
+        limit: int = 1000,
+    ) -> list:
+        from app.services.orchestrator_agent.memory_vector.schemas import MemoryVectorSyncState
+
+        self.initialize()
+        namespace = vector_namespace or settings.memory_vector_namespace
+        where = ["vector_namespace = ?"]
+        params: list[Any] = [namespace]
+        if vector_status:
+            where.append("vector_status = ?")
+            params.append(vector_status)
+        with self._connect() as conn:
+            rows = conn.execute(
+                f"SELECT * FROM memory_vector_sync WHERE {' AND '.join(where)} ORDER BY updated_at DESC LIMIT ?",
+                (*params, max(1, min(5000, int(limit or 1000)))),
+            ).fetchall()
+        return [
+            MemoryVectorSyncState(
+                memory_id=str(dict(row)["memory_id"]),
+                vector_namespace=str(dict(row)["vector_namespace"]),
+                embedding_provider=str(dict(row)["embedding_provider"]),
+                embedding_model=str(dict(row)["embedding_model"]),
+                embedding_dim=int(dict(row)["embedding_dim"]),
+                content_hash=str(dict(row)["content_hash"]),
+                embedding_text_hash=str(dict(row)["embedding_text_hash"]) if dict(row)["embedding_text_hash"] else None,
+                vector_status=str(dict(row)["vector_status"]),
+                indexed_at=dict(row)["indexed_at"],
+                last_error=dict(row)["last_error"],
+                created_at=dict(row)["created_at"],
+                updated_at=dict(row)["updated_at"],
+            )
+            for row in rows
+        ]
+
+    def upsert_vector_sync_state(self, state) -> None:
+        self.initialize()
+        created_at = state.created_at or now_iso()
+        updated_at = state.updated_at or now_iso()
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO memory_vector_sync (
+                    memory_id, vector_namespace, embedding_provider, embedding_model,
+                    embedding_dim, content_hash, embedding_text_hash, vector_status,
+                    indexed_at, last_error, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(memory_id) DO UPDATE SET
+                    vector_namespace=excluded.vector_namespace,
+                    embedding_provider=excluded.embedding_provider,
+                    embedding_model=excluded.embedding_model,
+                    embedding_dim=excluded.embedding_dim,
+                    content_hash=excluded.content_hash,
+                    embedding_text_hash=excluded.embedding_text_hash,
+                    vector_status=excluded.vector_status,
+                    indexed_at=excluded.indexed_at,
+                    last_error=excluded.last_error,
+                    updated_at=excluded.updated_at
+                """,
+                (
+                    state.memory_id,
+                    state.vector_namespace,
+                    state.embedding_provider,
+                    state.embedding_model,
+                    int(state.embedding_dim),
+                    state.content_hash,
+                    state.embedding_text_hash,
+                    state.vector_status,
+                    state.indexed_at,
+                    state.last_error,
+                    created_at,
+                    updated_at,
+                ),
+            )
 
     def _connect(self) -> sqlite3.Connection:
         conn = sqlite3.connect(str(self.db_path))
@@ -667,6 +822,97 @@ class SQLiteMemoryStore:
                 content=record.content,
             )
         return record
+
+    def _best_effort_update_vector_sync_for_memory(
+        self,
+        memory: dict[str, Any] | None,
+        *,
+        action: str,
+    ) -> None:
+        if memory is None:
+            return
+        try:
+            from app.services.orchestrator_agent.memory_vector.embedding_text import (
+                build_memory_embedding_text,
+            )
+            from app.services.orchestrator_agent.memory_vector.schemas import (
+                MemoryVectorSyncState,
+            )
+            from app.services.orchestrator_agent.memory_vector.sync import (
+                build_default_memory_vector_sync_service,
+            )
+
+            namespace = settings.memory_vector_namespace
+            existing = self.get_vector_sync_state(memory["memory_id"], vector_namespace=namespace)
+            status = str(memory.get("status") or "").strip().lower()
+            content_hash = _sha256_text(str(memory.get("content") or ""))
+            text_result = build_memory_embedding_text(
+                memory,
+                max_chars=settings.memory_vector_text_max_chars,
+            )
+
+            if status != "active":
+                next_status = "deleted"
+                embedding_text_hash = existing.embedding_text_hash if existing else None
+            elif text_result.skipped:
+                next_status = "skipped"
+                embedding_text_hash = None
+            else:
+                embedding_text_hash = text_result.embedding_text_hash
+                next_status = _next_vector_status(
+                    existing=existing.vector_status if existing else None,
+                    previous_hash=existing.embedding_text_hash if existing else None,
+                    current_hash=embedding_text_hash,
+                    action=action,
+                )
+
+            state = MemoryVectorSyncState(
+                memory_id=str(memory["memory_id"]),
+                vector_namespace=namespace,
+                embedding_provider=settings.memory_vector_embedding_provider,
+                embedding_model=settings.memory_vector_embedding_model,
+                embedding_dim=int(settings.memory_vector_embedding_dim),
+                content_hash=content_hash,
+                embedding_text_hash=embedding_text_hash,
+                vector_status=next_status,
+                indexed_at=existing.indexed_at if existing and next_status == "indexed" else None,
+                last_error=None,
+                created_at=existing.created_at if existing else now_iso(),
+                updated_at=now_iso(),
+            )
+            self.upsert_vector_sync_state(state)
+
+            if not settings.memory_vector_enabled:
+                return
+            service = build_default_memory_vector_sync_service(relational_store=self)
+            if status != "active":
+                service.mark_deleted(str(memory["memory_id"]))
+            else:
+                service.sync_memory(str(memory["memory_id"]))
+        except Exception:
+            return
+
+
+def _next_vector_status(
+    *,
+    existing: str | None,
+    previous_hash: str | None,
+    current_hash: str | None,
+    action: str,
+) -> str:
+    if action == "restore":
+        if previous_hash and current_hash and previous_hash != current_hash:
+            return "stale"
+        return "pending"
+    if existing == "indexed" and previous_hash and current_hash and previous_hash == current_hash:
+        return "indexed"
+    if previous_hash and current_hash and previous_hash != current_hash:
+        return "stale"
+    return "pending"
+
+
+def _sha256_text(text: str) -> str:
+    return "sha256:" + hashlib.sha256(str(text).encode("utf-8")).hexdigest()
 
 
 def _normalize_category(category: str) -> str:

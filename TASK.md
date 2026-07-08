@@ -152,7 +152,30 @@
     - `[x]` list commands 不执行 evaluator、不读取 case file、不写 report、不创建 output dir
   - final state:
     - `[x]` `M5 completed`
-    - `[x]` `M6 not started`
+    - `[x]` `M5 acceptance closure complete`
+
+- [x] M6A｜Long-term Memory Vector Shadow Index — 已实现 shadow-only 底座（2026-07-08）
+  - docs:
+    - `docs/specs/m6a-memory-vector-shadow-index-contract.md`
+    - `docs/plans/m6a-memory-vector-shadow-index-plan.md`
+    - `docs/reviews/m6a-memory-vector-shadow-index-review.md`
+  - delivered:
+    - `[x]` 新增 `app/services/orchestrator_agent/memory_vector/` 模块
+    - `[x]` 新增 `memory_vector_sync` SQLite 状态表
+    - `[x]` 新增独立 `MEMORY_VECTOR_*` 配置
+    - `[x]` 新增 CLI `status` / `sync-all` / `rebuild` / `shadow-search`
+    - `[x]` 新增 best-effort sync hooks 覆盖 memory add/update/archive/restore/delete
+    - `[x]` 新增 shadow semantic search，并强制 vector result 回表后再做硬过滤
+    - `[x]` 新增 M6A 定向测试
+  - guardrails:
+    - `[x]` SQLite 继续是 source of truth
+    - `[x]` FTS5 继续是生产 retrieval
+    - `[x]` vector result 不进入 prompt
+    - `[x]` 不新增 HTTP debug API
+    - `[x]` 不做 vector + FTS fusion
+  - final state:
+    - `[x]` `M6A implemented / pending acceptance`
+    - `[x]` `M6B not started`
 
 - [x] PR-A｜Risk QA + Context Isolation + Evidence/Citation Production Gate — accepted for Pre-M3 scope（2026-07-04）
   - docs:
