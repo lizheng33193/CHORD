@@ -49,6 +49,46 @@
     - `[x]` 不迁移 `tests/golden/memory_eval.py`
     - `[x]` 不替换 `app/release/pre_m3_gate.py`
 
+- [x] M5-2｜Memory Governance Eval Suite — 已落地共享 suite（2026-07-07）
+  - docs:
+    - `docs/specs/m5-memory-governance-eval.md`
+    - `docs/plans/m5-2-memory-governance-eval-plan.md`
+    - `docs/reviews/m5-2-memory-governance-eval-review.md`
+  - delivered:
+    - `[x]` 新增 `memory_governance` shared suite
+    - `[x]` `pr_acceptance` 扩展为顺序执行 `release_gate_smoke + memory_governance`
+    - `[x]` `production_release` 保持仅运行 `release_gate_smoke`
+    - `[x]` `EvalReport` 新增 additive multi-suite summary / metrics 字段
+    - `[x]` `tests/eval_cases/memory_governance.yaml` 落地 deterministic case set
+    - `[x]` `tests/eval/` 覆盖 runtime-backed evaluator / reason normalization / multi-suite runner / report aggregation
+  - guardrails:
+    - `[x]` 不修改 Memory runtime 行为
+    - `[x]` 保留 raw runtime reason code
+    - `[x]` `eval_only` fallback 未使用
+  - deferred:
+    - `[x]` `memory_governance` 不加入 `production_release`，延后到 `M5-6`
+
+- [x] M5-3｜Data Agent Regression Suite — 已落地共享 suite（2026-07-08）
+  - docs:
+    - `docs/specs/m5-data-agent-regression-suite.md`
+    - `docs/plans/m5-3-data-agent-regression-suite-plan.md`
+    - `docs/reviews/m5-3-data-agent-regression-suite-review.md`
+  - delivered:
+    - `[x]` 新增 `data_agent_sql_safety` shared suite
+    - `[x]` 新增 `data_agent_sql_grounding` shared suite
+    - `[x]` 新增 `app/eval/evaluators/data_agent.py`
+    - `[x]` `pr_acceptance` 扩展为顺序执行 `release_gate_smoke + memory_governance + data_agent_sql_safety + data_agent_sql_grounding`
+    - `[x]` `production_release` 保持仅运行 `release_gate_smoke`
+    - `[x]` `tests/eval_cases/data_agent_sql_safety.yaml` 与 `tests/eval_cases/data_agent_sql_grounding.yaml` 落地 deterministic case set
+    - `[x]` `tests/eval/` 覆盖 evaluator / registry / runner / multi-suite report summary
+  - guardrails:
+    - `[x]` 不修改 Data Agent runtime 行为
+    - `[x]` 不调用真实 DB / 不执行 SQL / 不调 LLM
+    - `[x]` 保留 raw runtime warning / failure codes
+    - `[x]` `eval_only` fallback 未使用
+  - deferred:
+    - `[x]` Data Agent suites 不加入 `production_release`，延后到 `M5-6`
+
 - [x] PR-A｜Risk QA + Context Isolation + Evidence/Citation Production Gate — accepted for Pre-M3 scope（2026-07-04）
   - docs:
     - `docs/specs/risk-qa-production-gate-contract.md`

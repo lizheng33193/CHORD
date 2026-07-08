@@ -8,14 +8,19 @@ from app.eval.schemas import EvalProfile
 _PROFILES: dict[str, EvalProfile] = {
     "pr_acceptance": EvalProfile(
         profile_id="pr_acceptance",
-        suites=["release_gate_smoke"],
-        description="Non-blocking PR acceptance smoke over shared eval foundation.",
+        suites=[
+            "release_gate_smoke",
+            "memory_governance",
+            "data_agent_sql_safety",
+            "data_agent_sql_grounding",
+        ],
+        description="PR acceptance profile over shared eval foundation, memory governance, and Data Agent regression suites.",
         strict_by_default=False,
     ),
     "production_release": EvalProfile(
         profile_id="production_release",
         suites=["release_gate_smoke"],
-        description="Strict production-release smoke over shared eval foundation.",
+        description="Strict production-release smoke over shared eval foundation; memory governance deferred to M5-6.",
         strict_by_default=True,
     ),
 }

@@ -45,6 +45,7 @@ def _build_markdown(report: EvalReport) -> str:
         f"- Runner status: `{report.runner_status}`",
         f"- Strict: `{report.strict}`",
         f"- Case file: `{report.case_file}`",
+        f"- Selected suites: `{', '.join(report.selected_suites) if report.selected_suites else '-'}`",
         "",
         "## Summary",
         "",
@@ -52,6 +53,15 @@ def _build_markdown(report: EvalReport) -> str:
         f"- Passed cases: `{report.passed_cases}`",
         f"- Failed cases: `{report.failed_cases}`",
     ]
+    if report.suite_summaries:
+        lines.extend(["", "## Suite Summaries", ""])
+        for summary in report.suite_summaries:
+            lines.append(
+                f"- `{summary.suite_id}` status=`{summary.status}` "
+                f"passed=`{summary.passed_cases}/{summary.total_cases}` score=`{summary.score:.3f}`"
+            )
+            for metric_name, metric_value in summary.metrics.items():
+                lines.append(f"  metric `{metric_name}`=`{metric_value}`")
     if report.failures:
         lines.extend(["", "## Runner Failures", ""])
         lines.extend(f"- {failure}" for failure in report.failures)

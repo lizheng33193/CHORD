@@ -1,0 +1,301 @@
+cases:
+  - case_id: profile_result_blocked_for_data_grounding
+    suite: memory_governance
+    task_type: memory_governance
+    input:
+      check_kind: use_policy
+      source_type: profile_result
+      authority_level: system_generated
+      requested_use: data_agent_field_grounding
+    expected:
+      decision: blocked
+      reason_code: MEMORY_USE_FORBIDDEN
+    tags: [memory, isolation]
+    severity: blocker
+    source: m4_memory_governance
+  - case_id: profile_result_allowed_for_followup
+    suite: memory_governance
+    task_type: memory_governance
+    input:
+      check_kind: use_policy
+      source_type: profile_result
+      authority_level: system_generated
+      requested_use: profile_followup_context
+    expected:
+      decision: allowed
+    tags: [memory, isolation]
+    severity: major
+    source: m4_memory_governance
+  - case_id: risk_qa_answer_blocked_for_source_document
+    suite: memory_governance
+    task_type: memory_governance
+    input:
+      check_kind: use_policy
+      source_type: risk_qa_answer
+      authority_level: evidence_grounded
+      requested_use: risk_knowledge_source_document
+    expected:
+      decision: blocked
+      reason_code: MEMORY_USE_FORBIDDEN
+    tags: [risk_qa, isolation]
+    severity: blocker
+    source: m4_memory_governance
+  - case_id: risk_qa_answer_allowed_for_followup
+    suite: memory_governance
+    task_type: memory_governance
+    input:
+      check_kind: use_policy
+      source_type: risk_qa_answer
+      authority_level: evidence_grounded
+      requested_use: risk_qa_followup_context
+    expected:
+      decision: allowed
+    tags: [risk_qa, followup]
+    severity: major
+    source: m4_memory_governance
+  - case_id: user_preference_blocked_for_safety_override
+    suite: memory_governance
+    task_type: memory_governance
+    input:
+      check_kind: use_policy
+      source_type: user_preference
+      authority_level: user_provided
+      requested_use: safety_policy_override
+    expected:
+      decision: blocked
+      reason_code: MEMORY_USE_FORBIDDEN
+    tags: [preference, safety]
+    severity: blocker
+    source: m4_memory_governance
+  - case_id: user_preference_allowed_for_response_style
+    suite: memory_governance
+    task_type: memory_governance
+    input:
+      check_kind: use_policy
+      source_type: user_preference
+      authority_level: user_provided
+      requested_use: response_style
+    expected:
+      decision: allowed
+    tags: [preference, style]
+    severity: minor
+    source: m4_memory_governance
+  - case_id: sql_grounding_allows_human_approved_sql_case
+    suite: memory_governance
+    task_type: memory_governance
+    input:
+      check_kind: retrieval_policy
+      request:
+        query: approved loan cohort
+        task_type: data_agent_sql
+        user_id: u1
+        project_id: p1
+        country: mx
+      records:
+        - memory_id: sql-approved-1
+          source_type: data_agent_sql_case
+          authority_level: human_approved
+          allowed_uses: [sql_generation_grounding]
+          forbidden_uses: [hitl_bypass]
+          content: Approved SQL case.
+          importance: 0.9
+          confidence: 0.9
+    expected:
+      decision: allowed
+      returned_memory_ids: [sql-approved-1]
+    tags: [retrieval, sql]
+    severity: major
+    source: m4_memory_governance
+  - case_id: sql_grounding_rejects_unapproved_sql_case
+    suite: memory_governance
+    task_type: memory_governance
+    input:
+      check_kind: retrieval_policy
+      request:
+        query: approved loan cohort
+        task_type: data_agent_sql
+        user_id: u1
+        project_id: p1
+        country: mx
+      records:
+        - memory_id: sql-draft-1
+          source_type: data_agent_sql_case
+          authority_level: system_generated
+          allowed_uses: [sql_generation_grounding, sql_case_reference]
+          forbidden_uses: [hitl_bypass]
+          content: Draft SQL case.
+          importance: 0.8
+          confidence: 0.8
+    expected:
+      decision: blocked
+      reason_code: APPROVAL_REQUIRED
+      rejected_memory_ids: [sql-draft-1]
+    tags: [retrieval, sql]
+    severity: blocker
+    source: m4_memory_governance
+  - case_id: sql_repair_allows_sql_error
+    suite: memory_governance
+    task_type: memory_governance
+    input:
+      check_kind: retrieval_policy
+      request:
+        query: repair broken sql
+        task_type: sql_repair
+        user_id: u1
+        project_id: p1
+        country: mx
+      records:
+        - memory_id: sql-error-1
+          source_type: data_agent_sql_error
+          authority_level: system_generated
+          allowed_uses: [sql_repair_hint, eval_candidate]
+          forbidden_uses: [approved_sql_example, sql_generation_grounding]
+          content: Failed SQL due to table not found.
+    expected:
+      decision: allowed
+      returned_memory_ids: [sql-error-1]
+    tags: [retrieval, sql_repair]
+    severity: major
+    source: m4_memory_governance
+  - case_id: eval_collection_rejects_unverified_risk_answer
+    suite: memory_governance
+    task_type: memory_governance
+    input:
+      check_kind: retrieval_policy
+      request:
+        query: collect eval candidates
+        task_type: eval_collection
+        user_id: u1
+        project_id: p1
+        country: mx
+      records:
+        - memory_id: risk-grounded-1
+          source_type: risk_qa_answer
+          authority_level: evidence_grounded
+          allowed_uses: [eval_candidate]
+          forbidden_uses: [risk_knowledge_source_document]
+          content: Grounded risk answer.
+        - memory_id: risk-unverified-1
+          source_type: risk_qa_answer
+          authority_level: unverified
+          allowed_uses: [eval_candidate]
+          forbidden_uses: [risk_knowledge_source_document]
+          content: Unverified risk answer.
+    expected:
+      decision: blocked
+      reason_code: APPROVAL_REQUIRED
+      returned_memory_ids: [risk-grounded-1]
+      rejected_memory_ids: [risk-unverified-1]
+    tags: [retrieval, eval]
+    severity: blocker
+    source: m4_memory_governance
+  - case_id: context_rendering_preserves_provenance
+    suite: memory_governance
+    task_type: memory_governance
+    input:
+      check_kind: context_rendering
+      max_chars: 600
+      request:
+        query: reply in Chinese
+        task_type: general_chat
+        user_id: u1
+        project_id: p1
+        country: mx
+      records:
+        - memory_id: pref-1
+          source_type: user_preference
+          authority_level: user_provided
+          allowed_uses: [response_style]
+          forbidden_uses: [safety_policy_override]
+          evidence_status: grounded
+          content: User prefers concise Chinese output.
+    expected:
+      decision: allowed
+      required_render_tokens:
+        - source_type=user_preference
+        - authority=user_provided
+        - use=response_style
+        - evidence=grounded
+      forbidden_render_tokens:
+        - forbidden_memory_use
+    tags: [context, provenance]
+    severity: major
+    source: m4_memory_governance
+  - case_id: context_rendering_truncates_at_item_boundary
+    suite: memory_governance
+    task_type: memory_governance
+    input:
+      check_kind: context_rendering
+      max_chars: 280
+      request:
+        query: reply in Chinese
+        task_type: general_chat
+        user_id: u1
+        project_id: p1
+        country: mx
+      records:
+        - memory_id: pref-1
+          source_type: user_preference
+          authority_level: user_provided
+          allowed_uses: [response_style]
+          forbidden_uses: [safety_policy_override]
+          content: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        - memory_id: pref-2
+          source_type: user_preference
+          authority_level: user_provided
+          allowed_uses: [response_style]
+          forbidden_uses: [safety_policy_override]
+          content: BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+    expected:
+      decision: allowed
+      returned_memory_ids: [pref-1]
+      required_warning_codes: [context_truncated]
+      forbidden_render_tokens:
+        - pref-2
+    tags: [context, truncation]
+    severity: major
+    source: m4_memory_governance
+  - case_id: promotion_blocks_sql_error_for_approved_sql_example
+    suite: memory_governance
+    task_type: memory_governance
+    input:
+      check_kind: promotion_policy
+      source_type: data_agent_sql_error
+      authority_level: system_generated
+      target: approved_sql_example
+      content: SQL error case.
+    expected:
+      decision: blocked
+      reason_code: PROMOTION_FORBIDDEN
+    tags: [promotion, sql_error]
+    severity: blocker
+    source: m4_memory_governance
+  - case_id: promotion_profile_result_allows_history_but_blocks_authority
+    suite: memory_governance
+    task_type: memory_governance
+    input:
+      check_kind: promotion_policy
+      source_type: profile_result
+      authority_level: system_generated
+      target: profile_history
+      content: Profile result summary.
+    expected:
+      decision: allowed
+    tags: [promotion, profile]
+    severity: major
+    source: m4_memory_governance
+  - case_id: promotion_profile_result_blocks_authority_target
+    suite: memory_governance
+    task_type: memory_governance
+    input:
+      check_kind: promotion_policy
+      source_type: profile_result
+      authority_level: system_generated
+      target: data_knowledge_authority
+      content: Profile result summary.
+    expected:
+      decision: blocked
+      reason_code: PROMOTION_FORBIDDEN
+    tags: [promotion, profile]
+    severity: blocker
+    source: m4_memory_governance

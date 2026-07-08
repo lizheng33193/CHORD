@@ -67,6 +67,16 @@ class EvalProfile(_StrictModel):
     strict_by_default: bool = False
 
 
+class EvalSuiteSummary(_StrictModel):
+    suite_id: str = Field(..., min_length=1)
+    status: EvalStatus
+    total_cases: int = 0
+    passed_cases: int = 0
+    failed_cases: int = 0
+    score: float = 1.0
+    metrics: dict[str, Any] = Field(default_factory=dict)
+
+
 class EvalReport(_StrictModel):
     run_id: str = Field(..., min_length=1)
     created_at: str = Field(..., min_length=1)
@@ -74,6 +84,9 @@ class EvalReport(_StrictModel):
     profile_id: str | None = None
     case_file: str = Field(..., min_length=1)
     strict: bool = False
+    selected_suites: list[str] = Field(default_factory=list)
+    suite_summaries: list[EvalSuiteSummary] = Field(default_factory=list)
+    suite_metrics: dict[str, dict[str, Any]] = Field(default_factory=dict)
     overall_status: EvalStatus
     runner_status: RunnerStatus
     total_cases: int = 0
