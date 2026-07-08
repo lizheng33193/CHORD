@@ -47,9 +47,12 @@ def test_report_writer_persists_json_and_markdown_with_failure_reasons(tmp_path)
     assert written.json_path.exists()
     assert written.markdown_path.exists()
     payload = written.report.model_dump(mode="json")
+    markdown = written.markdown_path.read_text(encoding="utf-8")
     assert payload["selected_suites"] == ["release_gate_smoke"]
     assert payload["suite_metrics"]["release_gate_smoke"]["smoke_pass_rate"] == 0.0
-    assert "expected PASS but got WARN" in written.markdown_path.read_text(encoding="utf-8")
+    assert "- Strict: `False`" in markdown
+    assert "- Selected suites: `release_gate_smoke`" in markdown
+    assert "expected PASS but got WARN" in markdown
 
 
 def test_report_writer_serializes_risk_qa_suite_metrics(tmp_path) -> None:

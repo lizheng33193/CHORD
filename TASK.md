@@ -131,6 +131,29 @@
   - deferred:
     - `[x]` Profile suites 不加入 `production_release`，延后到 `M5-6`
 
+- [x] M5-6｜Release Gate & Acceptance Closure — 已完成阶段收口（2026-07-08）
+  - docs:
+    - `docs/specs/m5-release-gate-policy.md`
+    - `docs/plans/m5-6-release-gate-acceptance-closure-plan.md`
+    - `docs/reviews/m5-6-release-gate-acceptance-closure-review.md`
+    - `docs/reviews/m5-acceptance-closure.md`
+  - delivered:
+    - `[x]` `production_release` 扩展为顺序执行完整 7-suite deterministic M5 gate
+    - `[x]` `pr_acceptance` 与 `production_release` 使用相同 ordered suite list
+    - `[x]` `production_release.strict_by_default=True`
+    - `[x]` 新增 `python -m app.eval.runner --list-suites`
+    - `[x]` 新增 `python -m app.eval.runner --list-profiles`
+    - `[x]` `tests/eval/` 覆盖 release-gate profile closure 与 preflight CLI 行为
+    - `[x]` M5 acceptance closure 文档落地
+  - guardrails:
+    - `[x]` 不新增 domain suite
+    - `[x]` 不修改 suite evaluator / case fixture / suite metric 定义
+    - `[x]` 不修改 Memory / Data Agent / Risk QA / Profile DAG runtime 行为
+    - `[x]` list commands 不执行 evaluator、不读取 case file、不写 report、不创建 output dir
+  - final state:
+    - `[x]` `M5 completed`
+    - `[x]` `M6 not started`
+
 - [x] PR-A｜Risk QA + Context Isolation + Evidence/Citation Production Gate — accepted for Pre-M3 scope（2026-07-04）
   - docs:
     - `docs/specs/risk-qa-production-gate-contract.md`

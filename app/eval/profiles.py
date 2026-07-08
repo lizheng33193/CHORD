@@ -22,8 +22,16 @@ _PROFILES: dict[str, EvalProfile] = {
     ),
     "production_release": EvalProfile(
         profile_id="production_release",
-        suites=["release_gate_smoke"],
-        description="Strict production-release smoke over shared eval foundation; memory governance deferred to M5-6.",
+        suites=[
+            "release_gate_smoke",
+            "memory_governance",
+            "data_agent_sql_safety",
+            "data_agent_sql_grounding",
+            "risk_qa_groundedness",
+            "profile_dag_contract",
+            "profile_memory_snapshot",
+        ],
+        description="Strict production-release profile over the full deterministic M5 shared eval regression gate.",
         strict_by_default=True,
     ),
 }
