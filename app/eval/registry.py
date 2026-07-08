@@ -25,6 +25,22 @@ _SUITES: dict[str, EvalSuite] = {
         evaluator="memory_governance",
         blocking=True,
         advisory=False,
+    ),
+    "data_agent_sql_safety": EvalSuite(
+        suite_id="data_agent_sql_safety",
+        description="Deterministic Data Agent SQL safety regression coverage.",
+        case_path=str(REPO_ROOT / "tests" / "eval_cases" / "data_agent_sql_safety.yaml"),
+        evaluator="data_agent",
+        blocking=True,
+        advisory=False,
+    ),
+    "data_agent_sql_grounding": EvalSuite(
+        suite_id="data_agent_sql_grounding",
+        description="Deterministic Data Agent grounding and plan-review regression coverage.",
+        case_path=str(REPO_ROOT / "tests" / "eval_cases" / "data_agent_sql_grounding.yaml"),
+        evaluator="data_agent",
+        blocking=True,
+        advisory=False,
     )
 }
 

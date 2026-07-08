@@ -33,6 +33,22 @@
   - preserve raw runtime reason codes alongside normalized eval reason codes
   - do not change Memory runtime behavior in `M5-2`
 
+## 2026-07-08 M5-3 Data Agent Regression Suite
+
+- new spec artifact:
+  - `docs/specs/m5-data-agent-regression-suite.md`
+- new plan artifact:
+  - `docs/plans/m5-3-data-agent-regression-suite-plan.md`
+- new review artifact:
+  - `docs/reviews/m5-3-data-agent-regression-suite-review.md`
+- current scope:
+  - add `data_agent_sql_safety` and `data_agent_sql_grounding` as shared eval suites
+  - reuse deterministic Data Agent seams for safety, plan validation, semantic validation, plan review, repair, HITL eligibility, and SQL case classification
+  - expand `pr_acceptance` to run `release_gate_smoke + memory_governance + data_agent_sql_safety + data_agent_sql_grounding`
+  - keep `production_release` unchanged as smoke-only until `M5-6`
+  - preserve raw runtime warning / failure codes alongside normalized eval report codes
+  - do not change Data Agent runtime behavior, connect to real DBs, or execute SQL in `M5-3`
+
 ## 2026-07-04 Pre-M3 / M2D System-Level Acceptance Snapshot
 
 - status summary:

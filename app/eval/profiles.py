@@ -8,8 +8,13 @@ from app.eval.schemas import EvalProfile
 _PROFILES: dict[str, EvalProfile] = {
     "pr_acceptance": EvalProfile(
         profile_id="pr_acceptance",
-        suites=["release_gate_smoke", "memory_governance"],
-        description="PR acceptance profile over shared eval foundation and memory governance.",
+        suites=[
+            "release_gate_smoke",
+            "memory_governance",
+            "data_agent_sql_safety",
+            "data_agent_sql_grounding",
+        ],
+        description="PR acceptance profile over shared eval foundation, memory governance, and Data Agent regression suites.",
         strict_by_default=False,
     ),
     "production_release": EvalProfile(

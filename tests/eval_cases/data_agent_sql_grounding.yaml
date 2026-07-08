@@ -1,0 +1,218 @@
+cases:
+  - case_id: data_agent_structured_plan_contract_valid
+    suite: data_agent_sql_grounding
+    task_type: data_agent_sql
+    input:
+      check_kind: plan_contract
+      structured_sql_plan:
+        schema_version: structured_sql_plan_v1
+        task_type: cohort_query
+        output_bucket:
+        country: mx
+        target_cohort_conditions: [recent_7d, high_risk]
+        source_tables: [dwd_w_apply]
+        join_keys: [uid]
+        required_fields: [uid]
+        forbidden_patterns: [historical_date_copy]
+        source_filters_allowed: false
+        fixed_dates_allowed: false
+        uid_boundary_required: false
+    expected:
+      decision: allowed
+      must_include_tables: [dwd_w_apply]
+      must_include_fields: [uid]
+    tags: [data_agent, structured_plan]
+    severity: major
+    source: m5_data_agent_regression
+  - case_id: data_agent_behavior_writeback_plan_invalid_without_behavior_table
+    suite: data_agent_sql_grounding
+    task_type: data_agent_writeback
+    input:
+      check_kind: plan_validation
+      run_type: bucket_writeback
+      output_bucket: behavior
+      structured_sql_plan:
+        schema_version: structured_sql_plan_v1
+        task_type: bucket_writeback
+        output_bucket: behavior
+        country: mx
+        target_cohort_conditions: [first_loan]
+        source_tables: [dwd_w_apply]
+        join_keys: [uid]
+        required_fields: [uid, timestamp_, eventname]
+        forbidden_patterns: [broad_behavior_scan]
+        source_filters_allowed: false
+        fixed_dates_allowed: false
+        uid_boundary_required: true
+      retrieval_snapshot:
+        grounded_fields_by_table:
+          dwd_w_apply: [uid, risk_level, apply_time]
+    expected:
+      decision: blocked
+      required_failure_codes: [DATA_AGENT_SQL_PLAN_INVALID]
+    tags: [data_agent, structured_plan]
+    severity: blocker
+    source: m5_data_agent_regression
+  - case_id: data_agent_unsupported_field_warning
+    suite: data_agent_sql_grounding
+    task_type: data_agent_sql
+    input:
+      check_kind: field_grounding
+      country: mx
+      request_text: "查询高风险用户年龄"
+      run_type: cohort_query
+      sql_kind: query_only
+      sql: "SELECT user_age FROM dwd_w_apply"
+      retrieval_snapshot:
+        grounded_fields_by_table:
+          dwd_w_apply: [uid, risk_level, apply_time]
+    expected:
+      decision: warning
+      required_warning_codes: [UNSUPPORTED_FIELD]
+    tags: [data_agent, grounding]
+    severity: major
+    source: m5_data_agent_regression
+  - case_id: data_agent_non_canonical_field_warning
+    suite: data_agent_sql_grounding
+    task_type: data_agent_sql
+    input:
+      check_kind: canonical_review
+      country: mx
+      request_text: "查询首贷用户"
+      run_type: cohort_query
+      sql_kind: query_only
+      sql: "SELECT user_uuid AS uid FROM dwd_w_apply"
+      retrieval_snapshot:
+        grounded_fields_by_table:
+          dwd_w_apply: [uid, user_uuid, apply_time]
+        canonical_alternative_to_preferred_by_table:
+          dwd_w_apply:
+            user_uuid: uid
+    expected:
+      decision: warning
+      required_warning_codes: [NON_CANONICAL_FIELD]
+    tags: [data_agent, canonical]
+    severity: minor
+    source: m5_data_agent_regression
+  - case_id: data_agent_plan_date_drift_warning
+    suite: data_agent_sql_grounding
+    task_type: data_agent_sql
+    input:
+      check_kind: plan_consistency
+      request_text: "找最近 7 天高风险用户"
+      run_type: cohort_query
+      sql: "SELECT uid FROM dwd_w_apply WHERE dt >= '20260201'"
+      retrieval_snapshot:
+        sql_intent_plan_summary:
+          task_type: cohort_query
+          required_fields: [uid]
+          forbidden_patterns: [historical_date_copy]
+    expected:
+      decision: warning
+      required_warning_codes: [PLAN_DATE_DRIFT]
+    tags: [data_agent, plan_review]
+    severity: major
+    source: m5_data_agent_regression
+  - case_id: data_agent_plan_source_filter_drift_warning
+    suite: data_agent_sql_grounding
+    task_type: data_agent_sql
+    input:
+      check_kind: plan_consistency
+      request_text: "找高风险用户"
+      run_type: cohort_query
+      sql: "SELECT uid FROM dwd_w_apply WHERE apply_source = 'MEX017'"
+      retrieval_snapshot:
+        sql_intent_plan_summary:
+          task_type: cohort_query
+          required_fields: [uid]
+          forbidden_patterns: [historical_source_filter]
+    expected:
+      decision: warning
+      required_warning_codes: [PLAN_SOURCE_FILTER_DRIFT]
+    tags: [data_agent, plan_review]
+    severity: major
+    source: m5_data_agent_regression
+  - case_id: data_agent_plan_required_field_missing_warning
+    suite: data_agent_sql_grounding
+    task_type: data_agent_sql
+    input:
+      check_kind: plan_consistency
+      request_text: "给首贷且从未逾期用户补齐行为数据"
+      run_type: bucket_writeback
+      output_bucket: behavior
+      sql: "SELECT uid FROM dwb_b1_data_burying_point WHERE eventname = 'click'"
+      retrieval_snapshot:
+        structured_sql_plan:
+          task_type: bucket_writeback
+          output_bucket: behavior
+          required_fields: [uid, timestamp_, eventname]
+          forbidden_patterns: [broad_behavior_scan]
+        grounded_fields_by_table:
+          dwb_b1_data_burying_point: [uid, timestamp_, eventname]
+    expected:
+      decision: warning
+      required_warning_codes: [PLAN_REQUIRED_FIELD_MISSING]
+    tags: [data_agent, plan_review]
+    severity: major
+    source: m5_data_agent_regression
+  - case_id: data_agent_plan_broad_scan_warning
+    suite: data_agent_sql_grounding
+    task_type: data_agent_sql
+    input:
+      check_kind: plan_consistency
+      request_text: "给首贷且从未逾期用户补齐行为数据"
+      run_type: bucket_writeback
+      output_bucket: behavior
+      sql: "SELECT uid, timestamp_, eventname FROM dwb_b1_data_burying_point LIMIT 100"
+      retrieval_snapshot:
+        structured_sql_plan:
+          task_type: bucket_writeback
+          output_bucket: behavior
+          required_fields: [uid, timestamp_, eventname]
+          forbidden_patterns: [broad_behavior_scan]
+        grounded_fields_by_table:
+          dwb_b1_data_burying_point: [uid, timestamp_, eventname]
+    expected:
+      decision: warning
+      required_warning_codes: [PLAN_BROAD_SCAN_RISK]
+    tags: [data_agent, plan_review]
+    severity: major
+    source: m5_data_agent_regression
+  - case_id: data_agent_approved_sql_example_classification_allowed
+    suite: data_agent_sql_grounding
+    task_type: data_agent_sql
+    input:
+      check_kind: sql_case_policy
+      metadata:
+        execution_status: executed
+        current_sql_hash: approved-hash
+        approved_sql_hash: approved-hash
+        run_type: cohort_query
+        country: mx
+    expected:
+      decision: allowed
+      must_reference_approved_case: true
+      must_not_reference_failed_case: true
+    tags: [data_agent, sql_case]
+    severity: major
+    source: m5_data_agent_regression
+  - case_id: data_agent_failed_sql_error_case_classification_only
+    suite: data_agent_sql_grounding
+    task_type: data_agent_sql
+    input:
+      check_kind: sql_case_policy
+      metadata:
+        execution_status: failed
+        current_sql_hash: failed-hash
+        approved_sql_hash:
+        run_type: cohort_query
+        country: mx
+        error_message: missing join key
+    expected:
+      decision: warning
+      required_failure_codes: [FAILED_SQL_CASE_NOT_APPROVED]
+      must_reference_approved_case: false
+      must_not_reference_failed_case: false
+    tags: [data_agent, sql_case]
+    severity: major
+    source: m5_data_agent_regression

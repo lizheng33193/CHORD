@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from app.eval.cases import EvalCaseLoadError, load_eval_cases
+from app.eval.evaluators.data_agent import DataAgentEvaluator
 from app.eval.evaluators.memory import MemoryGovernanceEvaluator
 from app.eval.evaluators.release_gate_smoke import ReleaseGateSmokeEvaluator
 from app.eval.profiles import get_profile
@@ -41,6 +42,8 @@ def build_evaluator(evaluator_name: str):
         return ReleaseGateSmokeEvaluator()
     if evaluator_name == "memory_governance":
         return MemoryGovernanceEvaluator()
+    if evaluator_name == "data_agent":
+        return DataAgentEvaluator()
     raise KeyError(f"unknown evaluator: {evaluator_name}")
 
 
