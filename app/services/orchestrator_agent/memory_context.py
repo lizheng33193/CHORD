@@ -6,6 +6,10 @@ from datetime import datetime, timezone
 from typing import Any
 
 from app.core.config import settings
+from app.services.memory.observability import (
+    SEMANTIC_MEMORY_TRACE_HANDOFF_KEY,
+    SEMANTIC_MEMORY_TRACE_SUMMARY_METADATA_KEY,
+)
 from app.services.memory.hybrid_retrieval import build_hybrid_memory_retrieval_service
 from app.services.memory.retrieval import MemoryRetrievalRequest
 from app.services.memory.retrieval_policy import MemoryRetrievalTaskType
@@ -57,8 +61,10 @@ def build_retrieved_memory_context(
     store: SQLiteMemoryStore | None = None,
 ) -> tuple[str, list[dict[str, Any]]]:
     if not _sqlite_memory_on():
+        _clear_semantic_memory_trace_handoff(session)
         return "", []
     if not settings.memory_vector_context_injection_enabled:
+        _clear_semantic_memory_trace_handoff(session)
         return _legacy_retrieved_memory_context(
             session=session,
             query=query,
@@ -72,6 +78,7 @@ def build_retrieved_memory_context(
         MemoryRetrievalTaskType.PROFILE_FOLLOWUP,
         MemoryRetrievalTaskType.RISK_QA_FOLLOWUP,
     }:
+        _clear_semantic_memory_trace_handoff(session)
         return _legacy_retrieved_memory_context(
             session=session,
             query=query,
@@ -94,8 +101,12 @@ def build_retrieved_memory_context(
         allow_fts=True,
         retrieval_mode=settings.memory_vector_retrieval_mode,
         max_vector_items=settings.memory_vector_max_context_items,
+        run_id=getattr(session, "active_run_id", None),
+        request_id=_request_context_value(session, "request_id"),
+        trace_id=_request_context_value(session, "trace_id"),
     )
     bundle = build_hybrid_memory_retrieval_service(store=store).build_context_bundle(request=request)
+    _store_semantic_memory_trace_handoff(session, bundle.metadata)
     if not bundle.items:
         return "", []
     return bundle.rendered_text, [
@@ -205,3 +216,31 @@ def _resolve_memory_task_type(query: str) -> MemoryRetrievalTaskType:
     if any(token in lowered for token in ("profile", "画像", "segment", "risk level", "value level")):
         return MemoryRetrievalTaskType.PROFILE_FOLLOWUP
     return MemoryRetrievalTaskType.GENERAL_CHAT
+
+
+def _request_context_value(session: Any, key: str) -> str | None:
+    active_entities = getattr(session, "active_entities", None)
+    if not isinstance(active_entities, dict):
+        return None
+    request_context = active_entities.get("request_context")
+    if not isinstance(request_context, dict):
+        return None
+    value = str(request_context.get(key) or "").strip()
+    return value or None
+
+
+def _store_semantic_memory_trace_handoff(session: Any, metadata: dict[str, Any]) -> None:
+    active_entities = getattr(session, "active_entities", None)
+    if not isinstance(active_entities, dict):
+        return
+    summary = metadata.get(SEMANTIC_MEMORY_TRACE_SUMMARY_METADATA_KEY)
+    if not isinstance(summary, dict):
+        active_entities.pop(SEMANTIC_MEMORY_TRACE_HANDOFF_KEY, None)
+        return
+    active_entities[SEMANTIC_MEMORY_TRACE_HANDOFF_KEY] = dict(summary)
+
+
+def _clear_semantic_memory_trace_handoff(session: Any) -> None:
+    active_entities = getattr(session, "active_entities", None)
+    if isinstance(active_entities, dict):
+        active_entities.pop(SEMANTIC_MEMORY_TRACE_HANDOFF_KEY, None)

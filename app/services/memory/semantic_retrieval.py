@@ -3,8 +3,17 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from time import perf_counter
 
 from app.core.config import settings
+from app.services.memory.observability import (
+    SEMANTIC_MEMORY_TRACE_METADATA_KEY,
+    aggregate_policy_block_reasons,
+    build_semantic_memory_trace,
+    canonical_fallback_reason,
+    elapsed_ms,
+    trace_warnings,
+)
 from app.services.memory.retrieval import (
     MemoryRejectedRetrievalItem,
     MemoryRetrievalRequest,
@@ -44,15 +53,26 @@ class SemanticMemoryRetrievalService:
         )
 
     def retrieve(self, request: MemoryRetrievalRequest) -> MemoryRetrievalResult:
+        started_at = perf_counter()
+        trace = build_semantic_memory_trace(request)
         if not request.allow_vector:
-            return self._empty_result(request, reason="vector_disabled")
+            return self._empty_result(request, reason="vector_disabled", trace=trace, started_at=started_at)
         if request.task_type not in _ALLOWED_VECTOR_TASK_TYPES:
-            return self._empty_result(request, reason="task_type_not_allowlisted")
+            return self._empty_result(
+                request,
+                reason="task_type_not_allowed",
+                trace=trace,
+                started_at=started_at,
+            )
 
         try:
             hits = self.vector_index.search(query=request.query, top_k=request.max_vector_items)
         except Exception as exc:
             warnings = ("vector_search_failed",)
+            trace["warnings"] = trace_warnings(warnings)
+            trace["fallback_used"] = bool(settings.memory_vector_fallback_to_fts)
+            trace["fallback_reason"] = canonical_fallback_reason("vector_search_error")
+            trace["latency_ms"] = elapsed_ms(started_at)
             return MemoryRetrievalResult(
                 request=request,
                 items=(),
@@ -62,8 +82,10 @@ class SemanticMemoryRetrievalService:
                     "used_fallback": bool(settings.memory_vector_fallback_to_fts),
                     "vector_error": str(exc),
                     "vector_health": self._safe_health_check(),
+                    SEMANTIC_MEMORY_TRACE_METADATA_KEY: trace,
                 },
             )
+        trace["vector_candidate_count"] = len(hits)
 
         policies = resolve_retrieval_policies(request.task_type)
         accepted = []
@@ -93,6 +115,7 @@ class SemanticMemoryRetrievalService:
                     )
                 )
                 continue
+            trace["relational_loaded_count"] = int(trace.get("relational_loaded_count", 0) or 0) + 1
 
             record = stored_record_from_memory_row(row, include_legacy_memory=request.include_legacy_memory)
             if record is None:
@@ -120,6 +143,11 @@ class SemanticMemoryRetrievalService:
             if rejection is not None:
                 rejected.append(rejection)
 
+        trace["policy_allowed_count"] = len(accepted[: request.max_vector_items])
+        trace["policy_blocked_count"] = len(rejected)
+        trace["policy_block_reasons"] = aggregate_policy_block_reasons(tuple(rejected))
+        trace["warnings"] = trace_warnings(())
+        trace["latency_ms"] = elapsed_ms(started_at)
         return MemoryRetrievalResult(
             request=request,
             items=tuple(accepted[: request.max_vector_items]),
@@ -130,16 +158,31 @@ class SemanticMemoryRetrievalService:
                 "vector_health": self._safe_health_check(),
                 "returned_item_count": len(accepted[: request.max_vector_items]),
                 "rejected_item_count": len(rejected),
+                SEMANTIC_MEMORY_TRACE_METADATA_KEY: trace,
             },
         )
 
-    def _empty_result(self, request: MemoryRetrievalRequest, *, reason: str) -> MemoryRetrievalResult:
+    def _empty_result(
+        self,
+        request: MemoryRetrievalRequest,
+        *,
+        reason: str,
+        trace: dict[str, object],
+        started_at: float,
+    ) -> MemoryRetrievalResult:
+        trace["fallback_reason"] = canonical_fallback_reason(reason)
+        trace["latency_ms"] = elapsed_ms(started_at)
         return MemoryRetrievalResult(
             request=request,
             items=(),
             rejected_items=(),
             warnings=(),
-            metadata={"used_fallback": False, "reason": reason, "vector_health": self._safe_health_check()},
+            metadata={
+                "used_fallback": False,
+                "reason": reason,
+                "vector_health": self._safe_health_check(),
+                SEMANTIC_MEMORY_TRACE_METADATA_KEY: trace,
+            },
         )
 
     def _safe_health_check(self) -> dict[str, object]:

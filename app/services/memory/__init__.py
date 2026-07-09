@@ -84,6 +84,14 @@ from app.services.memory.vector_index_adapter import (
     MemoryVectorQueryHit,
     OrchestratorMemoryVectorIndexAdapter,
 )
+from app.services.memory.observability import (
+    EXECUTION_TRACE_SEMANTIC_MEMORY_KEY,
+    SEMANTIC_MEMORY_TRACE_HANDOFF_KEY,
+    SEMANTIC_MEMORY_TRACE_METADATA_KEY,
+    SEMANTIC_MEMORY_TRACE_SUMMARY_METADATA_KEY,
+    SemanticMemoryRetrievalTrace,
+    SemanticMemoryTraceSummary,
+)
 
 __all__ = [
     "AUDIT_EVENT_ALLOWED",
@@ -138,6 +146,12 @@ __all__ = [
     "resolve_retrieval_policies",
     "RISK_QA_ALLOWED",
     "RISK_QA_FORBIDDEN",
+    "SEMANTIC_MEMORY_TRACE_HANDOFF_KEY",
+    "SEMANTIC_MEMORY_TRACE_METADATA_KEY",
+    "SEMANTIC_MEMORY_TRACE_SUMMARY_METADATA_KEY",
+    "EXECUTION_TRACE_SEMANTIC_MEMORY_KEY",
+    "SemanticMemoryRetrievalTrace",
+    "SemanticMemoryTraceSummary",
     "SemanticMemoryRetrievalService",
     "SQLiteV1MemoryRetrievalAdapter",
     "SQLiteV1MemoryStoreAdapter",

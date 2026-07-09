@@ -90,3 +90,54 @@
     forbidden_render_tokens:
       - forbidden_memory_use
       - raw_distance
+
+- case_id: semantic_retrieval_records_fallback_reason_on_vector_error
+  suite: memory_semantic_retrieval
+  task_type: memory_semantic_retrieval
+  source: m6c_semantic_observability
+  severity: major
+  input:
+    check_kind: semantic_retrieval
+    query: User prefers concise Chinese output.
+    task_type: general_chat
+    user_id: u1
+    project_id: p1
+    country: mx
+    allow_fts: true
+    max_vector_items: 3
+    vector_error: provider boom
+    records: []
+  expected:
+    returned_memory_ids: []
+    rejected_memory_ids: []
+    warning_codes: [vector_search_failed]
+
+- case_id: semantic_retrieval_records_policy_block_reason
+  suite: memory_semantic_retrieval
+  task_type: memory_semantic_retrieval
+  source: m6c_semantic_observability
+  severity: major
+  input:
+    check_kind: semantic_retrieval
+    query: User prefers concise Chinese output.
+    task_type: general_chat
+    user_id: u1
+    project_id: p1
+    country: mx
+    allow_fts: false
+    max_vector_items: 3
+    records:
+      - memory_id: pref-forbidden
+        content: User prefers concise Chinese output.
+        memory_source_type: user_preference
+        authority_level: user_provided
+        allowed_memory_use: [response_style]
+        forbidden_memory_use: [response_style]
+        user_id: u1
+        project_id: p1
+        country: mx
+        category: preference
+  expected:
+    returned_memory_ids: []
+    rejected_memory_ids: [pref-forbidden]
+    warning_codes: []
