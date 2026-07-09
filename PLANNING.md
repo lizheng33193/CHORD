@@ -5,6 +5,44 @@
 - 整体架构：单体 FastAPI 后端，五层（API → 编排 → Skill 执行 → 数据访问 → 外部服务）
 - 入口文件：`app/main.py`
 
+## 2026-07-09 M7D CI / Release Gate / Load Smoke
+
+- new spec artifact:
+  - `docs/specs/m7d-ci-release-gate-load-smoke-contract.md`
+- new plan artifact:
+  - `docs/plans/m7d-ci-release-gate-load-smoke-plan.md`
+- new runbook artifacts:
+  - `docs/runbooks/release-gate-runbook.md`
+  - `docs/runbooks/load-smoke-runbook.md`
+- new script artifacts:
+  - `scripts/load_smoke.py`
+  - `scripts/run_m7d_release_check.py`
+- new CI artifact:
+  - `.github/workflows/m7d-pr-acceptance.yml`
+- implementation status:
+  - `M7-0 scope lock completed`
+  - `M7A Deployment & Runtime Readiness completed`
+  - `M7B Backup / Restore / Rollback completed`
+  - `M7C Monitoring / Alerting / Audit Boundary completed`
+  - `M7D CI / Release Gate / Load Smoke completed`
+  - `M7 implementation in progress`
+- delivered scope:
+  - lightweight PR acceptance workflow
+  - canonical `production_release --strict` gate via `app.eval.runner`
+  - release check wrapper
+  - minimum safe GET-only load smoke
+  - startup smoke and runtime status snapshot folded into release checks
+  - JSON report outputs for load smoke and release checks
+- non-goals preserved:
+  - no full load-testing platform
+  - no CD / auto deploy
+  - no Kubernetes rollout
+  - no Grafana / Prometheus
+  - no runtime behavior change
+  - no `M7 completed` claim
+- next step:
+  - `M7E Final Acceptance & Commercial Delivery Docs`
+
 ## 2026-07-09 M7C Monitoring / Alerting / Audit Boundary
 
 - new spec artifact:

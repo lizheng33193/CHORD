@@ -46,6 +46,7 @@
 - [x] `M7A Deployment & Runtime Readiness completed`
 - [x] `M7B Backup / Restore / Rollback completed`
 - [x] `M7C Monitoring / Alerting / Audit Boundary completed`
+- [x] `M7D CI / Release Gate / Load Smoke completed`
 - [x] 生产默认仍保持保守：`MEMORY_VECTOR_CONTEXT_INJECTION_ENABLED=0`
 - [x] SQL/Data Agent semantic supplement 继续禁用
 - [x] full trace 继续保持 metadata-only；sanitized summary 仅进入 `execution_trace.internal_metadata["semantic_memory"]`
@@ -153,6 +154,34 @@
 - [x] `M7C Monitoring / Alerting / Audit Boundary completed`
 - [x] `M7 implementation in progress`
 - [x] Next step: `M7D CI / Release Gate / Load Smoke`
+
+## M7D CI / Release Gate / Load Smoke
+
+- [x] Add `docs/specs/m7d-ci-release-gate-load-smoke-contract.md`
+- [x] Add `docs/plans/m7d-ci-release-gate-load-smoke-plan.md`
+- [x] Add `docs/runbooks/release-gate-runbook.md`
+- [x] Add `docs/runbooks/load-smoke-runbook.md`
+- [x] Add `scripts/load_smoke.py`
+- [x] Add `scripts/run_m7d_release_check.py`
+- [x] Add `.github/workflows/m7d-pr-acceptance.yml`
+- [x] Define CI boundary
+- [x] Define release gate boundary
+- [x] Define load smoke boundary
+- [x] Ensure load smoke only calls safe GET endpoints
+- [x] Ensure canonical `production_release --strict` uses `python -m app.eval.runner --profile production_release --strict`
+- [x] Keep `app.release.pre_m3_gate` as legacy reference only
+- [x] Generate load smoke report
+- [x] Generate M7D release check report
+- [x] Run Docker startup smoke
+- [x] Run runtime status snapshot
+- [x] Run load smoke
+- [x] Run canonical `production_release --strict`
+- [x] Run compileall
+- [x] Add lightweight PR acceptance workflow
+- [x] `git diff --check`
+- [x] `M7D CI / Release Gate / Load Smoke completed`
+- [x] `M7 implementation in progress`
+- [x] Next step: `M7E Final Acceptance & Commercial Delivery Docs`
 
 ## 当前进行中的功能
 - [x] M5-1｜Shared Eval Foundation — 已落地共享底座（2026-07-07）
