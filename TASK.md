@@ -40,13 +40,32 @@
 - [x] `M6A completed`
 - [x] `M6B completed / merged`
 - [x] `M6C completed / merged`
-- [x] `M7 not started`
+- [x] `M7 not started` before scope lock
+- [x] `M7-0 scope lock completed`
+- [x] `M7 implementation not completed`
+- [x] `M7A Deployment & Runtime Readiness not started`
 - [x] 生产默认仍保持保守：`MEMORY_VECTOR_CONTEXT_INJECTION_ENABLED=0`
 - [x] SQL/Data Agent semantic supplement 继续禁用
 - [x] full trace 继续保持 metadata-only；sanitized summary 仅进入 `execution_trace.internal_metadata["semantic_memory"]`
 - [x] public session API 继续过滤 `_internal*`
 - [x] 不做 return-object refactor
 - [x] 不做 persistent DB audit stream
+
+## M7-0 Minimum Commercial Production Readiness Scope Lock
+
+- [x] Add `docs/plans/m7-minimum-commercial-production-readiness-plan.md`
+- [x] Define M7 in-scope items
+- [x] Define M7 out-of-scope items
+- [x] Define M7 task packages `M7A`-`M7E`
+- [x] Define M7 Go / No-Go criteria
+- [x] Preserve `MEMORY_VECTOR_CONTEXT_INJECTION_ENABLED` as default-off
+- [x] Preserve SQL/Data Agent semantic supplement as disabled
+- [x] Do not modify runtime behavior
+- [x] `git diff --check`
+- [x] `M7-0 scope lock completed`
+- [x] `M7 implementation not completed`
+- [x] `M7A Deployment & Runtime Readiness not started`
+- [x] Next step: `M7A Deployment & Runtime Readiness`
 
 ## 当前进行中的功能
 - [x] M5-1｜Shared Eval Foundation — 已落地共享底座（2026-07-07）
