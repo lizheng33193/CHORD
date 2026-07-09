@@ -44,6 +44,7 @@
 - [x] `M7-0 scope lock completed`
 - [x] `M7 implementation in progress`
 - [x] `M7A Deployment & Runtime Readiness completed`
+- [x] `M7B Backup / Restore / Rollback completed`
 - [x] 生产默认仍保持保守：`MEMORY_VECTOR_CONTEXT_INJECTION_ENABLED=0`
 - [x] SQL/Data Agent semantic supplement 继续禁用
 - [x] full trace 继续保持 metadata-only；sanitized summary 仅进入 `execution_trace.internal_metadata["semantic_memory"]`
@@ -92,6 +93,35 @@
 - [x] `M7A Deployment & Runtime Readiness completed`
 - [x] `M7 implementation in progress`
 - [x] Next step: `M7B Backup / Restore / Rollback`
+
+## M7B Backup / Restore / Rollback
+
+- [x] Add `docs/specs/m7b-backup-restore-rollback-contract.md`
+- [x] Add `docs/plans/m7b-backup-restore-rollback-plan.md`
+- [x] Add `docs/runbooks/backup-restore-runbook.md`
+- [x] Add `docs/runbooks/rollback-runbook.md`
+- [x] Add `scripts/backup_local_state.py`
+- [x] Add `scripts/restore_local_state.py`
+- [x] Define the local backup state inventory
+- [x] Exclude secrets from local backup archives
+- [x] Record external auth DB as operator-owned outside M7B scripts
+- [x] Generate backup manifest and archive `sha256`
+- [x] Implement restore dry-run
+- [x] Keep restore default non-overwriting
+- [x] Implement restore `--overwrite`
+- [x] Implement path traversal protection
+- [x] Implement conservative symlink / hardlink handling
+- [x] `python -m compileall -q app data_acquisition_agent tests scripts`
+- [x] `python scripts/bootstrap_runtime_dirs.py`
+- [x] `python scripts/backup_local_state.py --output-dir /tmp/chord-m7b-backups`
+- [x] `python scripts/restore_local_state.py --archive "$ARCHIVE" --target-root /tmp/chord-restore-check --dry-run`
+- [x] `python scripts/restore_local_state.py --archive "$ARCHIVE" --target-root /tmp/chord-restore-check`
+- [x] `python scripts/restore_local_state.py --archive "$ARCHIVE" --target-root /tmp/chord-restore-check --overwrite`
+- [x] Validate unsafe archive rejection
+- [x] `git diff --check`
+- [x] `M7B Backup / Restore / Rollback completed`
+- [x] `M7 implementation in progress`
+- [x] Next step: `M7C Monitoring / Alerting / Audit Boundary`
 
 ## 当前进行中的功能
 - [x] M5-1｜Shared Eval Foundation — 已落地共享底座（2026-07-07）
