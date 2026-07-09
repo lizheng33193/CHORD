@@ -45,6 +45,7 @@
 - [x] `M7 implementation in progress`
 - [x] `M7A Deployment & Runtime Readiness completed`
 - [x] `M7B Backup / Restore / Rollback completed`
+- [x] `M7C Monitoring / Alerting / Audit Boundary completed`
 - [x] 生产默认仍保持保守：`MEMORY_VECTOR_CONTEXT_INJECTION_ENABLED=0`
 - [x] SQL/Data Agent semantic supplement 继续禁用
 - [x] full trace 继续保持 metadata-only；sanitized summary 仅进入 `execution_trace.internal_metadata["semantic_memory"]`
@@ -122,6 +123,36 @@
 - [x] `M7B Backup / Restore / Rollback completed`
 - [x] `M7 implementation in progress`
 - [x] Next step: `M7C Monitoring / Alerting / Audit Boundary`
+
+## M7C Monitoring / Alerting / Audit Boundary
+
+- [x] Add `docs/specs/m7c-monitoring-alerting-audit-boundary-contract.md`
+- [x] Add `docs/plans/m7c-monitoring-alerting-audit-boundary-plan.md`
+- [x] Add `docs/runbooks/monitoring-alerting-runbook.md`
+- [x] Add `docs/runbooks/audit-boundary-runbook.md`
+- [x] Add `docs/runbooks/operator-checklist-runbook.md`
+- [x] Add `scripts/collect_runtime_status.py`
+- [x] Define required monitoring signals
+- [x] Define advisory monitoring signals
+- [x] Define readiness boundary without adding `/ready`
+- [x] Define structured log expectations
+- [x] Define request ID correlation expectations
+- [x] Define `P0` / `P1` / `P2` alert severity
+- [x] Define the minimum alert catalog
+- [x] Define audit boundary and high-risk action inventory
+- [x] Document no DB audit stream in M7C
+- [x] Document webhook payload placeholder only
+- [x] `docker compose up -d`
+- [x] `python scripts/smoke_startup_check.py --base-url http://127.0.0.1:8000 --timeout-seconds 30`
+- [x] `python scripts/collect_runtime_status.py --base-url http://127.0.0.1:8000 --output-dir /tmp/chord-m7c-monitoring --timeout-seconds 30`
+- [x] `python scripts/collect_runtime_status.py --base-url http://127.0.0.1:8000 --output-dir /tmp/chord-m7c-monitoring --probe /api/data-acquisition/healthz --probe /api/risk-knowledge/workers/health --timeout-seconds 30`
+- [x] `python scripts/collect_runtime_status.py --base-url http://127.0.0.1:8000 --no-write --timeout-seconds 30`
+- [x] `docker compose down`
+- [x] `python -m compileall -q app data_acquisition_agent tests scripts`
+- [x] `git diff --check`
+- [x] `M7C Monitoring / Alerting / Audit Boundary completed`
+- [x] `M7 implementation in progress`
+- [x] Next step: `M7D CI / Release Gate / Load Smoke`
 
 ## 当前进行中的功能
 - [x] M5-1｜Shared Eval Foundation — 已落地共享底座（2026-07-07）

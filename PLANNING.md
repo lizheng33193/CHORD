@@ -5,6 +5,47 @@
 - 整体架构：单体 FastAPI 后端，五层（API → 编排 → Skill 执行 → 数据访问 → 外部服务）
 - 入口文件：`app/main.py`
 
+## 2026-07-09 M7C Monitoring / Alerting / Audit Boundary
+
+- new spec artifact:
+  - `docs/specs/m7c-monitoring-alerting-audit-boundary-contract.md`
+- new plan artifact:
+  - `docs/plans/m7c-monitoring-alerting-audit-boundary-plan.md`
+- new runbook artifacts:
+  - `docs/runbooks/monitoring-alerting-runbook.md`
+  - `docs/runbooks/audit-boundary-runbook.md`
+  - `docs/runbooks/operator-checklist-runbook.md`
+- new script artifact:
+  - `scripts/collect_runtime_status.py`
+- implementation status:
+  - `M7-0 scope lock completed`
+  - `M7A Deployment & Runtime Readiness completed`
+  - `M7B Backup / Restore / Rollback completed`
+  - `M7C Monitoring / Alerting / Audit Boundary completed`
+  - `M7 implementation in progress`
+- delivered scope:
+  - required / advisory monitoring boundary
+  - readiness boundary without a new `/ready` endpoint
+  - runtime status snapshot script
+  - `P0` / `P1` / `P2` alert severity model
+  - structured log expectation boundary
+  - request ID correlation boundary
+  - audit boundary and high-risk action inventory
+  - operator checklist
+  - webhook placeholder
+- non-goals preserved:
+  - no full Grafana / Prometheus deployment
+  - no SIEM integration
+  - no DB audit stream
+  - no distributed tracing
+  - no runtime logging refactor
+  - no runtime behavior change
+  - no full pytest
+  - no `production_release --strict` execution in M7C
+  - no load smoke
+- next step:
+  - `M7D CI / Release Gate / Load Smoke`
+
 ## 2026-07-09 M7B Backup / Restore / Rollback
 
 - new spec artifact:
