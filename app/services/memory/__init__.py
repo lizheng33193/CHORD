@@ -73,6 +73,25 @@ from app.services.memory.context_builder import (
     MemoryContextItem,
     build_memory_context_bundle,
 )
+from app.services.memory.fusion import fuse_memory_items
+from app.services.memory.hybrid_retrieval import (
+    HybridMemoryRetrievalService,
+    build_hybrid_memory_retrieval_service,
+)
+from app.services.memory.semantic_retrieval import SemanticMemoryRetrievalService
+from app.services.memory.vector_index_adapter import (
+    MemoryVectorIndex,
+    MemoryVectorQueryHit,
+    OrchestratorMemoryVectorIndexAdapter,
+)
+from app.services.memory.observability import (
+    EXECUTION_TRACE_SEMANTIC_MEMORY_KEY,
+    SEMANTIC_MEMORY_TRACE_HANDOFF_KEY,
+    SEMANTIC_MEMORY_TRACE_METADATA_KEY,
+    SEMANTIC_MEMORY_TRACE_SUMMARY_METADATA_KEY,
+    SemanticMemoryRetrievalTrace,
+    SemanticMemoryTraceSummary,
+)
 
 __all__ = [
     "AUDIT_EVENT_ALLOWED",
@@ -109,11 +128,16 @@ __all__ = [
     "MemoryUsePurpose",
     "MemoryStoreAdapter",
     "MemoryRetrievedItem",
+    "MemoryVectorIndex",
+    "MemoryVectorQueryHit",
     "MemoryWriteDecision",
     "MemoryWriteGate",
     "MemoryWriteRejectReason",
     "MemoryWriteStatus",
+    "HybridMemoryRetrievalService",
+    "build_hybrid_memory_retrieval_service",
     "normalize_memory_content",
+    "OrchestratorMemoryVectorIndexAdapter",
     "PROFILE_RESULT_ALLOWED",
     "PROFILE_RESULT_FORBIDDEN",
     "promotion_request_from_candidate",
@@ -122,6 +146,13 @@ __all__ = [
     "resolve_retrieval_policies",
     "RISK_QA_ALLOWED",
     "RISK_QA_FORBIDDEN",
+    "SEMANTIC_MEMORY_TRACE_HANDOFF_KEY",
+    "SEMANTIC_MEMORY_TRACE_METADATA_KEY",
+    "SEMANTIC_MEMORY_TRACE_SUMMARY_METADATA_KEY",
+    "EXECUTION_TRACE_SEMANTIC_MEMORY_KEY",
+    "SemanticMemoryRetrievalTrace",
+    "SemanticMemoryTraceSummary",
+    "SemanticMemoryRetrievalService",
     "SQLiteV1MemoryRetrievalAdapter",
     "SQLiteV1MemoryStoreAdapter",
     "SQL_CASE_ALLOWED",
@@ -130,6 +161,7 @@ __all__ = [
     "SQL_ERROR_FORBIDDEN",
     "USER_PREFERENCE_ALLOWED",
     "USER_PREFERENCE_FORBIDDEN",
+    "fuse_memory_items",
     "validate_memory_promotion",
     "validate_memory_use",
 ]

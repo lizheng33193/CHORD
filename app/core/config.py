@@ -218,6 +218,73 @@ class Settings(BaseModel):
     risk_knowledge_reranker_timeout_seconds: int = int(
         os.getenv("RISK_KNOWLEDGE_RERANKER_TIMEOUT_SECONDS", "30")
     )
+    memory_vector_enabled: bool = os.getenv(
+        "MEMORY_VECTOR_ENABLED",
+        "0",
+    ).strip().lower() in {"1", "true", "yes", "on"}
+    memory_vector_shadow_enabled: bool = os.getenv(
+        "MEMORY_VECTOR_SHADOW_ENABLED",
+        "1",
+    ).strip().lower() in {"1", "true", "yes", "on"}
+    memory_vector_backend: str = os.getenv(
+        "MEMORY_VECTOR_BACKEND",
+        "faiss",
+    ).strip().lower() or "faiss"
+    memory_vector_index_dir: str = os.getenv(
+        "MEMORY_VECTOR_INDEX_DIR",
+        "outputs/memory/vector/default",
+    ).strip() or "outputs/memory/vector/default"
+    memory_vector_namespace: str = os.getenv(
+        "MEMORY_VECTOR_NAMESPACE",
+        "default",
+    ).strip() or "default"
+    memory_vector_embedding_provider: str = os.getenv(
+        "MEMORY_VECTOR_EMBEDDING_PROVIDER",
+        "deterministic",
+    ).strip().lower() or "deterministic"
+    memory_vector_embedding_api_key: str | None = (
+        os.getenv("MEMORY_VECTOR_EMBEDDING_API_KEY") or os.getenv("DASHSCOPE_API_KEY")
+    )
+    memory_vector_embedding_base_url: str | None = os.getenv("MEMORY_VECTOR_EMBEDDING_BASE_URL")
+    memory_vector_embedding_model: str = os.getenv(
+        "MEMORY_VECTOR_EMBEDDING_MODEL",
+        "memory-fake-embedding-v1",
+    ).strip() or "memory-fake-embedding-v1"
+    memory_vector_embedding_dim: int = int(
+        os.getenv("MEMORY_VECTOR_EMBEDDING_DIM", "16")
+    )
+    memory_vector_embedding_max_batch_size: int = int(
+        os.getenv("MEMORY_VECTOR_EMBEDDING_MAX_BATCH_SIZE", "10")
+    )
+    memory_vector_top_k: int = int(os.getenv("MEMORY_VECTOR_TOP_K", "8"))
+    memory_vector_text_max_chars: int = int(os.getenv("MEMORY_VECTOR_TEXT_MAX_CHARS", "2000"))
+    memory_vector_context_injection_enabled: bool = os.getenv(
+        "MEMORY_VECTOR_CONTEXT_INJECTION_ENABLED",
+        "0",
+    ).strip().lower() in {"1", "true", "yes", "on"}
+    memory_vector_retrieval_mode: str = os.getenv(
+        "MEMORY_VECTOR_RETRIEVAL_MODE",
+        "fts_primary",
+    ).strip().lower() or "fts_primary"
+    memory_vector_policy_strict: bool = os.getenv(
+        "MEMORY_VECTOR_POLICY_STRICT",
+        "1",
+    ).strip().lower() in {"1", "true", "yes", "on"}
+    memory_vector_fallback_to_fts: bool = os.getenv(
+        "MEMORY_VECTOR_FALLBACK_TO_FTS",
+        "1",
+    ).strip().lower() in {"1", "true", "yes", "on"}
+    memory_vector_max_context_items: int = int(os.getenv("MEMORY_VECTOR_MAX_CONTEXT_ITEMS", "3"))
+    memory_vector_min_score: float | None = (
+        float(os.getenv("MEMORY_VECTOR_MIN_SCORE"))
+        if str(os.getenv("MEMORY_VECTOR_MIN_SCORE", "")).strip()
+        else None
+    )
+    memory_context_max_total_items: int = int(os.getenv("MEMORY_CONTEXT_MAX_TOTAL_ITEMS", "8"))
+    memory_context_provenance_enabled: bool = os.getenv(
+        "MEMORY_CONTEXT_PROVENANCE_ENABLED",
+        "1",
+    ).strip().lower() in {"1", "true", "yes", "on"}
     risk_knowledge_reranker_max_candidates: int = int(
         os.getenv("RISK_KNOWLEDGE_RERANKER_MAX_CANDIDATES", "50")
     )

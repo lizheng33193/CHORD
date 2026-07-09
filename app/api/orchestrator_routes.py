@@ -74,6 +74,22 @@ def _pop_pending_prompt(session_id: str) -> Optional[dict[str, Any]]:
         return _PENDING_PROMPTS.pop(session_id, None)
 
 
+def _public_active_entities(active_entities: Any) -> dict[str, Any]:
+    if not isinstance(active_entities, dict):
+        return {}
+    return {
+        key: value
+        for key, value in active_entities.items()
+        if not str(key).startswith("_internal")
+    }
+
+
+def _build_public_session_payload(sess) -> dict[str, Any]:
+    payload = sess.model_dump(mode="json", exclude=_PUBLIC_SESSION_EXCLUDE)
+    payload["active_entities"] = _public_active_entities(payload.get("active_entities"))
+    return payload
+
+
 @router.post("/chat")
 async def chat_endpoint(
     req: OrchestratorChatRequest,
@@ -371,7 +387,7 @@ async def get_session_endpoint(
     if sess is None:
         raise HTTPException(404, f"Session {session_id} not found")
     _require_session_access(sess, ctx)
-    return sess.model_dump(mode="json", exclude=_PUBLIC_SESSION_EXCLUDE)
+    return _build_public_session_payload(sess)
 
 
 class _MemoryQueryBody(BaseModel):

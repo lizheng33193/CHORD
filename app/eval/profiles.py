@@ -11,6 +11,7 @@ _PROFILES: dict[str, EvalProfile] = {
         suites=[
             "release_gate_smoke",
             "memory_governance",
+            "memory_semantic_retrieval",
             "data_agent_sql_safety",
             "data_agent_sql_grounding",
             "risk_qa_groundedness",
@@ -25,6 +26,7 @@ _PROFILES: dict[str, EvalProfile] = {
         suites=[
             "release_gate_smoke",
             "memory_governance",
+            "memory_semantic_retrieval",
             "data_agent_sql_safety",
             "data_agent_sql_grounding",
             "risk_qa_groundedness",

@@ -152,7 +152,136 @@
     - `[x]` list commands 不执行 evaluator、不读取 case file、不写 report、不创建 output dir
   - final state:
     - `[x]` `M5 completed`
-    - `[x]` `M6 not started`
+    - `[x]` `M5 acceptance closure complete`
+
+- [x] M6A｜Long-term Memory Vector Shadow Index — 已实现 shadow-only 底座（2026-07-08）
+  - docs:
+    - `docs/specs/m6a-memory-vector-shadow-index-contract.md`
+    - `docs/plans/m6a-memory-vector-shadow-index-plan.md`
+    - `docs/reviews/m6a-memory-vector-shadow-index-review.md`
+  - delivered:
+    - `[x]` 新增 `app/services/orchestrator_agent/memory_vector/` 模块
+    - `[x]` 新增 `memory_vector_sync` SQLite 状态表
+    - `[x]` 新增独立 `MEMORY_VECTOR_*` 配置
+    - `[x]` 新增 CLI `status` / `sync-all` / `rebuild` / `shadow-search`
+    - `[x]` 新增 best-effort sync hooks 覆盖 memory add/update/archive/restore/delete
+    - `[x]` 新增 shadow semantic search，并强制 vector result 回表后再做硬过滤
+    - `[x]` 新增 M6A 定向测试
+  - guardrails:
+    - `[x]` SQLite 继续是 source of truth
+    - `[x]` FTS5 继续是生产 retrieval
+    - `[x]` vector result 不进入 prompt
+    - `[x]` 不新增 HTTP debug API
+    - `[x]` 不做 vector + FTS fusion
+  - final state:
+    - `[x]` `M6A implemented / pending acceptance`
+    - `[x]` `M6B not started`
+
+- [x] M6B｜Policy-gated Semantic Memory Retrieval & Context Injection — 已实现 hybrid runtime（2026-07-08）
+  - docs:
+    - `docs/specs/m6b-policy-gated-semantic-memory-retrieval-contract.md`
+    - `docs/plans/m6b-policy-gated-semantic-memory-retrieval-plan.md`
+    - `docs/reviews/m6b-policy-gated-semantic-memory-retrieval-review.md`
+  - delivered:
+    - `[x]` 新增 `MEMORY_VECTOR_CONTEXT_INJECTION_ENABLED` 等 M6B flags
+    - `[x]` 新增 `app/services/memory/vector_index_adapter.py` temporary compatibility seam
+    - `[x]` 扩展 retrieval/context provenance：`retrieval_method` / `raw_distance` / `normalized_score`
+    - `[x]` 新增 semantic retrieval / fusion / hybrid retrieval runtime
+    - `[x]` `build_retrieved_memory_context()` 在 flag on 时接入 shared memory runtime
+    - `[x]` 新增 hermetic `memory_semantic_retrieval` eval suite，并加入 `pr_acceptance` / `production_release`
+  - guardrails:
+    - `[x]` `app/services/memory/*` 仍是唯一 policy / retrieval / context governance 层
+    - `[x]` vector candidate 必须 scoped relational load
+    - `[x]` flag off 时 legacy FTS 输出精确保持不变
+    - `[x]` SQL/Data Agent 路径在 M6B 不接 semantic supplement
+    - `[x]` prompt provenance 最小化，不暴露 `raw_distance` / policy internals
+  - final state:
+    - `[x]` `M6B accepted / ready to merge`
+    - `[x]` `M6C not started`
+
+- [x] M6B Acceptance Closure — 已完成验收收口（2026-07-09）
+  - scope:
+    - `[x]` 只做 acceptance closure，不新增 runtime 功能
+    - `[x]` 复核 feature flags / release gates / docs / known limitations / 阶段边界
+  - closure findings:
+    - `[x]` `MEMORY_VECTOR_CONTEXT_INJECTION_ENABLED=0` 默认保持不变
+    - `[x]` flag off 时 legacy FTS behavior unchanged
+    - `[x]` `app/services/orchestrator_agent/memory_context.py` 保持 thin integration
+    - `[x]` `app/services/memory/vector_index_adapter.py` 仍是唯一 temporary seam
+    - `[x]` SQL/Data Agent 路径未接 semantic vector supplement
+    - `[x]` prompt provenance 最小化，不暴露 `raw_distance` / policy internals / raw `metadata_json`
+    - `[x]` `memory_semantic_retrieval` eval 继续保持 hermetic deterministic
+  - verification:
+    - `[x]` `python -m compileall -q app data_acquisition_agent tests scripts`
+    - `[x]` M6B targeted pytest: `8 passed, 1 warning`
+    - `[x]` memory boundary/context/isolation pytest: `34 passed`
+    - `[x]` `PYTHONPATH=. MODEL_MODE=mock pytest -q tests/orchestrator_agent`: `356 passed, 16 warnings`
+    - `[x]` `python -m app.eval.runner --suite memory_governance`
+    - `[x]` `python -m app.eval.runner --suite memory_semantic_retrieval`
+    - `[x]` `python -m app.eval.runner --profile pr_acceptance`
+    - `[x]` `python -m app.eval.runner --profile production_release --strict`
+    - `[x]` `git diff --check`
+  - decision:
+    - `[x]` `M6B accepted / ready to merge`
+    - `[x]` `M6C not started`
+    - `[x]` `M6 overall not completed`
+    - `[x]` `M6C may start after M6B merge`
+
+- [x] M6C｜Semantic Memory Rollout & Observability — 已实现，待验收（2026-07-09）
+  - docs:
+    - `docs/specs/m6c-semantic-memory-rollout-observability-contract.md`
+    - `docs/plans/m6c-semantic-memory-rollout-observability-plan.md`
+    - `docs/reviews/m6c-semantic-memory-rollout-observability-review.md`
+    - `docs/runbooks/m6c-semantic-memory-rollout-runbook.md`
+  - delivered:
+    - `[x]` 新增 `app/services/memory/observability.py` 共享 trace / summary contract
+    - `[x]` `MemoryRetrievalRequest` 新增 `run_id` / `request_id` / `trace_id`
+    - `[x]` shared memory runtime 输出 `semantic_memory_trace` metadata
+    - `[x]` `MemoryContextBundle` 输出 sanitized summary metadata
+    - `[x]` `build_retrieved_memory_context()` 写入 session internal handoff
+    - `[x]` `create_execution_trace()` 统一消费 handoff 并写入 `internal_metadata["semantic_memory"]`
+    - `[x]` public session payload 过滤 `_internal*` handoff key
+    - `[x]` 新增 M6C 定向 pytest 与 `memory_semantic_retrieval` observability coverage
+  - guardrails:
+    - `[x]` 不改变 M6B retrieval / policy / fusion / context injection 语义
+    - `[x]` semantic context injection 默认仍关闭
+    - `[x]` SQL/Data Agent semantic supplement 仍禁用
+    - `[x]` full trace 不进 prompt
+    - `[x]` summary 不暴露 memory content / raw metadata / raw distance / policy internals
+    - `[x]` 不做 return-object refactor
+    - `[x]` 不做 DB audit event
+  - final state:
+    - `[x]` `M6C implemented / pending acceptance`
+    - `[x]` `M6 overall not completed`
+    - `[x]` `M6 final closure not started`
+
+- [x] M6C Acceptance Closure — 已完成验收收口（2026-07-09）
+  - scope:
+    - `[x]` 只做 docs/status/acceptance evidence，不新增 runtime 功能
+    - `[x]` 不改 retrieval / policy / fusion / context injection 逻辑
+  - closure findings:
+    - `[x]` `MEMORY_VECTOR_CONTEXT_INJECTION_ENABLED=0` 默认保持不变
+    - `[x]` SQL/Data Agent semantic supplement 仍禁用
+    - `[x]` full semantic-memory trace 保持 metadata-only
+    - `[x]` sanitized summary 只存在于 `execution_trace.internal_metadata["semantic_memory"]`
+    - `[x]` public session API 过滤 `_internal*` handoff fields
+    - `[x]` 不做 return-object refactor
+    - `[x]` 不做 DB audit stream
+  - verification:
+    - `[x]` `python -m compileall -q app data_acquisition_agent tests scripts`
+    - `[x]` M6C targeted pytest: `12 passed, 6 warnings`
+    - `[x]` memory boundary/context/isolation pytest: `34 passed`
+    - `[x]` `PYTHONPATH=. MODEL_MODE=mock pytest -q tests/eval/test_memory_semantic_retrieval_suite.py`: `3 passed, 1 warning`
+    - `[x]` `python -m app.eval.runner --suite memory_governance`
+    - `[x]` `python -m app.eval.runner --suite memory_semantic_retrieval`
+    - `[x]` `python -m app.eval.runner --profile pr_acceptance`
+    - `[x]` `python -m app.eval.runner --profile production_release --strict`
+    - `[x]` `git diff --check`
+  - decision:
+    - `[x]` `M6C accepted / ready to merge`
+    - `[x]` `M6 overall not completed`
+    - `[x]` `M6 final closure not started`
+    - `[x]` `M6 final closure may start after M6C merge`
 
 - [x] PR-A｜Risk QA + Context Isolation + Evidence/Citation Production Gate — accepted for Pre-M3 scope（2026-07-04）
   - docs:
