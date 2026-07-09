@@ -255,6 +255,34 @@
     - `[x]` `M6 overall not completed`
     - `[x]` `M6 final closure not started`
 
+- [x] M6C Acceptance Closure — 已完成验收收口（2026-07-09）
+  - scope:
+    - `[x]` 只做 docs/status/acceptance evidence，不新增 runtime 功能
+    - `[x]` 不改 retrieval / policy / fusion / context injection 逻辑
+  - closure findings:
+    - `[x]` `MEMORY_VECTOR_CONTEXT_INJECTION_ENABLED=0` 默认保持不变
+    - `[x]` SQL/Data Agent semantic supplement 仍禁用
+    - `[x]` full semantic-memory trace 保持 metadata-only
+    - `[x]` sanitized summary 只存在于 `execution_trace.internal_metadata["semantic_memory"]`
+    - `[x]` public session API 过滤 `_internal*` handoff fields
+    - `[x]` 不做 return-object refactor
+    - `[x]` 不做 DB audit stream
+  - verification:
+    - `[x]` `python -m compileall -q app data_acquisition_agent tests scripts`
+    - `[x]` M6C targeted pytest: `12 passed, 6 warnings`
+    - `[x]` memory boundary/context/isolation pytest: `34 passed`
+    - `[x]` `PYTHONPATH=. MODEL_MODE=mock pytest -q tests/eval/test_memory_semantic_retrieval_suite.py`: `3 passed, 1 warning`
+    - `[x]` `python -m app.eval.runner --suite memory_governance`
+    - `[x]` `python -m app.eval.runner --suite memory_semantic_retrieval`
+    - `[x]` `python -m app.eval.runner --profile pr_acceptance`
+    - `[x]` `python -m app.eval.runner --profile production_release --strict`
+    - `[x]` `git diff --check`
+  - decision:
+    - `[x]` `M6C accepted / ready to merge`
+    - `[x]` `M6 overall not completed`
+    - `[x]` `M6 final closure not started`
+    - `[x]` `M6 final closure may start after M6C merge`
+
 - [x] PR-A｜Risk QA + Context Isolation + Evidence/Citation Production Gate — accepted for Pre-M3 scope（2026-07-04）
   - docs:
     - `docs/specs/risk-qa-production-gate-contract.md`

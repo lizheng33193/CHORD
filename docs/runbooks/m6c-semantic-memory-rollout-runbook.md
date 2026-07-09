@@ -20,6 +20,14 @@ Primary internal trace surface:
 
 - `execution_trace.internal_metadata["semantic_memory"]`
 
+Supporting constraints:
+
+- full trace remains metadata-only in shared memory runtime objects
+- sanitized summary does not enter prompts
+- public session API filters `_internal*` handoff fields
+- M6C does not introduce a return-object refactor
+- M6C does not introduce a DB audit stream
+
 Expected fields:
 
 - `enabled`
@@ -59,6 +67,14 @@ Expected fields:
 
 These are aggregated observability reasons. They are not prompt-visible and do
 not expose raw policy internals.
+
+## What Must Not Change During Rollout
+
+- `MEMORY_VECTOR_CONTEXT_INJECTION_ENABLED` stays default-off unless explicitly
+  enabled for validation
+- SQL/Data Agent semantic supplement stays disabled
+- retrieval / policy / fusion / context injection semantics are not changed by
+  M6C closure
 
 ## Rollback Conditions
 
