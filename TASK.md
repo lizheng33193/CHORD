@@ -196,8 +196,36 @@
     - `[x]` SQL/Data Agent 路径在 M6B 不接 semantic supplement
     - `[x]` prompt provenance 最小化，不暴露 `raw_distance` / policy internals
   - final state:
-    - `[x]` `M6B implemented / pending acceptance`
+    - `[x]` `M6B accepted / ready to merge`
     - `[x]` `M6C not started`
+
+- [x] M6B Acceptance Closure — 已完成验收收口（2026-07-09）
+  - scope:
+    - `[x]` 只做 acceptance closure，不新增 runtime 功能
+    - `[x]` 复核 feature flags / release gates / docs / known limitations / 阶段边界
+  - closure findings:
+    - `[x]` `MEMORY_VECTOR_CONTEXT_INJECTION_ENABLED=0` 默认保持不变
+    - `[x]` flag off 时 legacy FTS behavior unchanged
+    - `[x]` `app/services/orchestrator_agent/memory_context.py` 保持 thin integration
+    - `[x]` `app/services/memory/vector_index_adapter.py` 仍是唯一 temporary seam
+    - `[x]` SQL/Data Agent 路径未接 semantic vector supplement
+    - `[x]` prompt provenance 最小化，不暴露 `raw_distance` / policy internals / raw `metadata_json`
+    - `[x]` `memory_semantic_retrieval` eval 继续保持 hermetic deterministic
+  - verification:
+    - `[x]` `python -m compileall -q app data_acquisition_agent tests scripts`
+    - `[x]` M6B targeted pytest: `8 passed, 1 warning`
+    - `[x]` memory boundary/context/isolation pytest: `34 passed`
+    - `[x]` `PYTHONPATH=. MODEL_MODE=mock pytest -q tests/orchestrator_agent`: `356 passed, 16 warnings`
+    - `[x]` `python -m app.eval.runner --suite memory_governance`
+    - `[x]` `python -m app.eval.runner --suite memory_semantic_retrieval`
+    - `[x]` `python -m app.eval.runner --profile pr_acceptance`
+    - `[x]` `python -m app.eval.runner --profile production_release --strict`
+    - `[x]` `git diff --check`
+  - decision:
+    - `[x]` `M6B accepted / ready to merge`
+    - `[x]` `M6C not started`
+    - `[x]` `M6 overall not completed`
+    - `[x]` `M6C may start after M6B merge`
 
 - [x] PR-A｜Risk QA + Context Isolation + Evidence/Citation Production Gate — accepted for Pre-M3 scope（2026-07-04）
   - docs:
