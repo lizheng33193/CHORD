@@ -5,6 +5,40 @@
 - 整体架构：单体 FastAPI 后端，五层（API → 编排 → Skill 执行 → 数据访问 → 外部服务）
 - 入口文件：`app/main.py`
 
+## 2026-07-09 M7-0 Minimum Commercial Production Readiness Scope Lock
+
+- new plan artifact:
+  - `docs/plans/m7-minimum-commercial-production-readiness-plan.md`
+- current state before scope lock:
+  - `M6 completed`
+  - `M7 not started`
+- current post-lock status:
+  - `M7-0 scope lock completed`
+  - `M7 implementation not completed`
+  - `M7A Deployment & Runtime Readiness not started`
+- M7 target:
+  - minimum commercial production readiness
+  - deployable, verifiable, recoverable, observable, auditable, and commercially handoff-ready under explicit limitations
+  - not full enterprise production infrastructure
+- scope:
+  - deployment / runtime readiness
+  - backup / restore / rollback
+  - monitoring / alerting / audit boundary
+  - SLO / SLA boundary
+  - CI / release gate / load smoke
+  - final commercial delivery checklist and acceptance review
+- explicit non-goals:
+  - no runtime behavior change
+  - no dashboard implementation
+  - no Kubernetes / Helm
+  - no full Grafana / Prometheus deployment
+  - no automatic CD
+  - no LangGraph migration
+  - no semantic memory default-on
+  - no SQL/Data Agent semantic supplement
+- next step:
+  - `M7A Deployment & Runtime Readiness`
+
 ## 2026-07-07 M5-1 Shared Eval Foundation
 
 - new spec artifact:
