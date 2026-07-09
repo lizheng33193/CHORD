@@ -1,0 +1,35 @@
+name: M7D PR Acceptance
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  pr-acceptance:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Compileall
+        run: python -m compileall -q app data_acquisition_agent tests scripts
+
+      - name: Bootstrap runtime dirs
+        run: python scripts/bootstrap_runtime_dirs.py
+
+      - name: Load smoke help
+        run: python scripts/load_smoke.py --help
+
+      - name: Release check help
+        run: python scripts/run_m7d_release_check.py --help
+
+      - name: Runtime status help
+        run: python scripts/collect_runtime_status.py --help
+
+      - name: Startup smoke help
+        run: python scripts/smoke_startup_check.py --help
