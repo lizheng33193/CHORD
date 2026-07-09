@@ -5,6 +5,44 @@
 - 整体架构：单体 FastAPI 后端，五层（API → 编排 → Skill 执行 → 数据访问 → 外部服务）
 - 入口文件：`app/main.py`
 
+## 2026-07-09 M7B Backup / Restore / Rollback
+
+- new spec artifact:
+  - `docs/specs/m7b-backup-restore-rollback-contract.md`
+- new plan artifact:
+  - `docs/plans/m7b-backup-restore-rollback-plan.md`
+- new runbook artifacts:
+  - `docs/runbooks/backup-restore-runbook.md`
+  - `docs/runbooks/rollback-runbook.md`
+- new script artifacts:
+  - `scripts/backup_local_state.py`
+  - `scripts/restore_local_state.py`
+- implementation status:
+  - `M7-0 scope lock completed`
+  - `M7A Deployment & Runtime Readiness completed`
+  - `M7B Backup / Restore / Rollback completed`
+  - `M7 implementation in progress`
+- delivered scope:
+  - explicit local-state backup allowlist
+  - local backup archive manifest and `sha256`
+  - restore dry-run flow
+  - default non-overwrite restore behavior
+  - restore `--overwrite` flow
+  - path traversal protection
+  - conservative symlink / hardlink handling
+  - backup / restore runbook
+  - rollback runbook
+- non-goals preserved:
+  - no cloud backup
+  - no scheduled backup
+  - no Kubernetes rollback
+  - no database migration framework
+  - no monitoring / alerting implementation
+  - no load smoke
+  - no runtime behavior change
+- next step:
+  - `M7C Monitoring / Alerting / Audit Boundary`
+
 ## 2026-07-09 M7A Deployment & Runtime Readiness
 
 - new spec artifact:
