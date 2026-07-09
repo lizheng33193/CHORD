@@ -5,6 +5,49 @@
 - 整体架构：单体 FastAPI 后端，五层（API → 编排 → Skill 执行 → 数据访问 → 外部服务）
 - 入口文件：`app/main.py`
 
+## 2026-07-09 M7E Final Acceptance & Commercial Delivery Docs
+
+- new plan artifact:
+  - `docs/plans/m7e-final-acceptance-commercial-delivery-plan.md`
+- new review artifact:
+  - `docs/reviews/m7-final-acceptance-review.md`
+- new checklist artifact:
+  - `docs/checklists/m7-commercial-delivery-checklist.md`
+- new runbook artifacts:
+  - `docs/runbooks/commercial-delivery-handoff-runbook.md`
+  - `docs/runbooks/m7-operator-quickstart-runbook.md`
+- implementation status:
+  - `M7-0 scope lock completed`
+  - `M7A Deployment & Runtime Readiness completed`
+  - `M7B Backup / Restore / Rollback completed`
+  - `M7C Monitoring / Alerting / Audit Boundary completed`
+  - `M7D CI / Release Gate / Load Smoke completed`
+  - `M7E Final Acceptance & Commercial Delivery Docs completed`
+  - `M7 completed`
+  - `M8 not started`
+- evidence posture:
+  - primary evidence is the fresh M7E rerun on latest `main`
+  - secondary context is the M7A-D plans, runbooks, and merged artifacts
+- delivered scope:
+  - final acceptance review with concrete evidence paths
+  - commercial delivery checklist
+  - operator handoff runbook
+  - operator quickstart runbook
+  - README / PLANNING / TASK status closure
+  - M7 master-plan naming correction for M7E deliverables only
+- non-goals preserved:
+  - no app runtime behavior change
+  - no test changes
+  - no script changes
+  - no CI workflow changes
+  - no full pytest
+  - no full load-testing platform
+  - no Kubernetes or CD rollout
+  - no Grafana / Prometheus / SIEM platform
+  - no enterprise production certification claim
+- next step:
+  - `M8 not started`
+
 ## 2026-07-09 M7D CI / Release Gate / Load Smoke
 
 - new spec artifact:

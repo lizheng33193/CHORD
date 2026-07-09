@@ -47,6 +47,9 @@
 - [x] `M7B Backup / Restore / Rollback completed`
 - [x] `M7C Monitoring / Alerting / Audit Boundary completed`
 - [x] `M7D CI / Release Gate / Load Smoke completed`
+- [x] `M7E Final Acceptance & Commercial Delivery Docs completed`
+- [x] `M7 completed`
+- [x] `M8 not started`
 - [x] 生产默认仍保持保守：`MEMORY_VECTOR_CONTEXT_INJECTION_ENABLED=0`
 - [x] SQL/Data Agent semantic supplement 继续禁用
 - [x] full trace 继续保持 metadata-only；sanitized summary 仅进入 `execution_trace.internal_metadata["semantic_memory"]`
@@ -182,6 +185,32 @@
 - [x] `M7D CI / Release Gate / Load Smoke completed`
 - [x] `M7 implementation in progress`
 - [x] Next step: `M7E Final Acceptance & Commercial Delivery Docs`
+
+## M7E Final Acceptance & Commercial Delivery Docs
+
+- [x] Add `docs/plans/m7e-final-acceptance-commercial-delivery-plan.md`
+- [x] Add `docs/reviews/m7-final-acceptance-review.md`
+- [x] Add `docs/checklists/m7-commercial-delivery-checklist.md`
+- [x] Add `docs/runbooks/commercial-delivery-handoff-runbook.md`
+- [x] Add `docs/runbooks/m7-operator-quickstart-runbook.md`
+- [x] Update `README.md`
+- [x] Update `PLANNING.md`
+- [x] Update `TASK.md`
+- [x] Apply M7E naming correction to `docs/plans/m7-minimum-commercial-production-readiness-plan.md`
+- [x] Record canonical M7D gate as `python -m app.eval.runner --profile production_release --strict`
+- [x] Keep `app.release.pre_m3_gate` as legacy reference only
+- [x] Run `python -m compileall -q app data_acquisition_agent tests scripts`
+- [x] `docker compose up -d`
+- [x] Run `python scripts/run_m7d_release_check.py --base-url http://127.0.0.1:8000 --output-dir /tmp/chord-m7e-release-check --run-production-release --timeout-seconds 30 --production-release-timeout-seconds 600`
+- [x] `docker compose down`
+- [x] Run `python scripts/backup_local_state.py --output-dir /tmp/chord-m7e-backups`
+- [x] Run `python scripts/restore_local_state.py --archive "$ARCHIVE" --target-root /tmp/chord-m7e-restore-check --dry-run`
+- [x] Run `git diff --check`
+- [x] Run `git status --short`
+- [x] Run old-name residue grep
+- [x] `M7E Final Acceptance & Commercial Delivery Docs completed`
+- [x] `M7 completed`
+- [x] `M8 not started`
 
 ## 当前进行中的功能
 - [x] M5-1｜Shared Eval Foundation — 已落地共享底座（2026-07-07）

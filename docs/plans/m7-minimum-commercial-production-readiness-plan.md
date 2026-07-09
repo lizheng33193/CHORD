@@ -199,10 +199,11 @@ Close M7 with clear delivery evidence, known limitations, and a final Go / No-Go
 
 **Deliverables**
 
-- `final-commercial-delivery-checklist.md`
-- `m7-minimum-commercial-production-readiness-review.md`
-- `final-system-architecture.md`
-- `final-runtime-flow.md`
+- `docs/checklists/m7-commercial-delivery-checklist.md`
+- `docs/reviews/m7-final-acceptance-review.md`
+- `docs/runbooks/commercial-delivery-handoff-runbook.md`
+- `docs/runbooks/m7-operator-quickstart-runbook.md`
+- `docs/plans/m7e-final-acceptance-commercial-delivery-plan.md`
 - known limitations summary
 - final Go / No-Go decision record
 
