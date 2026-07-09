@@ -42,8 +42,8 @@
 - [x] `M6C completed / merged`
 - [x] `M7 not started` before scope lock
 - [x] `M7-0 scope lock completed`
-- [x] `M7 implementation not completed`
-- [x] `M7A Deployment & Runtime Readiness not started`
+- [x] `M7 implementation in progress`
+- [x] `M7A Deployment & Runtime Readiness completed`
 - [x] 生产默认仍保持保守：`MEMORY_VECTOR_CONTEXT_INJECTION_ENABLED=0`
 - [x] SQL/Data Agent semantic supplement 继续禁用
 - [x] full trace 继续保持 metadata-only；sanitized summary 仅进入 `execution_trace.internal_metadata["semantic_memory"]`
@@ -66,6 +66,32 @@
 - [x] `M7 implementation not completed`
 - [x] `M7A Deployment & Runtime Readiness not started`
 - [x] Next step: `M7A Deployment & Runtime Readiness`
+
+## M7A Deployment & Runtime Readiness
+
+- [x] Add `Dockerfile`
+- [x] Add `docker-compose.yml`
+- [x] Add `.dockerignore`
+- [x] Update `.env.example` for mock-first Docker / local startup
+- [x] Add `docs/specs/m7a-deployment-runtime-readiness-contract.md`
+- [x] Add `docs/plans/m7a-deployment-runtime-readiness-plan.md`
+- [x] Add `scripts/bootstrap_runtime_dirs.py`
+- [x] Add `scripts/smoke_startup_check.py`
+- [x] Add `docs/runbooks/deployment-runbook.md`
+- [x] Add `docs/runbooks/local-demo-runbook.md`
+- [x] Preserve `MEMORY_VECTOR_CONTEXT_INJECTION_ENABLED=0`
+- [x] Preserve `HYBRID_RETRIEVAL_ENABLED=0`
+- [x] Do not modify runtime behavior
+- [x] `python -m compileall -q app data_acquisition_agent tests scripts`
+- [x] `python scripts/bootstrap_runtime_dirs.py`
+- [x] `docker compose build`
+- [x] `docker compose up -d`
+- [x] `python scripts/smoke_startup_check.py --base-url http://127.0.0.1:8000 --timeout-seconds 30`
+- [x] `docker compose down`
+- [x] `git diff --check`
+- [x] `M7A Deployment & Runtime Readiness completed`
+- [x] `M7 implementation in progress`
+- [x] Next step: `M7B Backup / Restore / Rollback`
 
 ## 当前进行中的功能
 - [x] M5-1｜Shared Eval Foundation — 已落地共享底座（2026-07-07）
