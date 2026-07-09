@@ -5,6 +5,40 @@
 - 整体架构：单体 FastAPI 后端，五层（API → 编排 → Skill 执行 → 数据访问 → 外部服务）
 - 入口文件：`app/main.py`
 
+## 2026-07-09 M7A Deployment & Runtime Readiness
+
+- new spec artifact:
+  - `docs/specs/m7a-deployment-runtime-readiness-contract.md`
+- new plan artifact:
+  - `docs/plans/m7a-deployment-runtime-readiness-plan.md`
+- new runbook artifacts:
+  - `docs/runbooks/deployment-runbook.md`
+  - `docs/runbooks/local-demo-runbook.md`
+- implementation status:
+  - `M7-0 scope lock completed`
+  - `M7A Deployment & Runtime Readiness completed`
+  - `M7 implementation in progress`
+- delivered scope:
+  - top-level Dockerfile
+  - top-level docker-compose for `api + redis`
+  - `.dockerignore` secret / runtime-artifact exclusions
+  - mock-first `.env.example`
+  - runtime directory bootstrap script
+  - startup smoke script
+  - deployment runbook
+  - local demo runbook
+- non-goals preserved:
+  - no Kubernetes / Helm
+  - no full CI/CD
+  - no monitoring / alerting implementation
+  - no backup / restore / rollback implementation
+  - no load smoke
+  - no runtime behavior change
+  - no semantic memory default-on
+  - no Data Agent hybrid retrieval enablement
+- next step:
+  - `M7B Backup / Restore / Rollback`
+
 ## 2026-07-09 M7-0 Minimum Commercial Production Readiness Scope Lock
 
 - new plan artifact:
