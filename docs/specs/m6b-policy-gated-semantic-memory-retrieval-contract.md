@@ -80,5 +80,5 @@ Prompt-visible context must not include:
 ## Stage Status
 
 - `M6A implemented`
-- `M6B implemented / pending acceptance`
+- `M6B accepted / ready to merge`
 - `M6C not started`
