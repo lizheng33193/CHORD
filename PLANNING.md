@@ -151,7 +151,18 @@
   - keep SQL/Data Agent semantic supplement out of scope
   - add rollout / rollback / acceptance docs without adding new audit infra
 
-## 2026-07-08 M5 Final Status
+## 2026-07-09 M6 Final Acceptance Closure
+
+- new review artifact:
+  - `docs/reviews/m6-final-acceptance-review.md`
+- current scope:
+  - docs/status/final acceptance closure only
+  - summarize M6A / M6B / M6C delivered scope, boundaries, release-gate evidence, and known limitations
+  - rerun the deterministic M6 release-gate matrix before marking M6 completed
+  - preserve conservative production defaults and all existing runtime guardrails
+  - do not add runtime, audit infra, dashboard work, or M7 implementation in this closure
+
+## 2026-07-09 M6 Final Status
 
 - status summary:
   - `M5 Eval / Regression Platform completed`
@@ -166,14 +177,22 @@
   - `pr_acceptance` and `production_release` both run the full deterministic 7-suite list
   - `production_release` is strict-by-default and must be used with strict semantics
   - no dashboard, CI integration, online monitoring, LangGraph migration, or production deployment was added in M5
-  - `M6A implemented / pending acceptance`
+  - `M6 Long-term Memory Vectorization & Semantic Retrieval completed`
+  - `M6A completed`
   - long-term memory now has an independent FAISS shadow vector index controlled by `MEMORY_VECTOR_*`
   - SQLite remains the relational source of truth
   - FTS5 remains the production retrieval path
   - vector search remains candidate-only; final context items are policy-gated and relationally loaded
   - `M6B completed / merged`
-  - `M6C accepted / ready to merge`
-  - `M6 overall not completed`
+  - `M6C completed / merged`
+  - `MEMORY_VECTOR_CONTEXT_INJECTION_ENABLED` remains default-off
+  - SQL/Data Agent semantic supplement remains disabled
+  - full semantic-memory trace remains metadata-only
+  - sanitized summary remains limited to `execution_trace.internal_metadata["semantic_memory"]`
+  - public session API filters `_internal*` handoff fields
+  - no return-object refactor
+  - no persistent DB audit stream
+  - `M7 not started`
 
 ## 2026-07-04 Pre-M3 / M2D System-Level Acceptance Snapshot
 
@@ -2333,6 +2352,7 @@ V2 启动前必须重新走 Vibe Coding Step 2 Brainstorming + 新 Design Doc + 
 - [2026-07-08] M6B 落地：新增 `MEMORY_VECTOR_CONTEXT_INJECTION_ENABLED` 等运行时开关、`app/services/memory/vector_index_adapter.py` 临时 seam、policy-gated semantic retrieval / FTS fusion / provenance-preserving context injection、hermetic `memory_semantic_retrieval` eval suite。默认行为保持 legacy FTS；SQL/Data Agent semantic supplement 仍未开启。
 - [2026-07-09] M6B Acceptance Closure：复核了 flag 默认关闭、thin integration、single vector seam、SQL/Data Agent 排除、最小 provenance 与 hermetic eval 边界；重跑 compileall、M6B 定向 pytest、memory boundary/context/isolation、`tests/orchestrator_agent`、`memory_governance`、`memory_semantic_retrieval`、`pr_acceptance`、`production_release --strict` 均通过。当前状态更新为 `M6B accepted / ready to merge`；`M6C not started`；`M6 overall not completed`。
 - [2026-07-09] M6C Acceptance Closure：复核了 semantic context injection default-off、SQL/Data Agent semantic supplement 继续禁用、full trace metadata-only、sanitized summary 仅存在于 `execution_trace.internal_metadata`、public session API 过滤 `_internal*` fields，以及 no return-object refactor / no DB audit stream 边界；重跑 compileall、M6C 定向 pytest、memory boundary/context/isolation、`tests/eval/test_memory_semantic_retrieval_suite.py`、`memory_governance`、`memory_semantic_retrieval`、`pr_acceptance`、`production_release --strict` 均通过。当前状态更新为 `M6C accepted / ready to merge`；`M6 overall not completed`；`M6 final closure not started`。
+- [2026-07-09] M6 Final Acceptance Closure：新增 `docs/reviews/m6-final-acceptance-review.md`，汇总 M6A/M6B/M6C 的交付边界、release-gate evidence、已知限制与保守默认值；README / PLANNING / TASK 状态统一更新为 `M6 completed`、`M7 not started`。本次 closure 不新增 runtime，不改 retrieval / policy / fusion / context injection / observability 逻辑。
 - [2026-05-26] Orchestrator Chat progress / memory UI contract：新增 `tool_progress` 模块级进度事件、只读短期会话历史列表、长期记忆状态文案边界；契约见 `docs/specs/orchestrator-chat-progress-memory-ui-contract.md`。
 - [2026-05-29] V7 Capability Gating Follow-up：fake Data Agent 测试改成显式 capability patch；direct profile 缺 bucket 时在 planning 阶段尊重 capability，不再生成误导性的 `repair_*` step；visible execution 新增 `data_acquisition_unavailable` 步骤；credit `source_shape` 与 executor `rows_per_uid` 语义进一步收敛。
 - [2026-05-30] NL Chat UX v4 验收补丁：前端新增 `run_failed` 终态处理，stop 按钮改为 `cancel_requested/cancelling` 派生态禁用；`tool_completed.status=cancelled` 与历史恢复统一走工具状态归一化；`ChatExecutionTraceCard` 按 run 终态区分 pending 摘要文案，避免 completed/cancelled 历史回合继续显示“等待执行...”。

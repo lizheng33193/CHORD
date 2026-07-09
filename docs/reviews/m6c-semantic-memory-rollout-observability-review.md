@@ -5,6 +5,12 @@
 This review covers the M6C rollout/observability layer added on top of the
 merged M6B semantic-memory runtime.
 
+Historical note:
+
+- this document records the M6C stage-local acceptance decision
+- the later M6 overall closure is recorded separately in
+  `docs/reviews/m6-final-acceptance-review.md`
+
 What M6C does:
 
 - adds full semantic-memory trace metadata in shared runtime

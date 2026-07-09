@@ -34,6 +34,20 @@
 - [x] 重构：APP 分类词典抽到 country_packs/mx/ — 完成（2026-04-30，2ccd4d4..2b6cc36，3 tests）
 - [x] E1 单用户埋点深度解析 → docs/plans/trace-analyzer-plan.md（2026-05-01）
 
+## 当前状态
+
+- [x] `M6 Long-term Memory Vectorization & Semantic Retrieval completed`
+- [x] `M6A completed`
+- [x] `M6B completed / merged`
+- [x] `M6C completed / merged`
+- [x] `M7 not started`
+- [x] 生产默认仍保持保守：`MEMORY_VECTOR_CONTEXT_INJECTION_ENABLED=0`
+- [x] SQL/Data Agent semantic supplement 继续禁用
+- [x] full trace 继续保持 metadata-only；sanitized summary 仅进入 `execution_trace.internal_metadata["semantic_memory"]`
+- [x] public session API 继续过滤 `_internal*`
+- [x] 不做 return-object refactor
+- [x] 不做 persistent DB audit stream
+
 ## 当前进行中的功能
 - [x] M5-1｜Shared Eval Foundation — 已落地共享底座（2026-07-07）
   - docs:
@@ -282,6 +296,34 @@
     - `[x]` `M6 overall not completed`
     - `[x]` `M6 final closure not started`
     - `[x]` `M6 final closure may start after M6C merge`
+
+- [x] M6 Final Acceptance Closure — 已完成总验收收口（2026-07-09）
+  - docs:
+    - `docs/reviews/m6-final-acceptance-review.md`
+    - `README.md`
+    - `PLANNING.md`
+    - `TASK.md`
+  - scope:
+    - `[x]` 只做 docs/status/final acceptance closure
+    - `[x]` 汇总 M6A / M6B / M6C 的交付范围、架构边界、release-gate 证据和已知限制
+    - `[x]` 不新增 runtime，不改 retrieval / policy / fusion / context injection / observability 逻辑
+  - final status:
+    - `[x]` `M6 completed`
+    - `[x]` `M6A completed`
+    - `[x]` `M6B completed / merged`
+    - `[x]` `M6C completed / merged`
+    - `[x]` `M7 not started`
+  - guardrails retained:
+    - `[x]` SQLite remains source of truth
+    - `[x]` vector index remains semantic candidate index
+    - `[x]` FTS5 remains available and default production retrieval path
+    - `[x]` `MEMORY_VECTOR_CONTEXT_INJECTION_ENABLED=0`
+    - `[x]` SQL/Data Agent semantic supplement remains disabled
+    - `[x]` full trace remains metadata-only
+    - `[x]` sanitized summary remains limited to `execution_trace.internal_metadata["semantic_memory"]`
+    - `[x]` public session API filters `_internal*`
+    - `[x]` no return-object refactor
+    - `[x]` no persistent DB audit stream
 
 - [x] PR-A｜Risk QA + Context Isolation + Evidence/Citation Production Gate — accepted for Pre-M3 scope（2026-07-04）
   - docs:
