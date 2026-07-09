@@ -7,6 +7,11 @@ from dataclasses import replace
 from app.core.config import settings
 from app.services.memory.context_builder import build_memory_context_bundle
 from app.services.memory.fusion import fuse_memory_items
+from app.services.memory.observability import (
+    SEMANTIC_MEMORY_TRACE_METADATA_KEY,
+    ensure_semantic_memory_trace,
+    trace_warnings,
+)
 from app.services.memory.retrieval import MemoryRetrievalRequest, MemoryRetrievalResult, MemoryRetrievalService
 from app.services.memory.retrieval_adapter import SQLiteV1MemoryRetrievalAdapter
 from app.services.memory.semantic_retrieval import SemanticMemoryRetrievalService
@@ -48,11 +53,16 @@ class HybridMemoryRetrievalService:
             max_vector_items=request.max_vector_items,
         )
         warnings = tuple(dict.fromkeys([*fts_result.warnings, *vector_result.warnings]))
+        trace = ensure_semantic_memory_trace(vector_result.metadata, request)
+        trace["fts_candidate_count"] = len(fts_result.items)
+        trace["fused_candidate_count"] = len(fused_items)
+        trace["warnings"] = trace_warnings(warnings)
         metadata = {
             "fts_item_count": len(fts_result.items),
             "vector_item_count": len(vector_result.items),
             "used_fallback": bool(vector_result.metadata.get("used_fallback", False)),
             "vector_health": vector_result.metadata.get("vector_health"),
+            SEMANTIC_MEMORY_TRACE_METADATA_KEY: trace,
         }
         return MemoryRetrievalResult(
             request=request,

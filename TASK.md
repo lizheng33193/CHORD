@@ -227,6 +227,34 @@
     - `[x]` `M6 overall not completed`
     - `[x]` `M6C may start after M6B merge`
 
+- [x] M6C｜Semantic Memory Rollout & Observability — 已实现，待验收（2026-07-09）
+  - docs:
+    - `docs/specs/m6c-semantic-memory-rollout-observability-contract.md`
+    - `docs/plans/m6c-semantic-memory-rollout-observability-plan.md`
+    - `docs/reviews/m6c-semantic-memory-rollout-observability-review.md`
+    - `docs/runbooks/m6c-semantic-memory-rollout-runbook.md`
+  - delivered:
+    - `[x]` 新增 `app/services/memory/observability.py` 共享 trace / summary contract
+    - `[x]` `MemoryRetrievalRequest` 新增 `run_id` / `request_id` / `trace_id`
+    - `[x]` shared memory runtime 输出 `semantic_memory_trace` metadata
+    - `[x]` `MemoryContextBundle` 输出 sanitized summary metadata
+    - `[x]` `build_retrieved_memory_context()` 写入 session internal handoff
+    - `[x]` `create_execution_trace()` 统一消费 handoff 并写入 `internal_metadata["semantic_memory"]`
+    - `[x]` public session payload 过滤 `_internal*` handoff key
+    - `[x]` 新增 M6C 定向 pytest 与 `memory_semantic_retrieval` observability coverage
+  - guardrails:
+    - `[x]` 不改变 M6B retrieval / policy / fusion / context injection 语义
+    - `[x]` semantic context injection 默认仍关闭
+    - `[x]` SQL/Data Agent semantic supplement 仍禁用
+    - `[x]` full trace 不进 prompt
+    - `[x]` summary 不暴露 memory content / raw metadata / raw distance / policy internals
+    - `[x]` 不做 return-object refactor
+    - `[x]` 不做 DB audit event
+  - final state:
+    - `[x]` `M6C implemented / pending acceptance`
+    - `[x]` `M6 overall not completed`
+    - `[x]` `M6 final closure not started`
+
 - [x] PR-A｜Risk QA + Context Isolation + Evidence/Citation Production Gate — accepted for Pre-M3 scope（2026-07-04）
   - docs:
     - `docs/specs/risk-qa-production-gate-contract.md`

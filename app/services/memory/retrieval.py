@@ -38,6 +38,9 @@ class MemoryRetrievalRequest:
     retrieval_mode: str = "fts_only"
     max_vector_items: int = 3
     require_policy_gate: bool = True
+    run_id: str | None = None
+    request_id: str | None = None
+    trace_id: str | None = None
 
     def __post_init__(self) -> None:
         user_id = str(self.user_id or "").strip()
@@ -51,6 +54,9 @@ class MemoryRetrievalRequest:
         object.__setattr__(self, "max_items", max(1, int(self.max_items or 1)))
         object.__setattr__(self, "max_vector_items", max(1, int(self.max_vector_items or 1)))
         object.__setattr__(self, "retrieval_mode", str(self.retrieval_mode or "fts_only").strip().lower())
+        object.__setattr__(self, "run_id", _optional_text(self.run_id))
+        object.__setattr__(self, "request_id", _optional_text(self.request_id))
+        object.__setattr__(self, "trace_id", _optional_text(self.trace_id))
 
 
 @dataclass(frozen=True)

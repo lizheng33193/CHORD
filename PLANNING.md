@@ -133,6 +133,24 @@
   - keep SQL/Data Agent semantic supplement out of scope
   - add hermetic `memory_semantic_retrieval` and include it in both release-gate profiles
 
+## 2026-07-09 M6C Semantic Memory Rollout & Observability
+
+- new spec artifact:
+  - `docs/specs/m6c-semantic-memory-rollout-observability-contract.md`
+- new plan artifact:
+  - `docs/plans/m6c-semantic-memory-rollout-observability-plan.md`
+- new review artifact:
+  - `docs/reviews/m6c-semantic-memory-rollout-observability-review.md`
+- new runbook artifact:
+  - `docs/runbooks/m6c-semantic-memory-rollout-runbook.md`
+- current scope:
+  - add full semantic-memory trace metadata in shared `app/services/memory/*`
+  - add sanitized execution-trace summary through session internal handoff
+  - extend hermetic `memory_semantic_retrieval` with observability coverage
+  - preserve exact legacy FTS prompt/context output when the semantic flag is off
+  - keep SQL/Data Agent semantic supplement out of scope
+  - add rollout / rollback / acceptance docs without adding new audit infra
+
 ## 2026-07-08 M5 Final Status
 
 - status summary:
@@ -153,8 +171,8 @@
   - SQLite remains the relational source of truth
   - FTS5 remains the production retrieval path
   - vector search remains candidate-only; final context items are policy-gated and relationally loaded
-  - `M6B accepted / ready to merge`
-  - `M6C not started`
+  - `M6B completed / merged`
+  - `M6C implemented / pending acceptance`
   - `M6 overall not completed`
 
 ## 2026-07-04 Pre-M3 / M2D System-Level Acceptance Snapshot
@@ -2314,6 +2332,7 @@ V2 启动前必须重新走 Vibe Coding Step 2 Brainstorming + 新 Design Doc + 
 - [2026-07-08] M6A 落地：新增 `MEMORY_VECTOR_*` 控制的 FAISS shadow vector index、`memory_vector_sync` SQLite 状态表、CLI `status/sync-all/rebuild/shadow-search`、relational load + hard filter 的 shadow semantic search。SQLite 仍是 source of truth，FTS5 仍是生产召回，M6B not started。
 - [2026-07-08] M6B 落地：新增 `MEMORY_VECTOR_CONTEXT_INJECTION_ENABLED` 等运行时开关、`app/services/memory/vector_index_adapter.py` 临时 seam、policy-gated semantic retrieval / FTS fusion / provenance-preserving context injection、hermetic `memory_semantic_retrieval` eval suite。默认行为保持 legacy FTS；SQL/Data Agent semantic supplement 仍未开启。
 - [2026-07-09] M6B Acceptance Closure：复核了 flag 默认关闭、thin integration、single vector seam、SQL/Data Agent 排除、最小 provenance 与 hermetic eval 边界；重跑 compileall、M6B 定向 pytest、memory boundary/context/isolation、`tests/orchestrator_agent`、`memory_governance`、`memory_semantic_retrieval`、`pr_acceptance`、`production_release --strict` 均通过。当前状态更新为 `M6B accepted / ready to merge`；`M6C not started`；`M6 overall not completed`。
+- [2026-07-09] M6C 落地：新增 shared semantic-memory observability contract、runtime trace metadata、sanitized execution-trace summary、session internal handoff、防泄露 public session filtering，以及 `memory_semantic_retrieval` observability coverage。semantic context injection 仍 default-off；SQL/Data Agent semantic supplement 仍禁用。当前状态更新为 `M6C implemented / pending acceptance`；`M6 overall not completed`；`M6 final closure not started`。
 - [2026-05-26] Orchestrator Chat progress / memory UI contract：新增 `tool_progress` 模块级进度事件、只读短期会话历史列表、长期记忆状态文案边界；契约见 `docs/specs/orchestrator-chat-progress-memory-ui-contract.md`。
 - [2026-05-29] V7 Capability Gating Follow-up：fake Data Agent 测试改成显式 capability patch；direct profile 缺 bucket 时在 planning 阶段尊重 capability，不再生成误导性的 `repair_*` step；visible execution 新增 `data_acquisition_unavailable` 步骤；credit `source_shape` 与 executor `rows_per_uid` 语义进一步收敛。
 - [2026-05-30] NL Chat UX v4 验收补丁：前端新增 `run_failed` 终态处理，stop 按钮改为 `cancel_requested/cancelling` 派生态禁用；`tool_completed.status=cancelled` 与历史恢复统一走工具状态归一化；`ChatExecutionTraceCard` 按 run 终态区分 pending 摘要文案，避免 completed/cancelled 历史回合继续显示“等待执行...”。

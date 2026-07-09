@@ -9,6 +9,10 @@ from typing import Any
 from app.eval.evaluators.base import BaseEvaluator
 from app.eval.schemas import EvalCase, EvalResult
 from app.services.memory.hybrid_retrieval import HybridMemoryRetrievalService
+from app.services.memory.observability import (
+    SEMANTIC_MEMORY_TRACE_METADATA_KEY,
+    SEMANTIC_MEMORY_TRACE_SUMMARY_METADATA_KEY,
+)
 from app.services.memory.retrieval import MemoryRetrievalRequest
 from app.services.memory.retrieval_policy import MemoryRetrievalTaskType
 from app.services.memory.semantic_retrieval import SemanticMemoryRetrievalService
@@ -48,11 +52,14 @@ class MemorySemanticRetrievalEvaluator(BaseEvaluator):
                     metrics={
                         "check_kind": check_kind,
                         "provenance_coverage": 1.0 if "retrieval=" in bundle.rendered_text else 0.0,
+                        **_trace_metrics(bundle.metadata.get(SEMANTIC_MEMORY_TRACE_METADATA_KEY), bundle.metadata.get(SEMANTIC_MEMORY_TRACE_SUMMARY_METADATA_KEY)),
                     },
                     failures=failures,
                     artifacts={
                         "rendered_text": bundle.rendered_text,
                         "returned_memory_ids": [item.memory_id for item in bundle.items],
+                        "semantic_memory_trace": bundle.metadata.get(SEMANTIC_MEMORY_TRACE_METADATA_KEY),
+                        "semantic_memory_trace_summary": bundle.metadata.get(SEMANTIC_MEMORY_TRACE_SUMMARY_METADATA_KEY),
                     },
                 )
         raise ValueError(f"unsupported check_kind: {check_kind}")
@@ -85,6 +92,16 @@ class MemorySemanticRetrievalEvaluator(BaseEvaluator):
             "fts_fallback_pass_rate": min(
                 [1.0 if result.artifacts.get("used_fallback") in {None, False, True} else 0.0 for result in results]
                 or [1.0]
+            ),
+            "trace_coverage": min([float(result.metrics.get("trace_coverage", 0.0)) for result in results] or [0.0]),
+            "fallback_reason_coverage": min(
+                [float(result.metrics.get("fallback_reason_coverage", 0.0)) for result in results] or [0.0]
+            ),
+            "policy_block_reason_coverage": min(
+                [float(result.metrics.get("policy_block_reason_coverage", 0.0)) for result in results] or [0.0]
+            ),
+            "context_budget_metric_coverage": min(
+                [float(result.metrics.get("context_budget_metric_coverage", 0.0)) for result in results] or [0.0]
             ),
         }
 
@@ -151,6 +168,8 @@ def _build_runtime(payload: dict[str, Any], tmpdir: Path) -> dict[str, Any]:
 
     class _RuntimeVectorIndex:
         def search(self, *, query: str, top_k: int) -> list[MemoryVectorQueryHit]:
+            if payload.get("vector_error"):
+                raise RuntimeError(str(payload["vector_error"]))
             query_vector = provider.embed_texts([query], input_type="query")[0]
             return [
                 MemoryVectorQueryHit(
@@ -202,6 +221,8 @@ def _build_result(case: EvalCase, result, *, check_kind: str) -> EvalResult:
     warnings = list(result.warnings)
     if expected_warnings and warnings != expected_warnings:
         failures.append(f"warning_codes mismatch: expected {expected_warnings}, got {warnings}")
+    trace = result.metadata.get(SEMANTIC_MEMORY_TRACE_METADATA_KEY)
+    summary = result.metadata.get(SEMANTIC_MEMORY_TRACE_SUMMARY_METADATA_KEY)
     return EvalResult(
         case_id=case.case_id,
         suite=case.suite,
@@ -212,6 +233,7 @@ def _build_result(case: EvalCase, result, *, check_kind: str) -> EvalResult:
             "check_kind": check_kind,
             "returned_item_count": len(returned_ids),
             "rejected_item_count": len(rejected_ids),
+            **_trace_metrics(trace, summary),
         },
         failures=failures,
         artifacts={
@@ -219,5 +241,33 @@ def _build_result(case: EvalCase, result, *, check_kind: str) -> EvalResult:
             "rejected_memory_ids": rejected_ids,
             "warning_codes": warnings,
             "used_fallback": result.metadata.get("used_fallback"),
+            "semantic_memory_trace": trace,
+            "semantic_memory_trace_summary": summary,
         },
     )
+
+
+def _trace_metrics(trace: Any, summary: Any) -> dict[str, float]:
+    trace_present = isinstance(trace, dict)
+    fallback_covered = 1.0
+    policy_block_covered = 1.0
+    budget_covered = 1.0
+    if trace_present:
+        if trace.get("fallback_used") is True and not trace.get("fallback_reason"):
+            fallback_covered = 0.0
+        if int(trace.get("policy_blocked_count") or 0) > 0 and not trace.get("policy_block_reasons"):
+            policy_block_covered = 0.0
+        if "context_budget_used" not in trace or "context_budget_limit" not in trace:
+            budget_covered = 0.0
+    else:
+        fallback_covered = 0.0
+        policy_block_covered = 0.0
+        budget_covered = 0.0
+    if isinstance(summary, dict) and "warnings_count" not in summary:
+        budget_covered = 0.0
+    return {
+        "trace_coverage": 1.0 if trace_present else 0.0,
+        "fallback_reason_coverage": fallback_covered,
+        "policy_block_reason_coverage": policy_block_covered,
+        "context_budget_metric_coverage": budget_covered,
+    }

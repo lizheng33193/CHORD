@@ -5,6 +5,10 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
+from app.services.memory.observability import (
+    EXECUTION_TRACE_SEMANTIC_MEMORY_KEY,
+    SEMANTIC_MEMORY_TRACE_HANDOFF_KEY,
+)
 from app.services.orchestrator_agent.runtime.trace_metadata import update_internal_trace_metadata
 from app.services.orchestrator_agent.schemas import (
     DataAvailability,
@@ -58,6 +62,19 @@ def create_execution_trace(
             "actor": user_snapshot if isinstance(user_snapshot, dict) else None,
         },
     )
+    semantic_summary = None
+    active_entities = getattr(session, "active_entities", None)
+    if isinstance(active_entities, dict):
+        handoff = active_entities.pop(SEMANTIC_MEMORY_TRACE_HANDOFF_KEY, None)
+        if isinstance(handoff, dict):
+            semantic_summary = dict(handoff)
+    if semantic_summary is not None:
+        update_internal_trace_metadata(
+            trace,
+            {
+                EXECUTION_TRACE_SEMANTIC_MEMORY_KEY: semantic_summary,
+            },
+        )
     session.execution_traces.append(trace)
     run = find_run(session, run_id)
     if run is not None:
