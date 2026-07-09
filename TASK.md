@@ -40,9 +40,7 @@
 - [x] `M6A completed`
 - [x] `M6B completed / merged`
 - [x] `M6C completed / merged`
-- [x] `M7 not started` before scope lock
 - [x] `M7-0 scope lock completed`
-- [x] `M7 implementation in progress`
 - [x] `M7A Deployment & Runtime Readiness completed`
 - [x] `M7B Backup / Restore / Rollback completed`
 - [x] `M7C Monitoring / Alerting / Audit Boundary completed`
@@ -50,6 +48,7 @@
 - [x] `M7E Final Acceptance & Commercial Delivery Docs completed`
 - [x] `M7 completed`
 - [x] `M8 not started`
+- [x] 当前仓库按最终版维护，不启动新的默认实现阶段
 - [x] 生产默认仍保持保守：`MEMORY_VECTOR_CONTEXT_INJECTION_ENABLED=0`
 - [x] SQL/Data Agent semantic supplement 继续禁用
 - [x] full trace 继续保持 metadata-only；sanitized summary 仅进入 `execution_trace.internal_metadata["semantic_memory"]`

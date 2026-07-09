@@ -4,6 +4,8 @@
 - 一句话描述：墨西哥市场多 Agent 用户画像后端
 - 整体架构：单体 FastAPI 后端，五层（API → 编排 → Skill 执行 → 数据访问 → 外部服务）
 - 入口文件：`app/main.py`
+- 当前主线状态：`M7 completed`、`M8 not started`
+- 当前仓库按最终版维护；下文除顶部最新状态外，后续大量内容保留为历史阶段快照与里程碑记录
 
 ## 2026-07-09 M7E Final Acceptance & Commercial Delivery Docs
 
@@ -47,6 +49,7 @@
   - no enterprise production certification claim
 - next step:
   - `M8 not started`
+  - no active follow-up implementation is scheduled in this repository
 
 ## 2026-07-09 M7D CI / Release Gate / Load Smoke
 
