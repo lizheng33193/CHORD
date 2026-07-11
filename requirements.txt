@@ -14,8 +14,12 @@ bcrypt>=4.0,<5.0
 python-jose[cryptography]>=3.3.0,<4.0
 email-validator>=2.2.0,<3.0
 tenacity>=8.0,<10.0
+httpx>=0.27.0,<1.0
 openai>=1.0.0,<2.0
 faiss-cpu>=1.8.0,<2.0
+numpy>=1.26.0,<2.0
+scikit-learn>=1.4.0,<2.0
+six>=1.16.0,<2.0
 redis>=5.0.0,<6.0
 # Plan 07 (KB router) — BM25 + Chinese tokenizer
 rank-bm25==0.2.2
@@ -45,3 +49,11 @@ datrie>=0.8.2,<1.0
 hanziconv>=0.3.2,<1.0
 nltk>=3.9.1,<4.0
 tiktoken>=0.8.0,<1.0
+# Vendored SWXY parser / retrieval dependencies used by risk knowledge ingestion.
+xxhash>=3.5.0,<4.0
+demjson3>=3.0.6,<4.0
+xpinyin>=0.7.6,<1.0
+elasticsearch>=8.11.0,<9.0
+elasticsearch-dsl>=8.11.0,<9.0
+llama-index-core>=0.10.0,<0.13.0
+llama-index-postprocessor-dashscope-rerank>=0.1.0,<0.4.0
